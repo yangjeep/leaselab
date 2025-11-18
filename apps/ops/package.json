@@ -17,6 +17,8 @@
     "@leaselab/shared-types": "*",
     "@leaselab/shared-utils": "*",
     "@leaselab/shared-config": "*",
+    "@leaselab/storage-core": "*",
+    "@leaselab/storage-cloudflare": "*",
     "@remix-run/cloudflare": "^2.15.0",
     "@remix-run/cloudflare-pages": "^2.15.0",
     "@remix-run/react": "^2.15.0",

@@ -722,6 +722,155 @@ Unified rental management platform using Remix + Cloudflare Pages/Workers for bo
 
 ---
 
+## Phase 12: Storage Abstraction Layer [PHASE 1 COMPLETE]
+
+> Abstract Cloudflare-specific storage services (D1, KV, R2) behind provider-agnostic interfaces.
+> See full PRD: `docs/PRD-Storage-Abstraction-Layer.md`
+
+### Task 12.1: Create storage-core Package [COMPLETED]
+**Priority:** Critical
+**Dependencies:** None
+
+- [x] Create `packages/storage-core/` directory structure
+- [x] Create `package.json` with dependencies
+- [x] Create `tsconfig.json` extending root
+- [x] Define `IDatabase` interface
+  - [x] `query<T>()` - return multiple rows
+  - [x] `queryOne<T>()` - return single row or null
+  - [x] `execute()` - return changes/lastRowId
+  - [x] `transaction()` - transaction support
+- [x] Define `ICache` interface
+  - [x] `get<T>()` - retrieve value
+  - [x] `put()` - store with optional TTL
+  - [x] `delete()` - remove key
+  - [x] `list()` - list keys by prefix
+- [x] Define `IObjectStore` interface
+  - [x] `put()` - store file
+  - [x] `get()` - retrieve file with metadata
+  - [x] `delete()` - remove file
+  - [x] `list()` - list files by prefix
+  - [x] `getSignedUrl()` - generate presigned URL
+- [x] Create `StorageProvider` factory
+- [x] Export all types from `index.ts`
+
+### Task 12.2: Implement Cloudflare Adapters [COMPLETED]
+**Priority:** Critical
+**Dependencies:** Task 12.1
+
+- [x] Create `packages/storage-cloudflare/` directory structure
+- [x] Create `package.json` with storage-core dependency
+- [x] Implement `D1Database` adapter
+  - [x] Wrap `env.DB` binding
+  - [x] Implement all IDatabase methods
+  - [x] Handle D1-specific prepared statements
+- [x] Implement `KVCache` adapter
+  - [x] Wrap `env.SESSION_KV` binding
+  - [x] Implement all ICache methods
+  - [x] Handle TTL conversion
+- [x] Implement `R2ObjectStore` adapter
+  - [x] Wrap `env.FILE_BUCKET` binding
+  - [x] Implement all IObjectStore methods
+  - [x] Implement signed URL generation
+- [x] Create provider factory for Cloudflare
+- [x] Export all adapters from `index.ts`
+
+### Task 12.3: Refactor db.server.ts to Use IDatabase [COMPLETED]
+**Priority:** High
+**Dependencies:** Task 12.2
+
+- [x] Update `apps/ops/app/lib/db.server.ts`
+  - [x] Import IDatabase from storage-core
+  - [x] Update all 25 SELECT operations to use `db.query()`
+  - [x] Update all 8 INSERT operations to use `db.execute()`
+  - [x] Update all 6 UPDATE operations to use `db.execute()`
+  - [x] Update all 4 DELETE operations to use `db.execute()`
+- [x] Create storage helper `apps/ops/app/lib/storage.server.ts`
+- [ ] Update routes to use storage helper (Phase 2)
+
+### Task 12.4: Refactor auth.server.ts to Use ICache [COMPLETED]
+**Priority:** High
+**Dependencies:** Task 12.2
+
+- [x] Update `apps/ops/app/lib/auth.server.ts`
+  - [x] Import ICache from storage-core
+  - [x] Update `createSession()` to use cache.put()
+  - [x] Update `getSession()` to use cache.get()
+  - [x] Update `deleteSession()` to use cache.delete()
+- [ ] Update routes to use storage helper (Phase 2)
+
+### Task 12.5: Create Centralized File Service [COMPLETED]
+**Priority:** High
+**Dependencies:** Task 12.2
+
+- [x] Create `apps/ops/app/lib/files.server.ts`
+  - [x] Import IObjectStore from storage-core
+  - [x] Implement `uploadFile()` function
+  - [x] Implement `getFile()` function
+  - [x] Implement `deleteFile()` function
+  - [x] Implement `getSignedUrl()` function
+  - [x] Implement `listFiles()` function
+- [ ] Refactor R2 usages across routes (Phase 2)
+
+### Task 12.6: Update App Configuration [COMPLETED]
+**Priority:** High
+**Dependencies:** Tasks 12.3-12.5
+
+- [x] Update root tsconfig paths for new packages
+- [x] Update ops app tsconfig paths
+- [x] Update ops app vite.config.ts aliases
+- [x] Update ops app package.json dependencies
+- [x] Finalize TypeScript configuration (baseUrl, paths, removed rootDir)
+
+### Task 12.7: Testing & Validation [COMPLETED]
+**Priority:** Critical
+**Dependencies:** Task 12.6
+
+- [x] Storage-core package type checks pass
+- [x] Storage-cloudflare package type checks pass
+- [x] Ops app compiles with storage abstraction (pre-existing Remix type issues remain)
+- [x] Unit tests for storage-core factory (13 tests)
+- [x] Unit tests for D1 adapter (11 tests)
+- [x] Unit tests for KV adapter (16 tests)
+- [x] Unit tests for R2 adapter (23 tests)
+- [x] Unit tests for db.server.ts backward compatibility (11 tests)
+- [x] Unit tests for auth.server.ts backward compatibility (19 tests)
+- [x] All 93 tests passing
+- [ ] Full integration testing (Phase 2)
+
+### Phase 1 Summary
+
+**Completed:**
+- Core interfaces (IDatabase, ICache, IObjectStore)
+- Cloudflare adapters (D1Database, KVCache, R2ObjectStore)
+- Provider factory with registration system
+- Refactored db.server.ts with backward-compatible `DatabaseInput` type
+  - All 42 functions accept both raw `D1Database` and `IDatabase`
+  - `normalizeDb()` wrapper enables zero route changes
+- Refactored auth.server.ts with backward-compatible `CacheInput` type
+  - Session functions accept both raw `KVNamespace` and `ICache`
+  - `normalizeCache()` wrapper enables zero route changes
+- Created FileService for centralized file operations
+- Storage initialization helper (storage.server.ts)
+- Updated package configurations and TypeScript paths
+- All storage packages type check successfully
+- **93 unit tests passing:**
+  - storage-core factory: 13 tests
+  - storage-cloudflare adapters: 50 tests (D1: 11, KV: 16, R2: 23)
+  - Service layer backward compatibility: 30 tests (db: 11, auth: 19)
+
+**Key Implementation Decisions:**
+- Used union types (`DatabaseInput = D1Database | IDatabase`) for backward compatibility
+- Routes continue to pass raw bindings unchanged
+- Service layer normalizes inputs on-the-fly
+- Zero breaking changes to existing route code
+
+**Remaining for Phase 2:**
+1. Optionally update routes to use storage helpers for consistency
+2. Full integration testing
+3. Implement alternative providers (PostgreSQL, Redis, S3)
+
+---
+
 ## Bonus Tasks (Optional)
 
 ### Task B.1: Build Optimization

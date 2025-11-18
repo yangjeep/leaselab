@@ -9,6 +9,8 @@ export default defineConfig({
   resolve: {
     alias: {
       "~": path.resolve(__dirname, "./app"),
+      "@leaselab/storage-core": path.resolve(__dirname, "../../packages/storage-core/src"),
+      "@leaselab/storage-cloudflare": path.resolve(__dirname, "../../packages/storage-cloudflare/src"),
     },
   },
   plugins: [

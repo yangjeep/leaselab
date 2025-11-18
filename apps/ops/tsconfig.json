@@ -6,12 +6,14 @@
     "jsx": "react-jsx",
     "moduleDetection": "force",
     "noEmit": true,
-    "rootDir": ".",
+    "baseUrl": ".",
     "paths": {
       "~/*": ["./app/*"],
       "@leaselab/shared-types": ["../../packages/shared-types/src"],
       "@leaselab/shared-utils": ["../../packages/shared-utils/src"],
-      "@leaselab/shared-config": ["../../packages/shared-config/src"]
+      "@leaselab/shared-config": ["../../packages/shared-config/src"],
+      "@leaselab/storage-core": ["../../packages/storage-core/src"],
+      "@leaselab/storage-cloudflare": ["../../packages/storage-cloudflare/src"]
     }
   },
   "include": [
