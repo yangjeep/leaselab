@@ -1,7 +1,20 @@
 import { z } from 'zod';
 
 // Status Enums
-export const PropertyStatusEnum = z.enum(['available', 'rented', 'maintenance', 'inactive']);
+export const PropertyTypeEnum = z.enum([
+  'single_family',
+  'multi_family',
+  'condo',
+  'townhouse',
+  'commercial',
+]);
+export const UnitStatusEnum = z.enum(['available', 'occupied', 'maintenance', 'pending']);
+export const UnitEventTypeEnum = z.enum([
+  'tenant_move_in',
+  'tenant_move_out',
+  'rent_change',
+  'status_change',
+]);
 export const LeadStatusEnum = z.enum([
   'new',
   'documents_pending',
@@ -89,6 +102,24 @@ export const API_ROUTES = {
   PROPERTIES: {
     BASE: '/api/properties',
     BY_ID: (id: string) => `/api/properties/${id}`,
+    UNITS: (id: string) => `/api/properties/${id}/units`,
+    IMAGES: (id: string) => `/api/properties/${id}/images`,
+  },
+  // Unit routes
+  UNITS: {
+    BASE: '/api/units',
+    BY_ID: (id: string) => `/api/units/${id}`,
+    ASSIGN_TENANT: (id: string) => `/api/units/${id}/assign-tenant`,
+    REMOVE_TENANT: (id: string) => `/api/units/${id}/remove-tenant`,
+    HISTORY: (id: string) => `/api/units/${id}/history`,
+    IMAGES: (id: string) => `/api/units/${id}/images`,
+  },
+  // Image routes
+  IMAGES: {
+    BASE: '/api/images',
+    PRESIGN: '/api/images/presign',
+    BY_ID: (id: string) => `/api/images/${id}`,
+    REORDER: '/api/images/reorder',
   },
   // Tenant routes
   TENANTS: {
@@ -177,17 +208,80 @@ export const CreatePropertySchema = z.object({
   city: z.string().min(1).max(100),
   state: z.string().min(2).max(2),
   zipCode: z.string().regex(/^\d{5}(-\d{4})?$/),
-  rent: z.number().positive(),
-  bedrooms: z.number().int().min(0),
-  bathrooms: z.number().min(0),
-  sqft: z.number().int().positive(),
+  propertyType: PropertyTypeEnum,
   description: z.string().max(2000).optional(),
+  yearBuilt: z.number().int().min(1800).max(new Date().getFullYear()).optional(),
+  lotSize: z.number().positive().optional(),
   amenities: z.array(z.string()).default([]),
-  images: z.array(z.string()).default([]),
-  availableDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  latitude: z.number().optional(),
+  longitude: z.number().optional(),
 });
 
 export type CreatePropertyInput = z.infer<typeof CreatePropertySchema>;
+
+export const UpdatePropertySchema = CreatePropertySchema.partial();
+export type UpdatePropertyInput = z.infer<typeof UpdatePropertySchema>;
+
+// Unit Schema
+export const CreateUnitSchema = z.object({
+  unitNumber: z.string().min(1).max(50),
+  name: z.string().max(100).optional(),
+  bedrooms: z.number().int().min(0).max(20),
+  bathrooms: z.number().min(0).max(20),
+  sqft: z.number().int().positive().optional(),
+  rentAmount: z.number().positive(),
+  depositAmount: z.number().positive().optional(),
+  status: UnitStatusEnum.optional().default('available'),
+  floor: z.number().int().optional(),
+  features: z.array(z.string()).default([]),
+  availableDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+});
+
+export type CreateUnitInput = z.infer<typeof CreateUnitSchema>;
+
+export const UpdateUnitSchema = CreateUnitSchema.partial();
+export type UpdateUnitInput = z.infer<typeof UpdateUnitSchema>;
+
+// Assign Tenant Schema
+export const AssignTenantSchema = z.object({
+  tenantId: z.string().min(1),
+  moveInDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+});
+
+export type AssignTenantInput = z.infer<typeof AssignTenantSchema>;
+
+// Image Schema
+export const ImageUploadPresignSchema = z.object({
+  entityType: z.enum(['property', 'unit']),
+  entityId: z.string().min(1),
+  filename: z.string().min(1).max(255),
+  contentType: z.string().min(1),
+  sizeBytes: z.number().positive().max(10 * 1024 * 1024), // 10MB max
+});
+
+export type ImageUploadPresignInput = z.infer<typeof ImageUploadPresignSchema>;
+
+export const RegisterImageSchema = z.object({
+  entityType: z.enum(['property', 'unit']),
+  entityId: z.string().min(1),
+  r2Key: z.string().min(1),
+  filename: z.string().min(1).max(255),
+  contentType: z.string().min(1),
+  sizeBytes: z.number().positive(),
+  width: z.number().int().positive().optional(),
+  height: z.number().int().positive().optional(),
+  altText: z.string().max(500).optional(),
+});
+
+export type RegisterImageInput = z.infer<typeof RegisterImageSchema>;
+
+export const ReorderImagesSchema = z.object({
+  entityType: z.enum(['property', 'unit']),
+  entityId: z.string().min(1),
+  imageIds: z.array(z.string().min(1)),
+});
+
+export type ReorderImagesInput = z.infer<typeof ReorderImagesSchema>;
 
 // Tenant Schema
 export const CreateTenantSchema = z.object({

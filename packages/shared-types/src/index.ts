@@ -4,29 +4,107 @@
 export interface Property {
   id: string;
   name: string;
+  slug: string;
   address: string;
   city: string;
   state: string;
   zipCode: string;
-  rent: number;
-  bedrooms: number;
-  bathrooms: number;
-  sqft: number;
+  propertyType: PropertyType;
   description?: string;
+  yearBuilt?: number;
+  lotSize?: number;
   amenities: string[];
-  images: string[];
-  availableDate: string;
-  status: PropertyStatus;
+  latitude?: number;
+  longitude?: number;
+  isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  // Computed fields (from joins)
+  unitCount?: number;
+  occupiedCount?: number;
+  vacantCount?: number;
+  units?: Unit[];
+  images?: PropertyImage[];
 }
 
-export type PropertyStatus = 'available' | 'rented' | 'maintenance' | 'inactive';
+export type PropertyType =
+  | 'single_family'
+  | 'multi_family'
+  | 'condo'
+  | 'townhouse'
+  | 'commercial';
+
+// Unit Types
+export interface Unit {
+  id: string;
+  propertyId: string;
+  unitNumber: string;
+  name?: string;
+  bedrooms: number;
+  bathrooms: number;
+  sqft?: number;
+  rentAmount: number;
+  depositAmount?: number;
+  status: UnitStatus;
+  floor?: number;
+  features: string[];
+  availableDate?: string;
+  currentTenantId?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  // Computed fields (from joins)
+  property?: Property;
+  currentTenant?: Tenant;
+  images?: PropertyImage[];
+}
+
+export type UnitStatus =
+  | 'available'
+  | 'occupied'
+  | 'maintenance'
+  | 'pending';
+
+// Unit History
+export interface UnitHistory {
+  id: string;
+  unitId: string;
+  eventType: UnitEventType;
+  eventData: Record<string, unknown>;
+  createdAt: string;
+}
+
+export type UnitEventType =
+  | 'tenant_move_in'
+  | 'tenant_move_out'
+  | 'rent_change'
+  | 'status_change';
+
+// Property/Unit Images
+export interface PropertyImage {
+  id: string;
+  entityType: 'property' | 'unit';
+  entityId: string;
+  r2Key: string;
+  filename: string;
+  contentType: string;
+  sizeBytes: number;
+  width?: number;
+  height?: number;
+  sortOrder: number;
+  isCover: boolean;
+  altText?: string;
+  createdAt: string;
+  // Computed
+  url?: string;
+  isPropertyImage?: boolean; // For combined gallery display
+}
 
 // Lead Types
 export interface Lead {
   id: string;
   propertyId: string;
+  unitId?: string;
   firstName: string;
   lastName: string;
   email: string;
@@ -41,6 +119,9 @@ export interface Lead {
   aiLabel?: AILabel;
   createdAt: string;
   updatedAt: string;
+  // Computed fields (from joins)
+  property?: Property;
+  unit?: Unit;
 }
 
 export type LeadStatus =
@@ -132,6 +213,7 @@ export type TenantStatus = 'active' | 'inactive' | 'evicted';
 export interface Lease {
   id: string;
   propertyId: string;
+  unitId?: string;
   tenantId: string;
   startDate: string;
   endDate: string;
@@ -142,6 +224,10 @@ export interface Lease {
   signedAt?: string;
   createdAt: string;
   updatedAt: string;
+  // Computed fields (from joins)
+  property?: Property;
+  unit?: Unit;
+  tenant?: Tenant;
 }
 
 export type LeaseStatus =

@@ -495,6 +495,233 @@ Unified rental management platform using Remix + Cloudflare Pages/Workers for bo
 
 ---
 
+## Phase 11: Property & Unit Management [PENDING]
+
+> See full PRD: `docs/PRD-property-unit-management.md`
+
+### Task 11.1: Database Schema Updates
+**Priority:** Critical
+**Dependencies:** Phase 3
+
+- [ ] Create migration for updated `properties` table
+  - [ ] Add property_type, year_built, lot_size fields
+  - [ ] Add amenities JSON field
+  - [ ] Add slug field for URLs
+- [ ] Create `units` table
+  - [ ] unit_number, bedrooms, bathrooms, sqft
+  - [ ] rent_amount, deposit_amount
+  - [ ] status (available/occupied/maintenance/pending)
+  - [ ] current_tenant_id reference
+- [ ] Create `unit_history` table for audit trail
+- [ ] Create `images` table for property/unit images
+- [ ] Add unit_id to leads table
+- [ ] Add unit_id to leases table
+- [ ] Create necessary indexes
+- [ ] Run migrations locally and test
+
+### Task 11.2: Image Upload Infrastructure
+**Priority:** High
+**Dependencies:** Task 11.1
+
+- [ ] Configure R2 bucket for image storage
+- [ ] Implement presigned URL generation for uploads
+- [ ] Create image upload API endpoint (`POST /api/images/presign`)
+- [ ] Create image registration endpoint (`POST /api/images`)
+- [ ] Implement image deletion (R2 + DB)
+- [ ] Add image reordering endpoint
+- [ ] Set up Cloudflare Image Resizing configuration
+
+### Task 11.3: Properties API (Ops)
+**Priority:** High
+**Dependencies:** Task 11.1
+
+- [ ] Implement `GET /api/properties` - list with unit counts
+- [ ] Implement `POST /api/properties` - create with validation
+- [ ] Implement `GET /api/properties/:id` - detail with units
+- [ ] Implement `PUT /api/properties/:id` - update
+- [ ] Implement `DELETE /api/properties/:id` - soft delete
+- [ ] Add Zod schemas for validation
+- [ ] Include image management in property responses
+
+### Task 11.4: Units API (Ops)
+**Priority:** High
+**Dependencies:** Task 11.3
+
+- [ ] Implement `GET /api/properties/:id/units` - list units
+- [ ] Implement `POST /api/properties/:id/units` - create unit
+- [ ] Implement `GET /api/units/:id` - unit detail
+- [ ] Implement `PUT /api/units/:id` - update unit
+- [ ] Implement `DELETE /api/units/:id` - soft delete
+- [ ] Implement `POST /api/units/:id/assign-tenant` - assign tenant
+- [ ] Implement `POST /api/units/:id/remove-tenant` - remove tenant
+- [ ] Implement `GET /api/units/:id/history` - get history
+- [ ] Auto-update unit status on tenant changes
+- [ ] Record history entries on changes
+
+### Task 11.5: Properties Admin UI
+**Priority:** High
+**Dependencies:** Task 11.3
+
+- [ ] Update `/admin/properties` list view
+  - [ ] Show unit counts (occupied/total)
+  - [ ] Add vacancy indicators
+  - [ ] Add search/filter functionality
+  - [ ] Add property type badges
+- [ ] Create Add Property modal
+  - [ ] Basic info fields
+  - [ ] Address fields
+  - [ ] Property type selector
+  - [ ] "Whole house" toggle for single-family
+  - [ ] Image upload component
+  - [ ] Amenities selector
+- [ ] Create Edit Property modal
+- [ ] Add delete confirmation
+
+### Task 11.6: Property Detail Page (Admin)
+**Priority:** High
+**Dependencies:** Task 11.4, Task 11.5
+
+- [ ] Create `/admin/properties/:id` detail page
+- [ ] Property header with stats
+- [ ] Units grid/table view
+  - [ ] Unit number, beds/baths, rent
+  - [ ] Status badges
+  - [ ] Current tenant display
+  - [ ] Quick actions
+- [ ] Property details section
+- [ ] Image gallery management
+- [ ] Quick stats sidebar
+
+### Task 11.7: Units Admin UI
+**Priority:** High
+**Dependencies:** Task 11.6
+
+- [ ] Create Add Unit modal
+  - [ ] Unit number, name
+  - [ ] Beds, baths, sqft
+  - [ ] Rent, deposit
+  - [ ] Status selector
+  - [ ] Features multi-select
+  - [ ] Image upload
+- [ ] Create Edit Unit modal
+- [ ] Create Assign Tenant modal
+  - [ ] Tenant search/select
+  - [ ] Move-in date picker
+  - [ ] Validation warnings
+- [ ] Create Unit History view
+- [ ] Add delete confirmation with validation
+
+### Task 11.8: Image Upload Component
+**Priority:** High
+**Dependencies:** Task 11.2
+
+- [ ] Create reusable ImageUploader component
+- [ ] Drag-and-drop support
+- [ ] Multiple file selection
+- [ ] Upload progress indicators
+- [ ] Image preview thumbnails
+- [ ] Reorder functionality (drag)
+- [ ] Delete button with confirmation
+- [ ] Set cover image option
+
+### Task 11.9: Public Site - Properties Browse
+**Priority:** High
+**Dependencies:** Task 11.3
+
+- [ ] Create `/properties` route - browse all
+- [ ] Property cards with cover images
+- [ ] Filter by type, beds, price range
+- [ ] Sort options
+- [ ] Pagination or infinite scroll
+- [ ] Available units count display
+
+### Task 11.10: Public Site - Property Detail
+**Priority:** High
+**Dependencies:** Task 11.9
+
+- [ ] Update `/properties/:slug` route
+- [ ] Property info header
+- [ ] Property-level image gallery with Cloudflare resizing
+- [ ] Available units list
+  - [ ] Unit details (beds, baths, rent)
+  - [ ] Combined gallery (unit + property images)
+  - [ ] "Apply" button per unit
+- [ ] Property amenities display
+- [ ] Map integration
+- [ ] Mobile responsive layout
+- [ ] Implement `getUnitGalleryImages()` - combines unit + property images
+- [ ] Gallery displays unit images first, then property images
+
+### Task 11.11: Public Site - Unit Application
+**Priority:** High
+**Dependencies:** Task 11.10
+
+- [ ] Create `/apply/:unitId` route
+- [ ] Pre-fill unit/property info
+- [ ] Application form fields
+- [ ] File upload for documents
+- [ ] Submit to Ops API with unit_id
+- [ ] Confirmation/thank you redirect
+- [ ] Update lead schema to require unit_id
+
+### Task 11.12: OptimizedImage Component & Combined Gallery
+**Priority:** Medium
+**Dependencies:** Task 11.2
+
+- [ ] Create OptimizedImage component
+- [ ] Cloudflare Image Resizing URL generation
+- [ ] Standard size presets
+- [ ] Lazy loading support
+- [ ] WebP/AVIF format auto-detection
+- [ ] Placeholder/loading state
+- [ ] Error fallback
+- [ ] Create CombinedGallery component
+  - [ ] Accepts unit + property images
+  - [ ] Unified navigation
+  - [ ] Optional section labels (Unit/Property)
+  - [ ] Lightbox/fullscreen support
+
+### Task 11.13: Shared Types & Schemas
+**Priority:** High
+**Dependencies:** Task 11.1
+
+- [ ] Add Property type updates to shared-types
+- [ ] Add Unit type to shared-types
+- [ ] Add UnitHistory type to shared-types
+- [ ] Add Image type to shared-types
+- [ ] Add PropertyType enum to shared-config
+- [ ] Add UnitStatus enum to shared-config
+- [ ] Add CreatePropertySchema to shared-config
+- [ ] Add CreateUnitSchema to shared-config
+- [ ] Add AssignTenantSchema to shared-config
+
+### Task 11.14: Data Migration
+**Priority:** Medium
+**Dependencies:** Task 11.1
+
+- [ ] Migrate existing properties to new schema
+- [ ] Create default "Main" unit for existing properties
+- [ ] Update existing leads with unit references
+- [ ] Verify data integrity after migration
+
+### Task 11.15: Testing & Validation
+**Priority:** High
+**Dependencies:** Tasks 11.1-11.14
+
+- [ ] Test property CRUD operations
+- [ ] Test unit CRUD operations
+- [ ] Test image upload flow
+- [ ] Test tenant assignment/removal
+- [ ] Test unit status auto-updates
+- [ ] Test history recording
+- [ ] Test public site property browsing
+- [ ] Test unit application flow
+- [ ] Test image resizing on public site
+- [ ] Verify mobile responsiveness
+- [ ] Test edge cases (delete with tenants, etc.)
+
+---
+
 ## Bonus Tasks (Optional)
 
 ### Task B.1: Build Optimization

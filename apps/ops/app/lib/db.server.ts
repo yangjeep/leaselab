@@ -1,4 +1,7 @@
-import type { Lead, LeadFile, LeadAIResult, Property, Tenant, Lease, WorkOrder, User } from '@leaselab/shared-types';
+import type {
+  Lead, LeadFile, LeadAIResult, Property, Tenant, Lease, WorkOrder, User,
+  Unit, UnitHistory, PropertyImage, UnitStatus, UnitEventType
+} from '@leaselab/shared-types';
 import { generateId } from '@leaselab/shared-utils';
 
 // Database helper functions
@@ -139,8 +142,29 @@ export async function createAIEvaluation(db: D1Database, data: Omit<LeadAIResult
 }
 
 // Properties
-export async function getProperties(db: D1Database): Promise<Property[]> {
-  const result = await db.prepare('SELECT * FROM properties ORDER BY created_at DESC').all();
+export async function getProperties(db: D1Database, options?: {
+  isActive?: boolean;
+  propertyType?: string;
+  city?: string;
+}): Promise<Property[]> {
+  let query = 'SELECT * FROM properties WHERE 1=1';
+  const params: (string | number)[] = [];
+
+  if (options?.isActive !== undefined) {
+    query += ' AND is_active = ?';
+    params.push(options.isActive ? 1 : 0);
+  }
+  if (options?.propertyType) {
+    query += ' AND property_type = ?';
+    params.push(options.propertyType);
+  }
+  if (options?.city) {
+    query += ' AND city = ?';
+    params.push(options.city);
+  }
+
+  query += ' ORDER BY created_at DESC';
+  const result = await db.prepare(query).bind(...params).all();
   return result.results.map(mapPropertyFromDb);
 }
 
@@ -149,19 +173,411 @@ export async function getPropertyById(db: D1Database, id: string): Promise<Prope
   return result ? mapPropertyFromDb(result) : null;
 }
 
-export async function createProperty(db: D1Database, data: Omit<Property, 'id' | 'createdAt' | 'updatedAt'>): Promise<Property> {
+export async function getPropertyBySlug(db: D1Database, slug: string): Promise<Property | null> {
+  const result = await db.prepare('SELECT * FROM properties WHERE slug = ?').bind(slug).first();
+  return result ? mapPropertyFromDb(result) : null;
+}
+
+export async function getPropertyWithUnits(db: D1Database, id: string): Promise<Property | null> {
+  const property = await getPropertyById(db, id);
+  if (!property) return null;
+
+  const units = await getUnitsByPropertyId(db, id);
+  const images = await getImagesByEntity(db, 'property', id);
+
+  return {
+    ...property,
+    units,
+    images,
+    unitCount: units.length,
+    occupiedCount: units.filter(u => u.status === 'occupied').length,
+    vacantCount: units.filter(u => u.status === 'available').length,
+  };
+}
+
+export async function createProperty(db: D1Database, data: {
+  name: string;
+  address: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  propertyType: string;
+  description?: string;
+  yearBuilt?: number;
+  lotSize?: number;
+  amenities?: string[];
+  latitude?: number;
+  longitude?: number;
+}): Promise<Property> {
   const id = generateId('prop');
   const now = new Date().toISOString();
+  const slug = data.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '-' + id.slice(0, 8);
 
   await db.prepare(`
-    INSERT INTO properties (id, name, address, city, state, zip_code, rent, bedrooms, bathrooms, sqft, description, amenities, images, available_date, status, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO properties (id, name, slug, address, city, state, zip_code, property_type, description, year_built, lot_size, amenities, latitude, longitude, is_active, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
   `).bind(
-    id, data.name, data.address, data.city, data.state, data.zipCode, data.rent, data.bedrooms, data.bathrooms, data.sqft,
-    data.description || null, JSON.stringify(data.amenities), JSON.stringify(data.images), data.availableDate, data.status, now, now
+    id,
+    data.name,
+    slug,
+    data.address,
+    data.city,
+    data.state,
+    data.zipCode,
+    data.propertyType,
+    data.description || null,
+    data.yearBuilt || null,
+    data.lotSize || null,
+    JSON.stringify(data.amenities || []),
+    data.latitude || null,
+    data.longitude || null,
+    now,
+    now
   ).run();
 
   return (await getPropertyById(db, id))!;
+}
+
+export async function updateProperty(db: D1Database, id: string, data: Partial<{
+  name: string;
+  address: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  propertyType: string;
+  description: string;
+  yearBuilt: number;
+  lotSize: number;
+  amenities: string[];
+  latitude: number;
+  longitude: number;
+  isActive: boolean;
+}>): Promise<void> {
+  const updates: string[] = [];
+  const params: (string | number | null)[] = [];
+
+  const fieldMap: Record<string, string> = {
+    name: 'name',
+    address: 'address',
+    city: 'city',
+    state: 'state',
+    zipCode: 'zip_code',
+    propertyType: 'property_type',
+    description: 'description',
+    yearBuilt: 'year_built',
+    lotSize: 'lot_size',
+    latitude: 'latitude',
+    longitude: 'longitude',
+  };
+
+  for (const [key, dbField] of Object.entries(fieldMap)) {
+    if (data[key as keyof typeof data] !== undefined) {
+      updates.push(`${dbField} = ?`);
+      params.push(data[key as keyof typeof data] as string | number | null);
+    }
+  }
+
+  if (data.amenities !== undefined) {
+    updates.push('amenities = ?');
+    params.push(JSON.stringify(data.amenities));
+  }
+
+  if (data.isActive !== undefined) {
+    updates.push('is_active = ?');
+    params.push(data.isActive ? 1 : 0);
+  }
+
+  if (updates.length === 0) return;
+
+  updates.push('updated_at = ?');
+  params.push(new Date().toISOString());
+  params.push(id);
+
+  await db.prepare(`UPDATE properties SET ${updates.join(', ')} WHERE id = ?`).bind(...params).run();
+}
+
+export async function deleteProperty(db: D1Database, id: string): Promise<void> {
+  await db.prepare('DELETE FROM properties WHERE id = ?').bind(id).run();
+}
+
+// Units
+export async function getUnits(db: D1Database, options?: {
+  propertyId?: string;
+  status?: UnitStatus;
+  isActive?: boolean;
+}): Promise<Unit[]> {
+  let query = 'SELECT * FROM units WHERE 1=1';
+  const params: (string | number)[] = [];
+
+  if (options?.propertyId) {
+    query += ' AND property_id = ?';
+    params.push(options.propertyId);
+  }
+  if (options?.status) {
+    query += ' AND status = ?';
+    params.push(options.status);
+  }
+  if (options?.isActive !== undefined) {
+    query += ' AND is_active = ?';
+    params.push(options.isActive ? 1 : 0);
+  }
+
+  query += ' ORDER BY unit_number ASC';
+  const result = await db.prepare(query).bind(...params).all();
+  return result.results.map(mapUnitFromDb);
+}
+
+export async function getUnitsByPropertyId(db: D1Database, propertyId: string): Promise<Unit[]> {
+  return getUnits(db, { propertyId });
+}
+
+export async function getUnitById(db: D1Database, id: string): Promise<Unit | null> {
+  const result = await db.prepare('SELECT * FROM units WHERE id = ?').bind(id).first();
+  return result ? mapUnitFromDb(result) : null;
+}
+
+export async function getUnitWithDetails(db: D1Database, id: string): Promise<Unit | null> {
+  const unit = await getUnitById(db, id);
+  if (!unit) return null;
+
+  const property = await getPropertyById(db, unit.propertyId);
+  const images = await getImagesByEntity(db, 'unit', id);
+
+  let currentTenant: Tenant | undefined;
+  if (unit.currentTenantId) {
+    currentTenant = await getTenantById(db, unit.currentTenantId) || undefined;
+  }
+
+  return {
+    ...unit,
+    property: property || undefined,
+    images,
+    currentTenant,
+  };
+}
+
+export async function createUnit(db: D1Database, data: {
+  propertyId: string;
+  unitNumber: string;
+  name?: string;
+  bedrooms: number;
+  bathrooms: number;
+  sqft?: number;
+  rentAmount: number;
+  depositAmount?: number;
+  status?: UnitStatus;
+  floor?: number;
+  features?: string[];
+  availableDate?: string;
+}): Promise<Unit> {
+  const id = generateId('unit');
+  const now = new Date().toISOString();
+
+  await db.prepare(`
+    INSERT INTO units (id, property_id, unit_number, name, bedrooms, bathrooms, sqft, rent_amount, deposit_amount, status, floor, features, available_date, is_active, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+  `).bind(
+    id,
+    data.propertyId,
+    data.unitNumber,
+    data.name || null,
+    data.bedrooms,
+    data.bathrooms,
+    data.sqft || null,
+    data.rentAmount,
+    data.depositAmount || null,
+    data.status || 'available',
+    data.floor || null,
+    JSON.stringify(data.features || []),
+    data.availableDate || null,
+    now,
+    now
+  ).run();
+
+  return (await getUnitById(db, id))!;
+}
+
+export async function updateUnit(db: D1Database, id: string, data: Partial<{
+  unitNumber: string;
+  name: string;
+  bedrooms: number;
+  bathrooms: number;
+  sqft: number;
+  rentAmount: number;
+  depositAmount: number;
+  status: UnitStatus;
+  floor: number;
+  features: string[];
+  availableDate: string;
+  currentTenantId: string | null;
+  isActive: boolean;
+}>): Promise<void> {
+  const updates: string[] = [];
+  const params: (string | number | null)[] = [];
+
+  const fieldMap: Record<string, string> = {
+    unitNumber: 'unit_number',
+    name: 'name',
+    bedrooms: 'bedrooms',
+    bathrooms: 'bathrooms',
+    sqft: 'sqft',
+    rentAmount: 'rent_amount',
+    depositAmount: 'deposit_amount',
+    status: 'status',
+    floor: 'floor',
+    availableDate: 'available_date',
+    currentTenantId: 'current_tenant_id',
+  };
+
+  for (const [key, dbField] of Object.entries(fieldMap)) {
+    if (data[key as keyof typeof data] !== undefined) {
+      updates.push(`${dbField} = ?`);
+      params.push(data[key as keyof typeof data] as string | number | null);
+    }
+  }
+
+  if (data.features !== undefined) {
+    updates.push('features = ?');
+    params.push(JSON.stringify(data.features));
+  }
+
+  if (data.isActive !== undefined) {
+    updates.push('is_active = ?');
+    params.push(data.isActive ? 1 : 0);
+  }
+
+  if (updates.length === 0) return;
+
+  updates.push('updated_at = ?');
+  params.push(new Date().toISOString());
+  params.push(id);
+
+  await db.prepare(`UPDATE units SET ${updates.join(', ')} WHERE id = ?`).bind(...params).run();
+}
+
+export async function deleteUnit(db: D1Database, id: string): Promise<void> {
+  await db.prepare('DELETE FROM units WHERE id = ?').bind(id).run();
+}
+
+// Unit History
+export async function getUnitHistory(db: D1Database, unitId: string): Promise<UnitHistory[]> {
+  const result = await db.prepare('SELECT * FROM unit_history WHERE unit_id = ? ORDER BY created_at DESC').bind(unitId).all();
+  return result.results.map(mapUnitHistoryFromDb);
+}
+
+export async function createUnitHistory(db: D1Database, data: {
+  unitId: string;
+  eventType: UnitEventType;
+  eventData: Record<string, unknown>;
+}): Promise<UnitHistory> {
+  const id = generateId('hist');
+  const now = new Date().toISOString();
+
+  await db.prepare(`
+    INSERT INTO unit_history (id, unit_id, event_type, event_data, created_at)
+    VALUES (?, ?, ?, ?, ?)
+  `).bind(
+    id,
+    data.unitId,
+    data.eventType,
+    JSON.stringify(data.eventData),
+    now
+  ).run();
+
+  return {
+    id,
+    unitId: data.unitId,
+    eventType: data.eventType,
+    eventData: data.eventData,
+    createdAt: now,
+  };
+}
+
+// Images
+export async function getImagesByEntity(db: D1Database, entityType: 'property' | 'unit', entityId: string): Promise<PropertyImage[]> {
+  const result = await db.prepare('SELECT * FROM images WHERE entity_type = ? AND entity_id = ? ORDER BY sort_order ASC').bind(entityType, entityId).all();
+  return result.results.map(mapImageFromDb);
+}
+
+export async function getImageById(db: D1Database, id: string): Promise<PropertyImage | null> {
+  const result = await db.prepare('SELECT * FROM images WHERE id = ?').bind(id).first();
+  return result ? mapImageFromDb(result) : null;
+}
+
+export async function createImage(db: D1Database, data: {
+  entityType: 'property' | 'unit';
+  entityId: string;
+  r2Key: string;
+  filename: string;
+  contentType: string;
+  sizeBytes: number;
+  width?: number;
+  height?: number;
+  sortOrder?: number;
+  isCover?: boolean;
+  altText?: string;
+}): Promise<PropertyImage> {
+  const id = generateId('img');
+  const now = new Date().toISOString();
+
+  await db.prepare(`
+    INSERT INTO images (id, entity_type, entity_id, r2_key, filename, content_type, size_bytes, width, height, sort_order, is_cover, alt_text, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    id,
+    data.entityType,
+    data.entityId,
+    data.r2Key,
+    data.filename,
+    data.contentType,
+    data.sizeBytes,
+    data.width || null,
+    data.height || null,
+    data.sortOrder || 0,
+    data.isCover ? 1 : 0,
+    data.altText || null,
+    now
+  ).run();
+
+  return (await getImageById(db, id))!;
+}
+
+export async function updateImage(db: D1Database, id: string, data: Partial<{
+  sortOrder: number;
+  isCover: boolean;
+  altText: string;
+}>): Promise<void> {
+  const updates: string[] = [];
+  const params: (string | number | null)[] = [];
+
+  if (data.sortOrder !== undefined) {
+    updates.push('sort_order = ?');
+    params.push(data.sortOrder);
+  }
+  if (data.isCover !== undefined) {
+    updates.push('is_cover = ?');
+    params.push(data.isCover ? 1 : 0);
+  }
+  if (data.altText !== undefined) {
+    updates.push('alt_text = ?');
+    params.push(data.altText);
+  }
+
+  if (updates.length === 0) return;
+  params.push(id);
+
+  await db.prepare(`UPDATE images SET ${updates.join(', ')} WHERE id = ?`).bind(...params).run();
+}
+
+export async function deleteImage(db: D1Database, id: string): Promise<void> {
+  await db.prepare('DELETE FROM images WHERE id = ?').bind(id).run();
+}
+
+export async function setCoverImage(db: D1Database, entityType: 'property' | 'unit', entityId: string, imageId: string): Promise<void> {
+  // Remove cover from all images for this entity
+  await db.prepare('UPDATE images SET is_cover = 0 WHERE entity_type = ? AND entity_id = ?').bind(entityType, entityId).run();
+  // Set the new cover
+  await db.prepare('UPDATE images SET is_cover = 1 WHERE id = ?').bind(imageId).run();
 }
 
 // Work Orders
@@ -328,21 +744,71 @@ function mapPropertyFromDb(row: Record<string, unknown>): Property {
   return {
     id: row.id as string,
     name: row.name as string,
+    slug: row.slug as string,
     address: row.address as string,
     city: row.city as string,
     state: row.state as string,
     zipCode: row.zip_code as string,
-    rent: row.rent as number,
-    bedrooms: row.bedrooms as number,
-    bathrooms: row.bathrooms as number,
-    sqft: row.sqft as number,
+    propertyType: row.property_type as Property['propertyType'],
     description: row.description as string | undefined,
+    yearBuilt: row.year_built as number | undefined,
+    lotSize: row.lot_size as number | undefined,
     amenities: JSON.parse(row.amenities as string || '[]'),
-    images: JSON.parse(row.images as string || '[]'),
-    availableDate: row.available_date as string,
-    status: row.status as Property['status'],
+    latitude: row.latitude as number | undefined,
+    longitude: row.longitude as number | undefined,
+    isActive: Boolean(row.is_active),
     createdAt: row.created_at as string,
     updatedAt: row.updated_at as string,
+  };
+}
+
+function mapUnitFromDb(row: Record<string, unknown>): Unit {
+  return {
+    id: row.id as string,
+    propertyId: row.property_id as string,
+    unitNumber: row.unit_number as string,
+    name: row.name as string | undefined,
+    bedrooms: row.bedrooms as number,
+    bathrooms: row.bathrooms as number,
+    sqft: row.sqft as number | undefined,
+    rentAmount: row.rent_amount as number,
+    depositAmount: row.deposit_amount as number | undefined,
+    status: row.status as Unit['status'],
+    floor: row.floor as number | undefined,
+    features: JSON.parse(row.features as string || '[]'),
+    availableDate: row.available_date as string | undefined,
+    currentTenantId: row.current_tenant_id as string | undefined,
+    isActive: Boolean(row.is_active),
+    createdAt: row.created_at as string,
+    updatedAt: row.updated_at as string,
+  };
+}
+
+function mapUnitHistoryFromDb(row: Record<string, unknown>): UnitHistory {
+  return {
+    id: row.id as string,
+    unitId: row.unit_id as string,
+    eventType: row.event_type as UnitHistory['eventType'],
+    eventData: JSON.parse(row.event_data as string || '{}'),
+    createdAt: row.created_at as string,
+  };
+}
+
+function mapImageFromDb(row: Record<string, unknown>): PropertyImage {
+  return {
+    id: row.id as string,
+    entityType: row.entity_type as 'property' | 'unit',
+    entityId: row.entity_id as string,
+    r2Key: row.r2_key as string,
+    filename: row.filename as string,
+    contentType: row.content_type as string,
+    sizeBytes: row.size_bytes as number,
+    width: row.width as number | undefined,
+    height: row.height as number | undefined,
+    sortOrder: row.sort_order as number,
+    isCover: Boolean(row.is_cover),
+    altText: row.alt_text as string | undefined,
+    createdAt: row.created_at as string,
   };
 }
 
