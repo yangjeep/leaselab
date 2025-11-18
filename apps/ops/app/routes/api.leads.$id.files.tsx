@@ -1,8 +1,8 @@
 import type { ActionFunctionArgs } from '@remix-run/cloudflare';
 import { json } from '@remix-run/cloudflare';
-import { FileUploadSchema } from '@rental/shared-config';
+import { FileUploadSchema } from '@leaselab/shared-config';
 import { getLeadById, createLeadFile, updateLead } from '~/lib/db.server';
-import { generateId } from '@rental/shared-utils';
+import { generateId } from '@leaselab/shared-utils';
 
 export async function action({ request, params, context }: ActionFunctionArgs) {
   if (request.method !== 'POST') {

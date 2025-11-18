@@ -1,11 +1,11 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from '@remix-run/cloudflare';
 import { json, redirect } from '@remix-run/cloudflare';
 import { Form, useActionData, useNavigation } from '@remix-run/react';
-import { LoginSchema } from '@rental/shared-config';
+import { LoginSchema } from '@leaselab/shared-config';
 import { login, createSessionCookie, getOptionalUser } from '~/lib/auth.server';
 
 export const meta: MetaFunction = () => {
-  return [{ title: 'Sign In - Rental Ops' }];
+  return [{ title: 'Sign In - LeaseLab.io' }];
 };
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
@@ -61,7 +61,7 @@ export default function Login() {
       <div className="w-full max-w-md">
         <div className="bg-white px-8 py-10 shadow-lg rounded-xl">
           <h1 className="text-2xl font-bold text-center text-gray-900 mb-8">
-            Sign in to Rental Ops
+            Sign in to LeaseLab.io
           </h1>
 
           <Form method="post" className="space-y-6">

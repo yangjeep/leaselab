@@ -1,6 +1,6 @@
 import OpenAI from 'openai';
-import type { Lead, LeadFile, LeadAIResult } from '@rental/shared-types';
-import type { AIEvaluationResultInput } from '@rental/shared-config';
+import type { Lead, LeadFile, LeadAIResult } from '@leaselab/shared-types';
+import type { AIEvaluationResultInput } from '@leaselab/shared-config';
 
 export interface AIEvaluationInput {
   lead: Lead;

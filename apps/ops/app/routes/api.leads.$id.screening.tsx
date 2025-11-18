@@ -1,7 +1,7 @@
 import type { ActionFunctionArgs } from '@remix-run/cloudflare';
 import { json } from '@remix-run/cloudflare';
 import { getLeadById, updateLead } from '~/lib/db.server';
-import { generateId } from '@rental/shared-utils';
+import { generateId } from '@leaselab/shared-utils';
 
 // Placeholder for Certn/SingleKey screening integration
 export async function action({ request, params, context }: ActionFunctionArgs) {

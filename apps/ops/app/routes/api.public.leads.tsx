@@ -1,6 +1,6 @@
 import type { ActionFunctionArgs } from '@remix-run/cloudflare';
 import { json } from '@remix-run/cloudflare';
-import { LeadSubmissionSchema } from '@rental/shared-config';
+import { LeadSubmissionSchema } from '@leaselab/shared-config';
 import { createLead, getPropertyById } from '~/lib/db.server';
 
 export async function action({ request, context }: ActionFunctionArgs) {

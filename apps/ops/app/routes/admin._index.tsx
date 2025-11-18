@@ -4,7 +4,7 @@ import { useLoaderData, Link } from '@remix-run/react';
 import { getLeads, getProperties, getWorkOrders, getTenants } from '~/lib/db.server';
 
 export const meta: MetaFunction = () => {
-  return [{ title: 'Dashboard - Rental Ops' }];
+  return [{ title: 'Dashboard - LeaseLab.io' }];
 };
 
 export async function loader({ context }: LoaderFunctionArgs) {

@@ -2,11 +2,11 @@ import type { LoaderFunctionArgs, ActionFunctionArgs, MetaFunction } from '@remi
 import { json, redirect } from '@remix-run/cloudflare';
 import { useLoaderData, Form, useNavigation } from '@remix-run/react';
 import { getLeadById, getLeadFiles, getAIEvaluation, getPropertyById, updateLead } from '~/lib/db.server';
-import { formatCurrency, formatPhoneNumber } from '@rental/shared-utils';
+import { formatCurrency, formatPhoneNumber } from '@leaselab/shared-utils';
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
   const name = data?.lead ? `${data.lead.firstName} ${data.lead.lastName}` : 'Lead';
-  return [{ title: `${name} - Rental Ops` }];
+  return [{ title: `${name} - LeaseLab.io` }];
 };
 
 export async function loader({ params, context }: LoaderFunctionArgs) {

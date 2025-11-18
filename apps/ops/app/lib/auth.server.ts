@@ -1,7 +1,7 @@
 import { redirect } from '@remix-run/cloudflare';
-import { generateId } from '@rental/shared-utils';
+import { generateId } from '@leaselab/shared-utils';
 import { getUserById, getUserByEmail } from './db.server';
-import type { User } from '@rental/shared-types';
+import type { User } from '@leaselab/shared-types';
 
 const SESSION_COOKIE_NAME = 'rental_session';
 const SESSION_EXPIRY_DAYS = 7;

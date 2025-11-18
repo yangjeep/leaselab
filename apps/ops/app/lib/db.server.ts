@@ -1,5 +1,5 @@
-import type { Lead, LeadFile, LeadAIResult, Property, Tenant, Lease, WorkOrder, User } from '@rental/shared-types';
-import { generateId } from '@rental/shared-utils';
+import type { Lead, LeadFile, LeadAIResult, Property, Tenant, Lease, WorkOrder, User } from '@leaselab/shared-types';
+import { generateId } from '@leaselab/shared-utils';
 
 // Database helper functions
 

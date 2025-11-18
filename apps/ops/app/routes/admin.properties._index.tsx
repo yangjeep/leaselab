@@ -2,10 +2,10 @@ import type { LoaderFunctionArgs, MetaFunction } from '@remix-run/cloudflare';
 import { json } from '@remix-run/cloudflare';
 import { useLoaderData, Link } from '@remix-run/react';
 import { getProperties } from '~/lib/db.server';
-import { formatCurrency } from '@rental/shared-utils';
+import { formatCurrency } from '@leaselab/shared-utils';
 
 export const meta: MetaFunction = () => {
-  return [{ title: 'Properties - Rental Ops' }];
+  return [{ title: 'Properties - LeaseLab.io' }];
 };
 
 export async function loader({ context }: LoaderFunctionArgs) {

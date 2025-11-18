@@ -4,7 +4,7 @@ import { useLoaderData, Link, useSearchParams } from '@remix-run/react';
 import { getWorkOrders } from '~/lib/db.server';
 
 export const meta: MetaFunction = () => {
-  return [{ title: 'Work Orders - Rental Ops' }];
+  return [{ title: 'Work Orders - LeaseLab.io' }];
 };
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
