@@ -34,26 +34,27 @@ npm install
 ### 2. Set Up Environment Variables
 
 ```bash
+# Copy the example env file to .env.local at root
+cp .env.example .env.local
+```
+
+Edit `.env.local` with your values:
+
+```bash
+# Required for both apps
+D1_DATABASE_ID=your_d1_database_id
+
 # Site app
-cp apps/site/.env.example apps/site/.env.local
-
-# Ops app
-cp apps/ops/.env.example apps/ops/.env.local
-```
-
-Edit the `.env.local` files with your values:
-
-**apps/site/.env.local:**
-```
 OPS_API_URL=http://localhost:8788
 GOOGLE_MAPS_API_KEY=your_google_maps_key
-```
 
-**apps/ops/.env.local:**
-```
+# Ops app
 OPENAI_API_KEY=your_openai_api_key
 SESSION_SECRET=your_session_secret_min_32_chars
+KV_NAMESPACE_ID=your_kv_namespace_id
 ```
+
+Both apps read from this single `.env.local` file at the root.
 
 ### 3. Run Local Development
 
