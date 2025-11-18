@@ -1,0 +1,25 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "lib": ["DOM", "DOM.Iterable", "ES2022"],
+    "types": ["@remix-run/cloudflare", "vite/client", "@cloudflare/workers-types"],
+    "jsx": "react-jsx",
+    "moduleDetection": "force",
+    "noEmit": true,
+    "rootDir": ".",
+    "paths": {
+      "~/*": ["./app/*"],
+      "@/*": ["./app/*"],
+      "@leaselab/shared-types": ["../../packages/shared-types/src"],
+      "@leaselab/shared-utils": ["../../packages/shared-utils/src"],
+      "@leaselab/shared-config": ["../../packages/shared-config/src"]
+    }
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    "**/*.mjs",
+    "env.d.ts"
+  ],
+  "exclude": ["node_modules", "build", ".cache"]
+}

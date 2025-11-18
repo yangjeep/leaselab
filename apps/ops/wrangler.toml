@@ -1,0 +1,36 @@
+name = "leaselab-ops"
+compatibility_date = "2024-11-01"
+compatibility_flags = ["nodejs_compat"]
+
+# D1 Database
+[[d1_databases]]
+binding = "DB"
+database_name = "leaselab-db"
+database_id = "YOUR_D1_DATABASE_ID"
+
+# KV Namespace for sessions
+[[kv_namespaces]]
+binding = "SESSION_KV"
+id = "YOUR_KV_NAMESPACE_ID"
+
+# R2 Bucket for file storage
+[[r2_buckets]]
+binding = "FILE_BUCKET"
+bucket_name = "leaselab-files"
+
+[vars]
+ENVIRONMENT = "development"
+
+# For local development with wrangler pages dev
+[env.development]
+name = "leaselab-ops-dev"
+
+[env.development.vars]
+ENVIRONMENT = "development"
+
+# Production environment
+[env.production]
+name = "leaselab-ops"
+
+[env.production.vars]
+ENVIRONMENT = "production"

@@ -1,0 +1,50 @@
+[
+  {
+    "ID": "1",
+    "Title": "Bright 2BR near Carleton U",
+    "Slug": "bright-2br-near-carleton-u",
+    "Price": 2150,
+    "City": "Ottawa",
+    "Bedrooms": 2,
+    "Status": "Available",
+    "ImageURL": "/preview-1.jpg",
+    "ImageURLs": "/preview-1.jpg, /preview-2.jpg, /placeholder1.jpg, /placeholder2.jpg",
+    "Description": "Sunny 2-bedroom apartment close to Carleton University. Heat and water included.",
+    "Address": "123 King St, Ottawa, ON",
+    "Parking": "1 spot",
+    "Pets": "Conditional",
+    "UtilitiesIncluded": "Heat, Water"
+  },
+  {
+    "ID": "2",
+    "Title": "Downtown 1BR Condo",
+    "Slug": "downtown-1br-condo",
+    "Price": 1950,
+    "City": "Ottawa",
+    "Bedrooms": 1,
+    "Status": "Pending",
+    "ImageURL": "/preview-2.jpg",
+    "ImageURLs": "/preview-2.jpg, /preview-1.jpg",
+    "Description": "Modern condo in the heart of downtown. Steps to transit and shops.",
+    "Address": "456 Queen St, Ottawa, ON",
+    "Parking": "No",
+    "Pets": "Not Allowed",
+    "UtilitiesIncluded": "Water"
+  },
+  {
+    "ID": "3",
+    "Title": "Family Home in Kanata (3BR)",
+    "Slug": "family-home-kanata-3br",
+    "Price": 2850,
+    "City": "Kanata",
+    "Bedrooms": 3,
+    "Status": "Rented",
+    "ImageURL": "/placeholder1.jpg",
+    "ImageURLs": "/placeholder1.jpg, /placeholder2.jpg",
+    "Description": "Spacious detached home with finished basement and fenced yard.",
+    "Address": "789 Maple Ave, Kanata, ON",
+    "Parking": "Yes",
+    "Pets": "Allowed",
+    "UtilitiesIncluded": ""
+  }
+]

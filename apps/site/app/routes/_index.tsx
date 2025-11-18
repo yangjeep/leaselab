@@ -1,0 +1,133 @@
+import type { LoaderFunctionArgs, MetaFunction } from "@remix-run/cloudflare";
+import { json } from "@remix-run/cloudflare";
+import { useLoaderData, useSearchParams, Link } from "@remix-run/react";
+import { getListings, applyFilters, sortByStatus } from "~/lib/db.server";
+import ListingCard from "~/components/ListingCard";
+import Filters from "~/components/Filters";
+import TabbedLayout from "~/components/TabbedLayout";
+import AboutSection from "~/components/AboutSection";
+import ContactForm from "~/components/ContactForm";
+
+export const meta: MetaFunction = () => {
+  return [
+    { title: "Rental Properties - Find Your Perfect Home" },
+    { name: "description", content: "Browse available rental properties in your area and apply online" },
+  ];
+};
+
+export async function loader({ request, context }: LoaderFunctionArgs) {
+  const db = context.cloudflare.env.DB;
+  const url = new URL(request.url);
+
+  // Get filter params
+  const filters = {
+    city: url.searchParams.get("city") || undefined,
+    bedrooms: url.searchParams.get("bedrooms") || undefined,
+    bathrooms: url.searchParams.get("bathrooms") || undefined,
+    max: url.searchParams.get("max") || undefined,
+    status: url.searchParams.get("status") || undefined,
+    pet: url.searchParams.get("pet") || undefined,
+  };
+
+  const allListings = await getListings(db);
+  const filtered = applyFilters(allListings, filters);
+  const sorted = sortByStatus(filtered);
+
+  return json({
+    listings: sorted,
+    allListings,
+    hasFilters: Object.values(filters).some(Boolean),
+  });
+}
+
+export default function Index() {
+  const { listings, allListings, hasFilters } = useLoaderData<typeof loader>();
+  const [searchParams] = useSearchParams();
+
+  // Build query string for property links
+  const queryString = searchParams.toString();
+
+  const tabs = [
+    {
+      id: "overview",
+      label: "Residential Listings",
+      content: (
+        <div className="space-y-6">
+          {hasFilters && (
+            <Link
+              to="/"
+              className="inline-flex items-center gap-2 text-sm opacity-70 hover:opacity-100 transition-opacity"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              Go back to All Listings
+            </Link>
+          )}
+
+          <Filters allListings={allListings} />
+
+          {listings.length === 0 ? (
+            <div className="card p-8 text-center">
+              <div className="max-w-md mx-auto space-y-4">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-16 w-16 mx-auto opacity-50"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
+                <h3 className="text-xl font-semibold">No listings match your filters</h3>
+                <p className="opacity-70">
+                  Try adjusting your search criteria to see more properties.
+                </p>
+                <Link to="/" className="inline-flex items-center gap-2 btn mt-4">
+                  Reset All Filters
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {listings.map((listing) => (
+                <ListingCard
+                  key={listing.id}
+                  listing={listing}
+                  queryString={queryString}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      id: "apply",
+      label: "Submit an Application",
+      content: (
+        <div className="space-y-6">
+          <ContactForm listings={allListings} />
+        </div>
+      ),
+    },
+    {
+      id: "about",
+      label: "About",
+      content: <AboutSection />,
+    },
+  ];
+
+  return <TabbedLayout tabs={tabs} defaultTab="overview" />;
+}

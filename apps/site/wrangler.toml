@@ -1,0 +1,29 @@
+name = "leaselab-site"
+compatibility_date = "2024-11-01"
+compatibility_flags = ["nodejs_compat"]
+
+# D1 Database (shared with ops)
+[[d1_databases]]
+binding = "DB"
+database_name = "leaselab-db"
+database_id = "YOUR_D1_DATABASE_ID"
+
+[vars]
+ENVIRONMENT = "development"
+OPS_API_URL = "http://localhost:8788"
+
+# For local development
+[env.development]
+name = "leaselab-site-dev"
+
+[env.development.vars]
+ENVIRONMENT = "development"
+OPS_API_URL = "http://localhost:8788"
+
+# Production environment
+[env.production]
+name = "leaselab-site"
+
+[env.production.vars]
+ENVIRONMENT = "production"
+OPS_API_URL = "https://ops.yourdomain.com"
