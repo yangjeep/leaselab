@@ -1,7 +1,7 @@
 AI Development Task Guide (Cursor-Ready)
-AI-First Rental Ops Platform – Monorepo Build Instructions
+LeaseLab.io - AI-First Rental Ops Platform – Monorepo Build Instructions
 
-Repo Name: rental-mgr
+Repo Name: leaselab
 Primary Goal:
 Build a unified rental management platform using Remix + Cloudflare Pages/Workers for both storefront and ops backend, with shared types, configs, and utilities in a monorepo structure.
 
@@ -14,7 +14,7 @@ This document is written for AI Agents (Cursor) to follow safely.
 
 The repository MUST follow this layout:
 
-rental-mgr/
+leaselab/
 ├─ apps/
 │  ├─ site/        # Storefront (Remix + Cloudflare Pages) – migrated from Next.js
 │  └─ ops/         # Ops backend (Remix + Cloudflare Workers)
@@ -51,9 +51,9 @@ Shared packages must use non-conflicting import paths
 
 Use path aliases:
 
-@rental/shared-types
-@rental/shared-utils
-@rental/shared-config
+@leaselab/shared-types
+@leaselab/shared-utils
+@leaselab/shared-config
 
 🔄 2.1 Site Migration Strategy (Next.js → Remix)
 
@@ -69,7 +69,7 @@ The migration must follow these principles:
 Cursor MUST generate a root package.json like this:
 
 {
-  "name": "rental-mgr",
+  "name": "leaselab",
   "private": true,
   "workspaces": [
     "apps/*",
@@ -137,15 +137,15 @@ Cursor must create root tsconfig.json:
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@rental/shared-types": ["packages/shared-types/src"],
-      "@rental/shared-utils": ["packages/shared-utils/src"],
-      "@rental/shared-config": ["packages/shared-config/src"]
+      "@leaselab/shared-types": ["packages/shared-types/src"],
+      "@leaselab/shared-utils": ["packages/shared-utils/src"],
+      "@leaselab/shared-config": ["packages/shared-config/src"]
     }
   }
 }
 
 
-Both Remix (ops) and Next.js (site) tsconfigs must extend this.
+Both Remix apps (ops and site) tsconfigs must extend this.
 
 ⚡ 6. Ops App (Remix + Cloudflare) – Required Setup
 
@@ -232,7 +232,7 @@ wrangler.toml for site:
 ```toml
 [[d1_databases]]
 binding = "DB"
-database_name = "rental-db"
+database_name = "leaselab-db"
 database_id = "YOUR_D1_DATABASE_ID"
 ```
 
