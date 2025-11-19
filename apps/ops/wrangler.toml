@@ -24,12 +24,12 @@ bucket_name = "leaselab-files"
 [vars]
 ENVIRONMENT = "development"
 
-# For local development with wrangler pages dev
-[env.development]
-name = "leaselab-ops-dev"
+# For preview/staging environment
+[env.preview]
+name = "leaselab-ops-preview"
 
-[env.development.vars]
-ENVIRONMENT = "development"
+[env.preview.vars]
+ENVIRONMENT = "preview"
 
 # Production environment
 [env.production]
