@@ -35,5 +35,18 @@ ENVIRONMENT = "preview"
 [env.production]
 name = "leaselab-ops"
 
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "leaselab-db"
+database_id = "850dc940-1021-4c48-8d40-0f18992424ac"
+
+[[env.production.kv_namespaces]]
+binding = "SESSION_KV"
+id = "a020a8412719406db3fc3066dc298981"
+
+[[env.production.r2_buckets]]
+binding = "FILE_BUCKET"
+bucket_name = "leaselab-files"
+
 [env.production.vars]
 ENVIRONMENT = "production"
