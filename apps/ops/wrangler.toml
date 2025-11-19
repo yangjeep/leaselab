@@ -2,16 +2,19 @@ name = "leaselab-ops"
 compatibility_date = "2024-11-01"
 compatibility_flags = ["nodejs_compat"]
 
+# Pages configuration
+pages_build_output_dir = "./build/client"
+
 # D1 Database
 [[d1_databases]]
 binding = "DB"
 database_name = "leaselab-db"
-database_id = "YOUR_D1_DATABASE_ID"
+database_id = "850dc940-1021-4c48-8d40-0f18992424ac"
 
 # KV Namespace for sessions
 [[kv_namespaces]]
 binding = "SESSION_KV"
-id = "YOUR_KV_NAMESPACE_ID"
+id = "a020a8412719406db3fc3066dc298981"
 
 # R2 Bucket for file storage
 [[r2_buckets]]
