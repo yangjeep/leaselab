@@ -6,7 +6,7 @@ compatibility_flags = ["nodejs_compat"]
 [[d1_databases]]
 binding = "DB"
 database_name = "leaselab-db"
-database_id = "YOUR_D1_DATABASE_ID"
+database_id = "850dc940-1021-4c48-8d40-0f18992424ac"
 
 [vars]
 ENVIRONMENT = "development"

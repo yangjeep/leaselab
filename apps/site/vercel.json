@@ -1,7 +1,0 @@
-{
-  "framework": "nextjs",
-  "regions": ["cle1"],
-  "github": {
-    "silent": true
-  }
-}
