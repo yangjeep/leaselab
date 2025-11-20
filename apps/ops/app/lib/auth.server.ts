@@ -12,7 +12,8 @@ type CacheInput = KVNamespace | ICache;
 
 function normalizeCache(cache: CacheInput): ICache {
   // Check if it's already an ICache by looking for our interface methods
-  if ('put' in cache && 'getWithMetadata' in cache) {
+  // KVNamespace has put/getWithMetadata but not close, so we use close to distinguish
+  if ('close' in cache) {
     return cache as ICache;
   }
 
