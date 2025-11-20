@@ -30,7 +30,7 @@ export default function AdminLayout() {
       <aside className="w-64 bg-white shadow-md flex flex-col">
         <div className="p-6 border-b">
           <h1 className="text-xl font-bold text-gray-900">
-            Rental <span className="text-indigo-600">Ops</span>
+            Lease<span className="text-indigo-600">Lab</span>.io
           </h1>
         </div>
 
@@ -44,11 +44,10 @@ export default function AdminLayout() {
                 <li key={item.path}>
                   <Link
                     to={item.path}
-                    className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                      isActive
+                    className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive
                         ? 'bg-indigo-50 text-indigo-700'
                         : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                    }`}
+                      }`}
                   >
                     <span>{item.icon}</span>
                     {item.label}
