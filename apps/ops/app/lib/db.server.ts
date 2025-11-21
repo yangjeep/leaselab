@@ -55,7 +55,7 @@ function normalizeDb(db: DatabaseInput): IDatabase {
         lastRowId: result.meta.last_row_id,
       }));
     },
-    async close() {},
+    async close() { },
   };
 }
 
@@ -785,6 +785,12 @@ export async function getUserById(dbInput: DatabaseInput, id: string): Promise<U
     lastLoginAt: row.last_login_at as string | undefined,
   };
 }
+
+export async function updateUserPassword(dbInput: DatabaseInput, userId: string, passwordHash: string): Promise<void> {
+  const db = normalizeDb(dbInput);
+  await db.execute('UPDATE users SET password_hash = ? WHERE id = ?', [passwordHash, userId]);
+}
+
 
 // Mapping functions
 function mapLeadFromDb(row: unknown): Lead {

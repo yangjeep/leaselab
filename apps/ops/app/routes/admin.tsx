@@ -18,6 +18,7 @@ const navItems = [
   { path: '/admin/properties', label: 'Properties', icon: '🏠' },
   { path: '/admin/tenants', label: 'Tenants', icon: '🔑' },
   { path: '/admin/work-orders', label: 'Work Orders', icon: '🔧' },
+  { path: '/admin/settings', label: 'Settings', icon: '⚙️' },
 ];
 
 export default function AdminLayout() {
@@ -45,8 +46,8 @@ export default function AdminLayout() {
                   <Link
                     to={item.path}
                     className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive
-                        ? 'bg-indigo-50 text-indigo-700'
-                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                      ? 'bg-indigo-50 text-indigo-700'
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                       }`}
                   >
                     <span>{item.icon}</span>

@@ -7,6 +7,8 @@ declare module "@remix-run/cloudflare" {
     cloudflare: {
       env: {
         DB: D1Database;
+        SESSION_KV: KVNamespace;
+        FILE_BUCKET: R2Bucket;
         OPS_API_URL: string;
         GOOGLE_MAPS_API_KEY: string;
         ENVIRONMENT: string;
