@@ -340,9 +340,12 @@ export interface User {
   id: string;
   email: string;
   name: string;
-  role: UserRole;
+  role: 'admin' | 'maintenance' | 'viewer';
+  passwordHash: string;
+  siteId: string;
+  isSuperAdmin: boolean; // Can access multiple sites
   createdAt: string;
-  lastLoginAt?: string;
+  updatedAt: string;
 }
 
 export type UserRole = 'admin' | 'manager' | 'staff';

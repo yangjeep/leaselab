@@ -761,9 +761,9 @@ export async function getTenantById(dbInput: DatabaseInput, siteId: string, id: 
 }
 
 // Users
-export async function getUserByEmail(dbInput: DatabaseInput, siteId: string, email: string): Promise<User & { passwordHash: string } | null> {
+export async function getUserByEmail(dbInput: DatabaseInput, siteId: string, email: string): Promise<User | null> {
   const db = normalizeDb(dbInput);
-  const result = await db.queryOne('SELECT * FROM users WHERE email = ? AND site_id = ?', [email, siteId]);
+  const result = await db.queryOne('SELECT id, email, name, role, password_hash, site_id, is_super_admin, created_at, updated_at FROM users WHERE email = ? AND site_id = ?', [email, siteId]);
   if (!result) return null;
   const row = result as Record<string, unknown>;
   return {
@@ -772,14 +772,16 @@ export async function getUserByEmail(dbInput: DatabaseInput, siteId: string, ema
     name: row.name as string,
     role: row.role as User['role'],
     passwordHash: row.password_hash as string,
+    siteId: row.site_id as string,
+    isSuperAdmin: Boolean(row.is_super_admin),
     createdAt: row.created_at as string,
-    lastLoginAt: row.last_login_at as string | undefined,
+    updatedAt: row.updated_at as string,
   };
 }
 
 export async function getUserById(dbInput: DatabaseInput, siteId: string, id: string): Promise<User | null> {
   const db = normalizeDb(dbInput);
-  const result = await db.queryOne('SELECT id, email, name, role, created_at, last_login_at FROM users WHERE id = ? AND site_id = ?', [id, siteId]);
+  const result = await db.queryOne('SELECT id, email, name, role, password_hash, site_id, is_super_admin, created_at, updated_at FROM users WHERE id = ? AND site_id = ?', [id, siteId]);
   if (!result) return null;
   const row = result as Record<string, unknown>;
   return {
@@ -787,8 +789,11 @@ export async function getUserById(dbInput: DatabaseInput, siteId: string, id: st
     email: row.email as string,
     name: row.name as string,
     role: row.role as User['role'],
+    passwordHash: row.password_hash as string,
+    siteId: row.site_id as string,
+    isSuperAdmin: Boolean(row.is_super_admin),
     createdAt: row.created_at as string,
-    lastLoginAt: row.last_login_at as string | undefined,
+    updatedAt: row.updated_at as string,
   };
 }
 
@@ -1001,4 +1006,157 @@ function mapTenantFromDb(row: unknown): Tenant {
     createdAt: r.created_at as string,
     updatedAt: r.updated_at as string,
   };
+}
+
+// ============================================================================
+// USER ACCESS MANAGEMENT (Multi-Tenant Super Admin Support)
+// ============================================================================
+
+export interface UserAccess {
+  id: string;
+  userId: string;
+  siteId: string;
+  grantedAt: string;
+  grantedBy: string | null;
+}
+
+export interface AccessibleSite {
+  siteId: string;
+  grantedAt: string;
+}
+
+/**
+ * Get all site access records for a specific user
+ */
+export async function getUserSiteAccess(
+  dbInput: DatabaseInput,
+  userId: string
+): Promise<UserAccess[]> {
+  const db = normalizeDb(dbInput);
+  const rows = await db.query<UserAccess>(
+    `SELECT id, user_id as userId, site_id as siteId, granted_at as grantedAt, granted_by as grantedBy
+     FROM user_access
+     WHERE user_id = ?
+     ORDER BY granted_at DESC`,
+    [userId]
+  );
+  return rows || [];
+}
+
+/**
+ * Get all accessible sites for a user (returns site_id list)
+ */
+export async function getUserAccessibleSites(
+  dbInput: DatabaseInput,
+  userId: string
+): Promise<AccessibleSite[]> {
+  const db = normalizeDb(dbInput);
+  const rows = await db.query<AccessibleSite>(
+    `SELECT site_id as siteId, granted_at as grantedAt
+     FROM user_access
+     WHERE user_id = ?
+     ORDER BY site_id`,
+    [userId]
+  );
+  return rows || [];
+}
+
+/**
+ * Check if a user has access to a specific site
+ */
+export async function userHasAccessToSite(
+  dbInput: DatabaseInput,
+  userId: string,
+  siteId: string
+): Promise<boolean> {
+  const db = normalizeDb(dbInput);
+  const result = await db.queryOne<{ count: number }>(
+    `SELECT COUNT(*) as count
+     FROM user_access
+     WHERE user_id = ? AND site_id = ?`,
+    [userId, siteId]
+  );
+  return (result?.count || 0) > 0;
+}
+
+/**
+ * Grant site access to a user
+ */
+export async function grantSiteAccess(
+  dbInput: DatabaseInput,
+  userId: string,
+  siteId: string,
+  grantedBy: string
+): Promise<UserAccess> {
+  const db = normalizeDb(dbInput);
+  const id = generateId('uac');
+
+  await db.execute(
+    `INSERT INTO user_access (id, user_id, site_id, granted_by)
+     VALUES (?, ?, ?, ?)`,
+    [id, userId, siteId, grantedBy]
+  );
+
+  const access = await db.queryOne<UserAccess>(
+    `SELECT id, user_id as userId, site_id as siteId, granted_at as grantedAt, granted_by as grantedBy
+     FROM user_access
+     WHERE id = ?`,
+    [id]
+  );
+
+  if (!access) {
+    throw new Error('Failed to create user access record');
+  }
+
+  return access;
+}
+
+/**
+ * Revoke site access from a user
+ */
+export async function revokeSiteAccess(
+  dbInput: DatabaseInput,
+  userId: string,
+  siteId: string
+): Promise<void> {
+  const db = normalizeDb(dbInput);
+  await db.execute(
+    `DELETE FROM user_access
+     WHERE user_id = ? AND site_id = ?`,
+    [userId, siteId]
+  );
+}
+
+/**
+ * Check if a user is a super admin
+ */
+export async function isUserSuperAdmin(
+  dbInput: DatabaseInput,
+  userId: string
+): Promise<boolean> {
+  const db = normalizeDb(dbInput);
+  const result = await db.queryOne<{ is_super_admin: number }>(
+    `SELECT is_super_admin
+     FROM users
+     WHERE id = ?`,
+    [userId]
+  );
+  return Boolean(result?.is_super_admin);
+}
+
+/**
+ * Set/unset super admin status for a user
+ */
+export async function setSuperAdminStatus(
+  dbInput: DatabaseInput,
+  userId: string,
+  isSuperAdmin: boolean
+): Promise<void> {
+  const db = normalizeDb(dbInput);
+  await db.execute(
+    `UPDATE users
+     SET is_super_admin = ?
+     WHERE id = ?`,
+    [isSuperAdmin ? 1 : 0, userId]
+  );
 }
