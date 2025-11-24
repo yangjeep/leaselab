@@ -1,12 +1,12 @@
+import { getActiveSiteFromSession } from './auth.server';
+
 /**
- * Extracts the site ID from the request hostname.
+ * Extract site ID from request hostname
+ * Format: subdomain.domain.com -> subdomain
+ * localhost -> 'default'
  * 
- * Strategy:
- * 1. If host is `localhost` or an IP, return 'default'.
- * 2. If host has subdomains, use the first subdomain as site ID.
- *    e.g. `site1.leaselab.io` -> `site1`
- *    e.g. `demo.localhost` -> `demo`
- * 3. Fallback to 'default'.
+ * NOTE: This is the simple version for initial resolution.
+ * Use getActiveSiteId() for super admin support (checks session).
  */
 export function getSiteId(request: Request): string {
   const host = request.headers.get('Host');
@@ -24,11 +24,40 @@ export function getSiteId(request: Request): string {
 
   // If we have more than 2 parts (e.g. sub.domain.com) or it's localhost with sub (sub.localhost)
   // we take the first part.
-  // Note: This is a simple implementation. For production with custom domains, 
-  // we might need a mapping table or more complex logic.
   if (parts.length > 2 || (hostname.endsWith('.localhost') && parts.length > 1)) {
     return parts[0];
   }
 
   return 'default';
+}
+
+/**
+ * Get the active site ID, considering super admin session selection
+ * For super admins: returns session-stored site if available
+ * For regular users: returns their assigned site_id
+ * 
+ * This should be used in most route handlers to get the correct site context.
+ */
+export async function getActiveSiteId(
+  request: Request,
+  user: { isSuperAdmin: boolean; siteId: string } | null,
+  kv: KVNamespace
+): Promise<string> {
+  // If not logged in, use hostname-based resolution
+  if (!user) {
+    return getSiteId(request);
+  }
+
+  // If super admin, check session for active site
+  if (user.isSuperAdmin) {
+    const activeSite = await getActiveSiteFromSession(request, kv);
+    if (activeSite) {
+      return activeSite;
+    }
+    // Fall back to default for super admins if no active site set
+    return 'default';
+  }
+
+  // Regular users always use their assigned site_id
+  return user.siteId;
 }

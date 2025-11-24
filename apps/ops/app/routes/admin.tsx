@@ -3,15 +3,23 @@ import { json } from '@remix-run/cloudflare';
 import { Outlet, Link, useLocation, useLoaderData, Form } from '@remix-run/react';
 import { requireAuth } from '~/lib/auth.server';
 import { getSiteId } from '~/lib/site.server';
+import { getUserAccessibleSites, type AccessibleSite } from '~/lib/db.server';
+import { SiteSwitcher } from '~/components/SiteSwitcher';
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
   const db = context.cloudflare.env.DB;
-  const kv = context.cloudflare.env.SESSION_KV;
+  const kv = context.cloudflare.env.SESSION_STORE;
   const siteId = getSiteId(request);
 
   const user = await requireAuth(request, db, kv, siteId);
 
-  return json({ user });
+  // Get available sites for super admins
+  let availableSites: AccessibleSite[] = [];
+  if (user.isSuperAdmin) {
+    availableSites = await getUserAccessibleSites(db, user.id);
+  }
+
+  return json({ user, currentSite: siteId, availableSites });
 }
 
 const navItems = [
@@ -24,7 +32,7 @@ const navItems = [
 ];
 
 export default function AdminLayout() {
-  const { user } = useLoaderData<typeof loader>();
+  const { user, currentSite, availableSites } = useLoaderData<typeof loader>();
   const location = useLocation();
 
   return (
@@ -35,6 +43,15 @@ export default function AdminLayout() {
           <h1 className="text-xl font-bold text-gray-900">
             Lease<span className="text-indigo-600">Lab</span>.io
           </h1>
+          {/* Site switcher for super admins */}
+          {user.isSuperAdmin && availableSites.length > 0 && (
+            <div className="mt-3">
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                Active Site
+              </label>
+              <SiteSwitcher currentSite={currentSite} availableSites={availableSites} />
+            </div>
+          )}
         </div>
 
         <nav className="flex-1 p-4">

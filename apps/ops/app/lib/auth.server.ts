@@ -158,6 +158,63 @@ export async function requireAuth(
   return user;
 }
 
+// ============================================================================
+// SUPER ADMIN SITE SWITCHING
+// ============================================================================
+
+/**
+ * Set the active site for a super admin user in their session
+ */
+export async function setActiveSite(
+  request: Request,
+  cacheInput: CacheInput,
+  activeSiteId: string
+): Promise<void> {
+  const sessionId = getSessionIdFromCookie(request);
+  if (!sessionId) return;
+
+  const cache = normalizeCache(cacheInput);
+  const session = await getSession(cacheInput, sessionId);
+  if (!session) return;
+
+  // Store active site in session metadata
+  await cache.put(
+    `session:${sessionId}:active_site`,
+    activeSiteId,
+    { expirationTtl: SESSION_EXPIRY_DAYS * 24 * 60 * 60 }
+  );
+}
+
+/**
+ * Get the active site from session (for super admins)
+ * Returns null if not set or not a super admin
+ */
+export async function getActiveSiteFromSession(
+  request: Request,
+  cacheInput: CacheInput
+): Promise<string | null> {
+  const sessionId = getSessionIdFromCookie(request);
+  if (!sessionId) return null;
+
+  const cache = normalizeCache(cacheInput);
+  const activeSite = await cache.get<string>(`session:${sessionId}:active_site`);
+  return activeSite;
+}
+
+/**
+ * Clear the active site from session
+ */
+export async function clearActiveSite(
+  request: Request,
+  cacheInput: CacheInput
+): Promise<void> {
+  const sessionId = getSessionIdFromCookie(request);
+  if (!sessionId) return;
+
+  const cache = normalizeCache(cacheInput);
+  await cache.delete(`session:${sessionId}:active_site`);
+}
+
 export async function getOptionalUser(
   request: Request,
   dbInput: DatabaseInput,
