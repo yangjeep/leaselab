@@ -791,6 +791,44 @@ export async function updateUserPassword(dbInput: DatabaseInput, userId: string,
   await db.execute('UPDATE users SET password_hash = ? WHERE id = ?', [passwordHash, userId]);
 }
 
+export async function updateUserProfile(
+  dbInput: DatabaseInput,
+  userId: string,
+  data: { name?: string; email?: string }
+): Promise<void> {
+  const db = normalizeDb(dbInput);
+
+  // If email is being updated, check for uniqueness
+  if (data.email) {
+    const existingUser = await db.queryOne(
+      'SELECT id FROM users WHERE email = ? AND id != ?',
+      [data.email, userId]
+    );
+    if (existingUser) {
+      throw new Error('Email already in use by another account');
+    }
+  }
+
+  const updates: string[] = [];
+  const params: string[] = [];
+
+  if (data.name !== undefined) {
+    updates.push('name = ?');
+    params.push(data.name);
+  }
+
+  if (data.email !== undefined) {
+    updates.push('email = ?');
+    params.push(data.email);
+  }
+
+  if (updates.length === 0) return;
+
+  params.push(userId);
+  await db.execute(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`, params);
+}
+
+
 
 // Mapping functions
 function mapLeadFromDb(row: unknown): Lead {
