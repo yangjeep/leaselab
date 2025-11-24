@@ -1,5 +1,5 @@
-import type { LoaderFunctionArgs, MetaFunction } from '@remix-run/node';
-import { json } from '@remix-run/node';
+import type { LoaderFunctionArgs, MetaFunction } from '@remix-run/cloudflare';
+import { json } from '@remix-run/cloudflare';
 import { useLoaderData, Link, useRevalidator } from '@remix-run/react';
 import { getPropertyById, getImagesByEntity } from '~/lib/db.server';
 import { ImageUploader } from '~/components/ImageUploader';

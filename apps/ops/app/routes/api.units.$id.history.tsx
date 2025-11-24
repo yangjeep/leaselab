@@ -1,4 +1,4 @@
-import { json, type LoaderFunctionArgs } from '@remix-run/node';
+import { json, type LoaderFunctionArgs } from '@remix-run/cloudflare';
 import { getUnitHistory } from '~/lib/db.server';
 import { getSiteId } from '~/lib/site.server';
 

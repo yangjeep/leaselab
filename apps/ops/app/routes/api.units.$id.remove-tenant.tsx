@@ -1,4 +1,4 @@
-import { json, type ActionFunctionArgs } from '@remix-run/node';
+import { json, type ActionFunctionArgs } from '@remix-run/cloudflare';
 import { getUnitById, updateUnit, createUnitHistory, getTenantById } from '~/lib/db.server';
 import { getSiteId } from '~/lib/site.server';
 

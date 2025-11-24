@@ -1,5 +1,5 @@
-import type { ActionFunctionArgs, LoaderFunctionArgs } from '@remix-run/node';
-import { json } from '@remix-run/node';
+import type { ActionFunctionArgs, LoaderFunctionArgs } from '@remix-run/cloudflare';
+import { json } from '@remix-run/cloudflare';
 import { useLoaderData, useActionData, Form } from '@remix-run/react';
 import { requireAuth, hashPassword, verifyPassword } from '~/lib/auth.server';
 import { getUserByEmail, updateUserPassword, updateUserProfile } from '~/lib/db.server';

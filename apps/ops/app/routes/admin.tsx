@@ -1,5 +1,5 @@
-import type { LoaderFunctionArgs } from '@remix-run/node';
-import { json } from '@remix-run/node';
+import type { LoaderFunctionArgs } from '@remix-run/cloudflare';
+import { json } from '@remix-run/cloudflare';
 import { Outlet, Link, useLocation, useLoaderData, Form } from '@remix-run/react';
 import { requireAuth } from '~/lib/auth.server';
 import { getSiteId } from '~/lib/site.server';

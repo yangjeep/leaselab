@@ -1,5 +1,5 @@
-import type { LoaderFunctionArgs, ActionFunctionArgs } from '@remix-run/node';
-import { json } from '@remix-run/node';
+import type { LoaderFunctionArgs, ActionFunctionArgs } from '@remix-run/cloudflare';
+import { json } from '@remix-run/cloudflare';
 import { UpdateWorkOrderSchema } from '@leaselab/shared-config';
 import { getWorkOrderById, updateWorkOrder, deleteWorkOrder } from '~/lib/db.server';
 import { getSiteId } from '~/lib/site.server';

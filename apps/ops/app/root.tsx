@@ -1,4 +1,4 @@
-import { json, type LoaderFunctionArgs, type LinksFunction } from "@remix-run/node";
+import { json, type LoaderFunctionArgs, type LinksFunction } from "@remix-run/cloudflare";
 import {
   Links,
   Meta,

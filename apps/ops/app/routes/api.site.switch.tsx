@@ -1,5 +1,5 @@
-import type { ActionFunctionArgs } from '@remix-run/node';
-import { json } from '@remix-run/node';
+import type { ActionFunctionArgs } from '@remix-run/cloudflare';
+import { json } from '@remix-run/cloudflare';
 import { setActiveSite } from '~/lib/auth.server';
 import { userHasAccessToSite, getUserAccessibleSites } from '~/lib/db.server';
 import { getSessionIdFromCookie, getSession } from '~/lib/auth.server';

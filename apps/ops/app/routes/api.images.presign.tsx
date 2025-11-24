@@ -1,4 +1,4 @@
-import { json, type ActionFunctionArgs } from '@remix-run/node';
+import { json, type ActionFunctionArgs } from '@remix-run/cloudflare';
 import { ImageUploadPresignSchema } from '@leaselab/shared-config';
 import { generateId } from '@leaselab/shared-utils';
 

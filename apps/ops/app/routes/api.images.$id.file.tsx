@@ -1,4 +1,4 @@
-import type { LoaderFunctionArgs } from '@remix-run/node';
+import type { LoaderFunctionArgs } from '@remix-run/cloudflare';
 import { getImageById } from '~/lib/db.server';
 import { getSiteId } from '~/lib/site.server';
 
