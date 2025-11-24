@@ -1,7 +1,8 @@
 import type { ActionFunctionArgs } from '@remix-run/cloudflare';
 import { json } from '@remix-run/cloudflare';
-import { getLeadById, getLeadFiles, getPropertyById, createAIEvaluation, updateLead } from '~/lib/db.server';
+import { getLeadById, getLeadFiles, getPropertyById, getUnitsByPropertyId, createAIEvaluation, updateLead } from '~/lib/db.server';
 import { runLeadAIEvaluation, generateSignedUrls } from '~/lib/ai.server';
+import { getSiteId } from '~/lib/site.server';
 
 export async function action({ request, params, context }: ActionFunctionArgs) {
   if (request.method !== 'POST') {
@@ -16,6 +17,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
   const db = context.cloudflare.env.DB;
   const bucket = context.cloudflare.env.FILE_BUCKET;
   const openaiApiKey = context.cloudflare.env.OPENAI_API_KEY;
+  const siteId = getSiteId(request);
 
   if (!openaiApiKey) {
     return json(
@@ -26,22 +28,26 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 
   try {
     // Fetch lead
-    const lead = await getLeadById(db, leadId);
+    const lead = await getLeadById(db, siteId, leadId);
     if (!lead) {
       return json({ success: false, error: 'Lead not found' }, { status: 404 });
     }
 
-    // Fetch property for rent amount
-    const property = await getPropertyById(db, lead.propertyId);
+    // Fetch property for context
+    const property = await getPropertyById(db, siteId, lead.propertyId);
     if (!property) {
       return json({ success: false, error: 'Property not found' }, { status: 404 });
     }
 
+    // Get units for the property to determine rent amount
+    const units = await getUnitsByPropertyId(db, siteId, lead.propertyId);
+    const rentAmount = units.length > 0 ? units[0].rentAmount : 0; // Use first unit's rent as typical
+
     // Fetch files
-    const files = await getLeadFiles(db, leadId);
+    const files = await getLeadFiles(db, siteId, leadId);
 
     // Update status to evaluating
-    await updateLead(db, leadId, { status: 'ai_evaluating' });
+    await updateLead(db, siteId, leadId, { status: 'ai_evaluating' });
 
     // Generate signed URLs for files
     const signedUrls = await generateSignedUrls(bucket, files);
@@ -50,12 +56,12 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
     const result = await runLeadAIEvaluation(openaiApiKey, {
       lead,
       files,
-      propertyRent: property.rent,
+      propertyRent: rentAmount,
       signedUrls,
     });
 
     // Save evaluation
-    const evaluation = await createAIEvaluation(db, {
+    const evaluation = await createAIEvaluation(db, siteId, {
       leadId,
       score: result.score,
       label: result.label,
@@ -67,7 +73,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
     });
 
     // Update lead with AI results
-    await updateLead(db, leadId, {
+    await updateLead(db, siteId, leadId, {
       status: 'ai_evaluated',
       aiScore: result.score,
       aiLabel: result.label,
@@ -87,7 +93,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
     console.error('Error running AI evaluation:', error);
 
     // Reset status on failure
-    await updateLead(db, leadId, { status: 'documents_received' });
+    await updateLead(db, siteId, leadId, { status: 'documents_received' });
 
     return json(
       { success: false, error: 'AI evaluation failed' },

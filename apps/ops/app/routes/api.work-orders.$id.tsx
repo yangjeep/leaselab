@@ -2,18 +2,20 @@ import type { LoaderFunctionArgs, ActionFunctionArgs } from '@remix-run/cloudfla
 import { json } from '@remix-run/cloudflare';
 import { UpdateWorkOrderSchema } from '@leaselab/shared-config';
 import { getWorkOrderById, updateWorkOrder, deleteWorkOrder } from '~/lib/db.server';
+import { getSiteId } from '~/lib/site.server';
 
 // GET /api/work-orders/:id
-export async function loader({ params, context }: LoaderFunctionArgs) {
+export async function loader({ params, context, request }: LoaderFunctionArgs) {
   const { id } = params;
   if (!id) {
     return json({ success: false, error: 'Work order ID required' }, { status: 400 });
   }
 
   const db = context.cloudflare.env.DB;
+  const siteId = getSiteId(request);
 
   try {
-    const workOrder = await getWorkOrderById(db, id);
+    const workOrder = await getWorkOrderById(db, siteId, id);
     if (!workOrder) {
       return json({ success: false, error: 'Work order not found' }, { status: 404 });
     }
@@ -35,17 +37,18 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
   }
 
   const db = context.cloudflare.env.DB;
+  const siteId = getSiteId(request);
 
   try {
     // Check if work order exists
-    const existing = await getWorkOrderById(db, id);
+    const existing = await getWorkOrderById(db, siteId, id);
     if (!existing) {
       return json({ success: false, error: 'Work order not found' }, { status: 404 });
     }
 
     // DELETE
     if (request.method === 'DELETE') {
-      await deleteWorkOrder(db, id);
+      await deleteWorkOrder(db, siteId, id);
       return json({ success: true, message: 'Work order deleted' });
     }
 
@@ -61,8 +64,8 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
         );
       }
 
-      await updateWorkOrder(db, id, validationResult.data);
-      const updated = await getWorkOrderById(db, id);
+      await updateWorkOrder(db, siteId, id, validationResult.data);
+      const updated = await getWorkOrderById(db, siteId, id);
       return json({ success: true, data: updated });
     }
 

@@ -2,26 +2,28 @@ import type { LoaderFunctionArgs, MetaFunction } from '@remix-run/cloudflare';
 import { json } from '@remix-run/cloudflare';
 import { useLoaderData, Link } from '@remix-run/react';
 import { getLeads, getProperties, getWorkOrders, getTenants } from '~/lib/db.server';
+import { getSiteId } from '~/lib/site.server';
 
 export const meta: MetaFunction = () => {
   return [{ title: 'Dashboard - LeaseLab.io' }];
 };
 
-export async function loader({ context }: LoaderFunctionArgs) {
+export async function loader({ request, context }: LoaderFunctionArgs) {
   const db = context.cloudflare.env.DB;
+  const siteId = getSiteId(request);
 
   const [leads, properties, workOrders, tenants] = await Promise.all([
-    getLeads(db, { limit: 5 }),
-    getProperties(db),
-    getWorkOrders(db, { status: 'open' }),
-    getTenants(db),
+    getLeads(db, siteId, { limit: 5 }),
+    getProperties(db, siteId),
+    getWorkOrders(db, siteId, { status: 'open' }),
+    getTenants(db, siteId),
   ]);
 
   const stats = {
     totalLeads: leads.length,
     newLeads: leads.filter(l => l.status === 'new').length,
     totalProperties: properties.length,
-    availableProperties: properties.filter(p => p.status === 'available').length,
+    availableProperties: properties.filter(p => p.isActive).length,
     openWorkOrders: workOrders.length,
     totalTenants: tenants.length,
   };

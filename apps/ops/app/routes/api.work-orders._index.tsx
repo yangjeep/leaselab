@@ -2,17 +2,19 @@ import type { LoaderFunctionArgs, ActionFunctionArgs } from '@remix-run/cloudfla
 import { json } from '@remix-run/cloudflare';
 import { CreateWorkOrderSchema } from '@leaselab/shared-config';
 import { getWorkOrders, createWorkOrder } from '~/lib/db.server';
+import { getSiteId } from '~/lib/site.server';
 
 // GET /api/work-orders
 export async function loader({ request, context }: LoaderFunctionArgs) {
   const db = context.cloudflare.env.DB;
+  const siteId = getSiteId(request);
   const url = new URL(request.url);
 
   const status = url.searchParams.get('status') || undefined;
   const propertyId = url.searchParams.get('propertyId') || undefined;
 
   try {
-    const workOrders = await getWorkOrders(db, { status, propertyId });
+    const workOrders = await getWorkOrders(db, siteId, { status, propertyId });
     return json({ success: true, data: workOrders });
   } catch (error) {
     console.error('Error fetching work orders:', error);
@@ -30,6 +32,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
   }
 
   const db = context.cloudflare.env.DB;
+  const siteId = getSiteId(request);
 
   try {
     const body = await request.json();
@@ -43,7 +46,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
     }
 
     const data = validationResult.data;
-    const workOrder = await createWorkOrder(db, {
+    const workOrder = await createWorkOrder(db, siteId, {
       propertyId: data.propertyId,
       tenantId: data.tenantId,
       title: data.title,

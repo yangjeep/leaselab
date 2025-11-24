@@ -3,6 +3,7 @@ import { json, redirect } from '@remix-run/cloudflare';
 import { Form, Link, useNavigation, useActionData } from '@remix-run/react';
 import { createProperty } from '~/lib/db.server';
 import { CreatePropertySchema } from '@leaselab/shared-config';
+import { getSiteId } from '~/lib/site.server';
 
 export const meta: MetaFunction = () => {
   return [{ title: 'New Property - LeaseLab.io' }];
@@ -10,6 +11,7 @@ export const meta: MetaFunction = () => {
 
 export async function action({ request, context }: ActionFunctionArgs) {
   const db = context.cloudflare.env.DB;
+  const siteId = getSiteId(request);
   const formData = await request.formData();
 
   const amenitiesStr = formData.get('amenities') as string;
@@ -34,7 +36,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
     return json({ error: 'Validation failed', details: parsed.error.flatten() }, { status: 400 });
   }
 
-  const property = await createProperty(db, parsed.data);
+  const property = await createProperty(db, siteId, parsed.data);
   return redirect(`/admin/properties/${property.id}`);
 }
 

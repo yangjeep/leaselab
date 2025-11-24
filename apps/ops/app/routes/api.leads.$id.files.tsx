@@ -3,6 +3,7 @@ import { json } from '@remix-run/cloudflare';
 import { FileUploadSchema } from '@leaselab/shared-config';
 import { getLeadById, createLeadFile, updateLead } from '~/lib/db.server';
 import { generateId } from '@leaselab/shared-utils';
+import { getSiteId } from '~/lib/site.server';
 
 export async function action({ request, params, context }: ActionFunctionArgs) {
   if (request.method !== 'POST') {
@@ -16,10 +17,11 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 
   const db = context.cloudflare.env.DB;
   const bucket = context.cloudflare.env.FILE_BUCKET;
+  const siteId = getSiteId(request);
 
   try {
     // Verify lead exists
-    const lead = await getLeadById(db, leadId);
+    const lead = await getLeadById(db, siteId, leadId);
     if (!lead) {
       return json({ success: false, error: 'Lead not found' }, { status: 404 });
     }
@@ -40,7 +42,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
     const r2Key = `leads/${leadId}/${generateId()}/${data.fileName}`;
 
     // Create file record
-    const file = await createLeadFile(db, {
+    const file = await createLeadFile(db, siteId, {
       leadId,
       fileType: data.fileType,
       fileName: data.fileName,
@@ -51,7 +53,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 
     // Update lead status if this is the first file
     if (lead.status === 'new') {
-      await updateLead(db, leadId, { status: 'documents_pending' });
+      await updateLead(db, siteId, leadId, { status: 'documents_pending' });
     }
 
     // Generate presigned upload URL

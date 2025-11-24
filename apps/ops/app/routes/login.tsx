@@ -1,28 +1,18 @@
-import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from '@remix-run/cloudflare';
+import type { ActionFunctionArgs, MetaFunction } from '@remix-run/cloudflare';
 import { json, redirect } from '@remix-run/cloudflare';
-import { Form, useActionData, useNavigation } from '@remix-run/react';
+import { Form, Link, useActionData, useNavigation } from '@remix-run/react';
 import { LoginSchema } from '@leaselab/shared-config';
-import { login, createSessionCookie, getOptionalUser } from '~/lib/auth.server';
+import { login, createSessionCookie } from '~/lib/auth.server';
+import { getSiteId } from '~/lib/site.server';
 
 export const meta: MetaFunction = () => {
   return [{ title: 'Sign In - LeaseLab.io' }];
 };
 
-export async function loader({ request, context }: LoaderFunctionArgs) {
-  const db = context.cloudflare.env.DB;
-  const kv = context.cloudflare.env.SESSION_KV;
-
-  const user = await getOptionalUser(request, db, kv);
-  if (user) {
-    return redirect('/admin');
-  }
-
-  return json({});
-}
-
 export async function action({ request, context }: ActionFunctionArgs) {
   const db = context.cloudflare.env.DB;
   const kv = context.cloudflare.env.SESSION_KV;
+  const siteId = getSiteId(request);
 
   const formData = await request.formData();
   const email = formData.get('email') as string;
@@ -36,7 +26,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
     );
   }
 
-  const result = await login(db, kv, email, password);
+  const result = await login(db, kv, siteId, email, password);
   if (!result) {
     return json(
       { error: 'Invalid email or password' },

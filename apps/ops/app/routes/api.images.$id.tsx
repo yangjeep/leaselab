@@ -1,8 +1,10 @@
 import { json, type ActionFunctionArgs, type LoaderFunctionArgs } from '@remix-run/cloudflare';
 import { getImageById, updateImage, deleteImage } from '~/lib/db.server';
+import { getSiteId } from '~/lib/site.server';
 
-export async function loader({ params, context }: LoaderFunctionArgs) {
+export async function loader({ params, context, request }: LoaderFunctionArgs) {
   const db = context.cloudflare.env.DB;
+  const siteId = getSiteId(request);
   const { id } = params;
 
   if (!id) {
@@ -10,7 +12,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
   }
 
   try {
-    const image = await getImageById(db, id);
+    const image = await getImageById(db, siteId, id);
 
     if (!image) {
       return json({ success: false, error: 'Image not found' }, { status: 404 });
@@ -32,6 +34,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 export async function action({ request, params, context }: ActionFunctionArgs) {
   const db = context.cloudflare.env.DB;
   const bucket = context.cloudflare.env.FILE_BUCKET;
+  const siteId = getSiteId(request);
   const { id } = params;
 
   if (!id) {
@@ -41,8 +44,8 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
   if (request.method === 'PUT' || request.method === 'PATCH') {
     try {
       const body = await request.json();
-      await updateImage(db, id, body);
-      const updated = await getImageById(db, id);
+      await updateImage(db, siteId, id, body);
+      const updated = await getImageById(db, siteId, id);
 
       const baseUrl = context.cloudflare.env.R2_PUBLIC_URL || '';
       const imageWithUrl = updated ? {
@@ -60,7 +63,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
   if (request.method === 'DELETE') {
     try {
       // Get image to find R2 key
-      const image = await getImageById(db, id);
+      const image = await getImageById(db, siteId, id);
 
       if (image && bucket) {
         // Delete from R2
@@ -68,7 +71,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
       }
 
       // Delete from database
-      await deleteImage(db, id);
+      await deleteImage(db, siteId, id);
 
       return json({ success: true, message: 'Image deleted' });
     } catch (error) {

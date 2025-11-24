@@ -3,33 +3,36 @@ import { json, redirect } from '@remix-run/cloudflare';
 import { useLoaderData, Link, Form, useNavigation } from '@remix-run/react';
 import { getUnitWithDetails, updateUnit, deleteUnit, getUnitHistory, getImagesByEntity, createUnitHistory } from '~/lib/db.server';
 import { formatCurrency } from '@leaselab/shared-utils';
+import { getSiteId } from '~/lib/site.server';
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
   return [{ title: data?.unit ? `Unit ${data.unit.unitNumber} - LeaseLab.io` : 'Unit - LeaseLab.io' }];
 };
 
-export async function loader({ params, context }: LoaderFunctionArgs) {
+export async function loader({ params, context, request }: LoaderFunctionArgs) {
   const db = context.cloudflare.env.DB;
+  const siteId = getSiteId(request);
   const { id } = params;
 
   if (!id) {
     throw new Response('Unit ID required', { status: 400 });
   }
 
-  const unit = await getUnitWithDetails(db, id);
+  const unit = await getUnitWithDetails(db, siteId, id);
 
   if (!unit) {
     throw new Response('Unit not found', { status: 404 });
   }
 
-  const history = await getUnitHistory(db, id);
-  const images = await getImagesByEntity(db, 'unit', id);
+  const history = await getUnitHistory(db, siteId, id);
+  const images = await getImagesByEntity(db, siteId, 'unit', id);
 
   return json({ unit, history, images });
 }
 
 export async function action({ request, params, context }: ActionFunctionArgs) {
   const db = context.cloudflare.env.DB;
+  const siteId = getSiteId(request);
   const { id } = params;
 
   if (!id) {
@@ -40,8 +43,8 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
   const intent = formData.get('intent');
 
   if (intent === 'delete') {
-    const unit = await getUnitWithDetails(db, id);
-    await deleteUnit(db, id);
+    const unit = await getUnitWithDetails(db, siteId, id);
+    await deleteUnit(db, siteId, id);
     return redirect(`/admin/properties/${unit?.propertyId}`);
   }
 
@@ -49,13 +52,13 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
     const featuresStr = formData.get('features') as string;
     const features = featuresStr ? featuresStr.split(',').map(f => f.trim()).filter(Boolean) : [];
 
-    const currentUnit = await getUnitWithDetails(db, id);
+    const currentUnit = await getUnitWithDetails(db, siteId, id);
     const newStatus = formData.get('status') as string;
     const newRentAmount = parseFloat(formData.get('rentAmount') as string);
 
     // Track status change
     if (currentUnit && newStatus && newStatus !== currentUnit.status) {
-      await createUnitHistory(db, {
+      await createUnitHistory(db, siteId, {
         unitId: id,
         eventType: 'status_change',
         eventData: {
@@ -67,7 +70,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 
     // Track rent change
     if (currentUnit && newRentAmount && newRentAmount !== currentUnit.rentAmount) {
-      await createUnitHistory(db, {
+      await createUnitHistory(db, siteId, {
         unitId: id,
         eventType: 'rent_change',
         eventData: {
@@ -77,7 +80,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
       });
     }
 
-    await updateUnit(db, id, {
+    await updateUnit(db, siteId, id, {
       unitNumber: formData.get('unitNumber') as string,
       name: formData.get('name') as string || undefined,
       bedrooms: parseInt(formData.get('bedrooms') as string),

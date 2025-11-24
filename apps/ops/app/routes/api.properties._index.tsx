@@ -1,12 +1,14 @@
 import { json, type ActionFunctionArgs, type LoaderFunctionArgs } from '@remix-run/cloudflare';
 import { getProperties, createProperty } from '~/lib/db.server';
 import { CreatePropertySchema } from '@leaselab/shared-config';
+import { getSiteId } from '~/lib/site.server';
 
-export async function loader({ context }: LoaderFunctionArgs) {
+export async function loader({ context, request }: LoaderFunctionArgs) {
   const db = context.cloudflare.env.DB;
+  const siteId = getSiteId(request);
 
   try {
-    const properties = await getProperties(db, { isActive: true });
+    const properties = await getProperties(db, siteId, { isActive: true });
     return json({ success: true, data: properties });
   } catch (error) {
     console.error('Error fetching properties:', error);
@@ -20,6 +22,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
   }
 
   const db = context.cloudflare.env.DB;
+  const siteId = getSiteId(request);
 
   try {
     const body = await request.json();
@@ -33,7 +36,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
       }, { status: 400 });
     }
 
-    const property = await createProperty(db, parsed.data);
+    const property = await createProperty(db, siteId, parsed.data);
     return json({ success: true, data: property }, { status: 201 });
   } catch (error) {
     console.error('Error creating property:', error);

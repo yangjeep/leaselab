@@ -1,6 +1,7 @@
 import { json, type ActionFunctionArgs } from '@remix-run/cloudflare';
 import { updateImage } from '~/lib/db.server';
 import { ReorderImagesSchema } from '@leaselab/shared-config';
+import { getSiteId } from '~/lib/site.server';
 
 export async function action({ request, context }: ActionFunctionArgs) {
   if (request.method !== 'POST') {
@@ -8,6 +9,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
   }
 
   const db = context.cloudflare.env.DB;
+  const siteId = getSiteId(request);
 
   try {
     const body = await request.json();
@@ -26,7 +28,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
     // Update sort order for each image
     await Promise.all(
       imageIds.map((imageId, index) =>
-        updateImage(db, imageId, { sortOrder: index })
+        updateImage(db, siteId, imageId, { sortOrder: index })
       )
     );
 

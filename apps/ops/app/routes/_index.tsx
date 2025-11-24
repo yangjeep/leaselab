@@ -1,5 +1,8 @@
-import type { MetaFunction } from "@remix-run/cloudflare";
+import type { MetaFunction, LoaderFunctionArgs } from "@remix-run/cloudflare";
 import { Link } from "@remix-run/react";
+
+import { getSiteId } from "~/lib/site.server";
+import { getOptionalUser } from "~/lib/auth.server";
 
 export const meta: MetaFunction = () => {
   return [
@@ -7,6 +10,12 @@ export const meta: MetaFunction = () => {
     { name: "description", content: "AI-powered rental property operations management" },
   ];
 };
+
+export async function loader({ request, context }: LoaderFunctionArgs) {
+  const siteId = getSiteId(request);
+  const user = await getOptionalUser(request, context.cloudflare.env.DB, context.cloudflare.env.KV, siteId);
+  return null;
+}
 
 export default function Index() {
   return (

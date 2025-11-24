@@ -3,14 +3,16 @@ import { json } from '@remix-run/cloudflare';
 import { useLoaderData, Link } from '@remix-run/react';
 import { getTenants } from '~/lib/db.server';
 import { formatPhoneNumber } from '@leaselab/shared-utils';
+import { getSiteId } from '~/lib/site.server';
 
 export const meta: MetaFunction = () => {
   return [{ title: 'Tenants - LeaseLab.io' }];
 };
 
-export async function loader({ context }: LoaderFunctionArgs) {
+export async function loader({ context, request }: LoaderFunctionArgs) {
   const db = context.cloudflare.env.DB;
-  const tenants = await getTenants(db);
+  const siteId = getSiteId(request);
+  const tenants = await getTenants(db, siteId);
   return json({ tenants });
 }
 

@@ -2,12 +2,14 @@ import type { LoaderFunctionArgs } from '@remix-run/cloudflare';
 import { json } from '@remix-run/cloudflare';
 import { Outlet, Link, useLocation, useLoaderData, Form } from '@remix-run/react';
 import { requireAuth } from '~/lib/auth.server';
+import { getSiteId } from '~/lib/site.server';
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
   const db = context.cloudflare.env.DB;
   const kv = context.cloudflare.env.SESSION_KV;
+  const siteId = getSiteId(request);
 
-  const user = await requireAuth(request, db, kv);
+  const user = await requireAuth(request, db, kv, siteId);
 
   return json({ user });
 }

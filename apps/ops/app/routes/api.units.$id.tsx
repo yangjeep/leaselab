@@ -1,9 +1,11 @@
 import { json, type ActionFunctionArgs, type LoaderFunctionArgs } from '@remix-run/cloudflare';
 import { getUnitWithDetails, updateUnit, deleteUnit, createUnitHistory } from '~/lib/db.server';
 import { UpdateUnitSchema, AssignTenantSchema } from '@leaselab/shared-config';
+import { getSiteId } from '~/lib/site.server';
 
-export async function loader({ params, context }: LoaderFunctionArgs) {
+export async function loader({ params, context, request }: LoaderFunctionArgs) {
   const db = context.cloudflare.env.DB;
+  const siteId = getSiteId(request);
   const { id } = params;
 
   if (!id) {
@@ -11,7 +13,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
   }
 
   try {
-    const unit = await getUnitWithDetails(db, id);
+    const unit = await getUnitWithDetails(db, siteId, id);
 
     if (!unit) {
       return json({ success: false, error: 'Unit not found' }, { status: 404 });
@@ -26,6 +28,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 
 export async function action({ request, params, context }: ActionFunctionArgs) {
   const db = context.cloudflare.env.DB;
+  const siteId = getSiteId(request);
   const { id } = params;
 
   if (!id) {
@@ -46,9 +49,9 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
       }
 
       // Track status changes
-      const currentUnit = await getUnitWithDetails(db, id);
+      const currentUnit = await getUnitWithDetails(db, siteId, id);
       if (currentUnit && parsed.data.status && parsed.data.status !== currentUnit.status) {
-        await createUnitHistory(db, {
+        await createUnitHistory(db, siteId, {
           unitId: id,
           eventType: 'status_change',
           eventData: {
@@ -60,7 +63,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 
       // Track rent changes
       if (currentUnit && parsed.data.rentAmount && parsed.data.rentAmount !== currentUnit.rentAmount) {
-        await createUnitHistory(db, {
+        await createUnitHistory(db, siteId, {
           unitId: id,
           eventType: 'rent_change',
           eventData: {
@@ -70,8 +73,8 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
         });
       }
 
-      await updateUnit(db, id, parsed.data);
-      const updated = await getUnitWithDetails(db, id);
+      await updateUnit(db, siteId, id, parsed.data);
+      const updated = await getUnitWithDetails(db, siteId, id);
 
       return json({ success: true, data: updated });
     } catch (error) {
@@ -82,7 +85,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 
   if (request.method === 'DELETE') {
     try {
-      await deleteUnit(db, id);
+      await deleteUnit(db, siteId, id);
       return json({ success: true, message: 'Unit deleted' });
     } catch (error) {
       console.error('Error deleting unit:', error);

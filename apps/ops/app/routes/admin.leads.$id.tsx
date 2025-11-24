@@ -3,29 +3,31 @@ import { json, redirect } from '@remix-run/cloudflare';
 import { useLoaderData, Form, useNavigation } from '@remix-run/react';
 import { getLeadById, getLeadFiles, getAIEvaluation, getPropertyById, updateLead } from '~/lib/db.server';
 import { formatCurrency, formatPhoneNumber } from '@leaselab/shared-utils';
+import { getSiteId } from '~/lib/site.server';
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
   const name = data?.lead ? `${data.lead.firstName} ${data.lead.lastName}` : 'Lead';
   return [{ title: `${name} - LeaseLab.io` }];
 };
 
-export async function loader({ params, context }: LoaderFunctionArgs) {
+export async function loader({ params, context, request }: LoaderFunctionArgs) {
   const { id } = params;
   if (!id) throw new Response('Not found', { status: 404 });
 
   const db = context.cloudflare.env.DB;
+  const siteId = getSiteId(request);
 
   const [lead, files, evaluation] = await Promise.all([
-    getLeadById(db, id),
-    getLeadFiles(db, id),
-    getAIEvaluation(db, id),
+    getLeadById(db, siteId, id),
+    getLeadFiles(db, siteId, id),
+    getAIEvaluation(db, siteId, id),
   ]);
 
   if (!lead) {
     throw new Response('Lead not found', { status: 404 });
   }
 
-  const property = await getPropertyById(db, lead.propertyId);
+  const property = await getPropertyById(db, siteId, lead.propertyId);
 
   return json({ lead, files, evaluation, property });
 }
@@ -35,17 +37,21 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
   if (!id) return json({ error: 'Lead ID required' }, { status: 400 });
 
   const db = context.cloudflare.env.DB;
+  const siteId = getSiteId(request);
   const formData = await request.formData();
   const action = formData.get('_action');
 
   if (action === 'approve') {
-    await updateLead(db, id, { status: 'approved' });
+    await updateLead(db, siteId, id, { status: 'approved' });
   } else if (action === 'reject') {
-    await updateLead(db, id, { status: 'rejected' });
+    await updateLead(db, siteId, id, { status: 'rejected' });
   } else if (action === 'trigger_ai') {
     // Trigger AI evaluation via API
     const response = await fetch(`${new URL(request.url).origin}/api/leads/${id}/ai`, {
       method: 'POST',
+      headers: {
+        'Cookie': request.headers.get('Cookie') || '',
+      }
     });
     if (!response.ok) {
       return json({ error: 'AI evaluation failed' }, { status: 500 });

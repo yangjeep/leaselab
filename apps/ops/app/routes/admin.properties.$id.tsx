@@ -4,20 +4,22 @@ import { useLoaderData, Link, Form, useNavigation } from '@remix-run/react';
 import { getPropertyWithUnits, updateProperty, deleteProperty, getImagesByEntity } from '~/lib/db.server';
 import { formatCurrency } from '@leaselab/shared-utils';
 import type { Property, Unit, PropertyImage } from '@leaselab/shared-types';
+import { getSiteId } from '~/lib/site.server';
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
   return [{ title: data?.property ? `${data.property.name} - LeaseLab.io` : 'Property - LeaseLab.io' }];
 };
 
-export async function loader({ params, context }: LoaderFunctionArgs) {
+export async function loader({ params, context, request }: LoaderFunctionArgs) {
   const db = context.cloudflare.env.DB;
+  const siteId = getSiteId(request);
   const { id } = params;
 
   if (!id) {
     throw new Response('Property ID required', { status: 400 });
   }
 
-  const property = await getPropertyWithUnits(db, id);
+  const property = await getPropertyWithUnits(db, siteId, id);
 
   if (!property) {
     throw new Response('Property not found', { status: 404 });
@@ -28,6 +30,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 
 export async function action({ request, params, context }: ActionFunctionArgs) {
   const db = context.cloudflare.env.DB;
+  const siteId = getSiteId(request);
   const { id } = params;
 
   if (!id) {
@@ -38,7 +41,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
   const intent = formData.get('intent');
 
   if (intent === 'delete') {
-    await deleteProperty(db, id);
+    await deleteProperty(db, siteId, id);
     return redirect('/admin/properties');
   }
 
@@ -46,7 +49,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
     const amenitiesStr = formData.get('amenities') as string;
     const amenities = amenitiesStr ? amenitiesStr.split(',').map(a => a.trim()).filter(Boolean) : [];
 
-    await updateProperty(db, id, {
+    await updateProperty(db, siteId, id, {
       name: formData.get('name') as string,
       address: formData.get('address') as string,
       city: formData.get('city') as string,

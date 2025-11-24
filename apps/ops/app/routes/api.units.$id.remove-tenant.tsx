@@ -1,5 +1,6 @@
 import { json, type ActionFunctionArgs } from '@remix-run/cloudflare';
 import { getUnitById, updateUnit, createUnitHistory, getTenantById } from '~/lib/db.server';
+import { getSiteId } from '~/lib/site.server';
 
 export async function action({ request, params, context }: ActionFunctionArgs) {
   if (request.method !== 'POST') {
@@ -7,6 +8,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
   }
 
   const db = context.cloudflare.env.DB;
+  const siteId = getSiteId(request);
   const { id } = params;
 
   if (!id) {
@@ -15,7 +17,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 
   try {
     // Verify unit exists
-    const unit = await getUnitById(db, id);
+    const unit = await getUnitById(db, siteId, id);
     if (!unit) {
       return json({ success: false, error: 'Unit not found' }, { status: 404 });
     }
@@ -25,17 +27,17 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
     }
 
     // Get tenant info for history
-    const tenant = await getTenantById(db, unit.currentTenantId);
+    const tenant = await getTenantById(db, siteId, unit.currentTenantId);
     const tenantName = tenant ? `${tenant.firstName} ${tenant.lastName}` : 'Unknown';
 
     // Update unit to remove tenant
-    await updateUnit(db, id, {
+    await updateUnit(db, siteId, id, {
       currentTenantId: null,
       status: 'available',
     });
 
     // Create history record
-    await createUnitHistory(db, {
+    await createUnitHistory(db, siteId, {
       unitId: id,
       eventType: 'tenant_move_out',
       eventData: {

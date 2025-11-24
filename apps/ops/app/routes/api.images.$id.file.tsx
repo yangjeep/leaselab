@@ -1,9 +1,11 @@
 import type { LoaderFunctionArgs } from '@remix-run/cloudflare';
 import { getImageById } from '~/lib/db.server';
+import { getSiteId } from '~/lib/site.server';
 
-export async function loader({ params, context }: LoaderFunctionArgs) {
+export async function loader({ params, context, request }: LoaderFunctionArgs) {
   const db = context.cloudflare.env.DB;
   const bucket = context.cloudflare.env.FILE_BUCKET;
+  const siteId = getSiteId(request);
   const { id } = params;
 
   if (!id) {
@@ -15,7 +17,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
   }
 
   try {
-    const image = await getImageById(db, id);
+    const image = await getImageById(db, siteId, id);
 
     if (!image) {
       return new Response('Image not found', { status: 404 });

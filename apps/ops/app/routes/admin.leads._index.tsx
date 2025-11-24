@@ -3,6 +3,7 @@ import { json } from '@remix-run/cloudflare';
 import { useLoaderData, Link, useSearchParams } from '@remix-run/react';
 import { getLeads } from '~/lib/db.server';
 import { formatCurrency } from '@leaselab/shared-utils';
+import { getSiteId } from '~/lib/site.server';
 
 export const meta: MetaFunction = () => {
   return [{ title: 'Leads - LeaseLab.io' }];
@@ -10,13 +11,14 @@ export const meta: MetaFunction = () => {
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
   const db = context.cloudflare.env.DB;
+  const siteId = getSiteId(request);
   const url = new URL(request.url);
 
   const status = url.searchParams.get('status') || undefined;
   const sortBy = url.searchParams.get('sortBy') || 'aiScore';
   const sortOrder = (url.searchParams.get('sortOrder') || 'desc') as 'asc' | 'desc';
 
-  const leads = await getLeads(db, { status, sortBy, sortOrder });
+  const leads = await getLeads(db, siteId, { status, sortBy, sortOrder });
 
   return json({ leads });
 }
@@ -57,11 +59,10 @@ export default function LeadsIndex() {
                 }
                 setSearchParams(params);
               }}
-              className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
-                (value === 'all' && !searchParams.get('status')) || searchParams.get('status') === value
+              className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${(value === 'all' && !searchParams.get('status')) || searchParams.get('status') === value
                   ? 'bg-indigo-100 text-indigo-700'
                   : 'text-gray-600 hover:bg-gray-100'
-              }`}
+                }`}
             >
               {label}
             </button>

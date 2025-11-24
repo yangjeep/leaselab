@@ -3,6 +3,7 @@ import { json } from '@remix-run/cloudflare';
 import { useLoaderData, Link } from '@remix-run/react';
 import { getProperties, getUnitsByPropertyId, getImagesByEntity } from '~/lib/db.server';
 import type { Property, Unit, PropertyImage } from '@leaselab/shared-types';
+import { getSiteId } from '~/lib/site.server';
 
 export const meta: MetaFunction = () => {
   return [{ title: 'Properties - LeaseLab.io' }];
@@ -17,15 +18,16 @@ type PropertyWithStats = Property & {
   totalRent: number;
 };
 
-export async function loader({ context }: LoaderFunctionArgs) {
+export async function loader({ request, context }: LoaderFunctionArgs) {
   const db = context.cloudflare.env.DB;
-  const properties = await getProperties(db);
+  const siteId = getSiteId(request);
+  const properties = await getProperties(db, siteId);
 
   // Fetch units and images for each property
   const propertiesWithStats: PropertyWithStats[] = await Promise.all(
     properties.map(async (property) => {
-      const units = await getUnitsByPropertyId(db, property.id);
-      const images = await getImagesByEntity(db, 'property', property.id);
+      const units = await getUnitsByPropertyId(db, siteId, property.id);
+      const images = await getImagesByEntity(db, siteId, 'property', property.id);
       const occupiedCount = units.filter(u => u.status === 'occupied').length;
       const totalRent = units.reduce((sum, u) => sum + u.rentAmount, 0);
 

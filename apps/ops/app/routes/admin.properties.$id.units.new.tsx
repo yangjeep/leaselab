@@ -3,20 +3,22 @@ import { json, redirect } from '@remix-run/cloudflare';
 import { Form, Link, useLoaderData, useNavigation, useActionData } from '@remix-run/react';
 import { getPropertyById, createUnit } from '~/lib/db.server';
 import { CreateUnitSchema } from '@leaselab/shared-config';
+import { getSiteId } from '~/lib/site.server';
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
   return [{ title: data?.property ? `New Unit - ${data.property.name} - LeaseLab.io` : 'New Unit - LeaseLab.io' }];
 };
 
-export async function loader({ params, context }: LoaderFunctionArgs) {
+export async function loader({ params, context, request }: LoaderFunctionArgs) {
   const db = context.cloudflare.env.DB;
+  const siteId = getSiteId(request);
   const { id } = params;
 
   if (!id) {
     throw new Response('Property ID required', { status: 400 });
   }
 
-  const property = await getPropertyById(db, id);
+  const property = await getPropertyById(db, siteId, id);
 
   if (!property) {
     throw new Response('Property not found', { status: 404 });
@@ -27,6 +29,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 
 export async function action({ request, params, context }: ActionFunctionArgs) {
   const db = context.cloudflare.env.DB;
+  const siteId = getSiteId(request);
   const { id: propertyId } = params;
 
   if (!propertyId) {
@@ -57,7 +60,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
     return json({ error: 'Validation failed', details: parsed.error.flatten() }, { status: 400 });
   }
 
-  await createUnit(db, { propertyId, ...parsed.data });
+  await createUnit(db, siteId, { propertyId, ...parsed.data });
   return redirect(`/admin/properties/${propertyId}`);
 }
 

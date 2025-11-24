@@ -1,6 +1,7 @@
 import { json, type ActionFunctionArgs } from '@remix-run/cloudflare';
 import { getUnitById, updateUnit, createUnitHistory, getTenantById } from '~/lib/db.server';
 import { AssignTenantSchema } from '@leaselab/shared-config';
+import { getSiteId } from '~/lib/site.server';
 
 export async function action({ request, params, context }: ActionFunctionArgs) {
   if (request.method !== 'POST') {
@@ -8,6 +9,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
   }
 
   const db = context.cloudflare.env.DB;
+  const siteId = getSiteId(request);
   const { id } = params;
 
   if (!id) {
@@ -29,25 +31,25 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
     const { tenantId, moveInDate } = parsed.data;
 
     // Verify unit exists
-    const unit = await getUnitById(db, id);
+    const unit = await getUnitById(db, siteId, id);
     if (!unit) {
       return json({ success: false, error: 'Unit not found' }, { status: 404 });
     }
 
     // Verify tenant exists
-    const tenant = await getTenantById(db, tenantId);
+    const tenant = await getTenantById(db, siteId, tenantId);
     if (!tenant) {
       return json({ success: false, error: 'Tenant not found' }, { status: 404 });
     }
 
     // Update unit with tenant and status
-    await updateUnit(db, id, {
+    await updateUnit(db, siteId, id, {
       currentTenantId: tenantId,
       status: 'occupied',
     });
 
     // Create history record
-    await createUnitHistory(db, {
+    await createUnitHistory(db, siteId, {
       unitId: id,
       eventType: 'tenant_move_in',
       eventData: {

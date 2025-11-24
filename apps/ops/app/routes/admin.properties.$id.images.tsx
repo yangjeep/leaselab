@@ -4,26 +4,28 @@ import { useLoaderData, Link, useRevalidator } from '@remix-run/react';
 import { getPropertyById, getImagesByEntity } from '~/lib/db.server';
 import { ImageUploader } from '~/components/ImageUploader';
 import type { PropertyImage } from '@leaselab/shared-types';
+import { getSiteId } from '~/lib/site.server';
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
   return [{ title: data?.property ? `Images - ${data.property.name} - LeaseLab.io` : 'Images - LeaseLab.io' }];
 };
 
-export async function loader({ params, context }: LoaderFunctionArgs) {
+export async function loader({ params, context, request }: LoaderFunctionArgs) {
   const db = context.cloudflare.env.DB;
+  const siteId = getSiteId(request);
   const { id } = params;
 
   if (!id) {
     throw new Response('Property ID required', { status: 400 });
   }
 
-  const property = await getPropertyById(db, id);
+  const property = await getPropertyById(db, siteId, id);
 
   if (!property) {
     throw new Response('Property not found', { status: 404 });
   }
 
-  const images = await getImagesByEntity(db, 'property', id);
+  const images = await getImagesByEntity(db, siteId, 'property', id);
 
   // Generate URLs for images
   const baseUrl = context.cloudflare.env.R2_PUBLIC_URL || '';

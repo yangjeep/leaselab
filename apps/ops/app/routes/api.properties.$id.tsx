@@ -1,9 +1,11 @@
 import { json, type ActionFunctionArgs, type LoaderFunctionArgs } from '@remix-run/cloudflare';
 import { getPropertyWithUnits, updateProperty, deleteProperty } from '~/lib/db.server';
 import { UpdatePropertySchema } from '@leaselab/shared-config';
+import { getSiteId } from '~/lib/site.server';
 
-export async function loader({ params, context }: LoaderFunctionArgs) {
+export async function loader({ params, context, request }: LoaderFunctionArgs) {
   const db = context.cloudflare.env.DB;
+  const siteId = getSiteId(request);
   const { id } = params;
 
   if (!id) {
@@ -11,7 +13,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
   }
 
   try {
-    const property = await getPropertyWithUnits(db, id);
+    const property = await getPropertyWithUnits(db, siteId, id);
 
     if (!property) {
       return json({ success: false, error: 'Property not found' }, { status: 404 });
@@ -26,6 +28,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 
 export async function action({ request, params, context }: ActionFunctionArgs) {
   const db = context.cloudflare.env.DB;
+  const siteId = getSiteId(request);
   const { id } = params;
 
   if (!id) {
@@ -45,8 +48,8 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
         }, { status: 400 });
       }
 
-      await updateProperty(db, id, parsed.data);
-      const updated = await getPropertyWithUnits(db, id);
+      await updateProperty(db, siteId, id, parsed.data);
+      const updated = await getPropertyWithUnits(db, siteId, id);
 
       return json({ success: true, data: updated });
     } catch (error) {
@@ -57,7 +60,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 
   if (request.method === 'DELETE') {
     try {
-      await deleteProperty(db, id);
+      await deleteProperty(db, siteId, id);
       return json({ success: true, message: 'Property deleted' });
     } catch (error) {
       console.error('Error deleting property:', error);

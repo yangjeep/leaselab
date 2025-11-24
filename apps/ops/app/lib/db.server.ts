@@ -61,7 +61,7 @@ function normalizeDb(db: DatabaseInput): IDatabase {
 
 // Database helper functions
 
-export async function getLeads(dbInput: DatabaseInput, options?: {
+export async function getLeads(dbInput: DatabaseInput, siteId: string, options?: {
   status?: string;
   propertyId?: string;
   sortBy?: string;
@@ -72,8 +72,8 @@ export async function getLeads(dbInput: DatabaseInput, options?: {
   const db = normalizeDb(dbInput);
   const { status, propertyId, sortBy = 'created_at', sortOrder = 'desc', limit = 50, offset = 0 } = options || {};
 
-  let query = 'SELECT * FROM leads WHERE 1=1';
-  const params: (string | number)[] = [];
+  let query = 'SELECT * FROM leads WHERE site_id = ?';
+  const params: (string | number)[] = [siteId];
 
   if (status) {
     query += ' AND status = ?';
@@ -93,22 +93,23 @@ export async function getLeads(dbInput: DatabaseInput, options?: {
   return results.map(mapLeadFromDb);
 }
 
-export async function getLeadById(dbInput: DatabaseInput, id: string): Promise<Lead | null> {
+export async function getLeadById(dbInput: DatabaseInput, siteId: string, id: string): Promise<Lead | null> {
   const db = normalizeDb(dbInput);
-  const result = await db.queryOne('SELECT * FROM leads WHERE id = ?', [id]);
+  const result = await db.queryOne('SELECT * FROM leads WHERE id = ? AND site_id = ?', [id, siteId]);
   return result ? mapLeadFromDb(result) : null;
 }
 
-export async function createLead(dbInput: DatabaseInput, data: Omit<Lead, 'id' | 'createdAt' | 'updatedAt' | 'aiScore' | 'aiLabel' | 'status'>): Promise<Lead> {
+export async function createLead(dbInput: DatabaseInput, siteId: string, data: Omit<Lead, 'id' | 'createdAt' | 'updatedAt' | 'aiScore' | 'aiLabel' | 'status'>): Promise<Lead> {
   const db = normalizeDb(dbInput);
   const id = generateId('lead');
   const now = new Date().toISOString();
 
   await db.execute(`
-    INSERT INTO leads (id, property_id, first_name, last_name, email, phone, current_address, employment_status, monthly_income, move_in_date, message, status, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'new', ?, ?)
+    INSERT INTO leads (id, site_id, property_id, first_name, last_name, email, phone, current_address, employment_status, monthly_income, move_in_date, message, status, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'new', ?, ?)
   `, [
     id,
+    siteId,
     data.propertyId,
     data.firstName,
     data.lastName,
@@ -123,10 +124,10 @@ export async function createLead(dbInput: DatabaseInput, data: Omit<Lead, 'id' |
     now
   ]);
 
-  return (await getLeadById(db, id))!;
+  return (await getLeadById(db, siteId, id))!;
 }
 
-export async function updateLead(dbInput: DatabaseInput, id: string, data: Partial<Lead>): Promise<void> {
+export async function updateLead(dbInput: DatabaseInput, siteId: string, id: string, data: Partial<Lead>): Promise<void> {
   const db = normalizeDb(dbInput);
   const updates: string[] = [];
   const params: (string | number | null)[] = [];
@@ -150,46 +151,47 @@ export async function updateLead(dbInput: DatabaseInput, id: string, data: Parti
   params.push(new Date().toISOString());
   params.push(id);
 
-  await db.execute(`UPDATE leads SET ${updates.join(', ')} WHERE id = ?`, params);
+  await db.execute(`UPDATE leads SET ${updates.join(', ')} WHERE id = ? AND site_id = ?`, [...params, siteId]);
 }
 
 // Lead Files
-export async function getLeadFiles(dbInput: DatabaseInput, leadId: string): Promise<LeadFile[]> {
+export async function getLeadFiles(dbInput: DatabaseInput, siteId: string, leadId: string): Promise<LeadFile[]> {
   const db = normalizeDb(dbInput);
-  const results = await db.query('SELECT * FROM lead_files WHERE lead_id = ?', [leadId]);
+  const results = await db.query('SELECT * FROM lead_files WHERE lead_id = ? AND site_id = ?', [leadId, siteId]);
   return results.map(mapLeadFileFromDb);
 }
 
-export async function createLeadFile(dbInput: DatabaseInput, data: Omit<LeadFile, 'id' | 'uploadedAt'>): Promise<LeadFile> {
+export async function createLeadFile(dbInput: DatabaseInput, siteId: string, data: Omit<LeadFile, 'id' | 'uploadedAt'>): Promise<LeadFile> {
   const db = normalizeDb(dbInput);
   const id = generateId('file');
   const now = new Date().toISOString();
 
   await db.execute(`
-    INSERT INTO lead_files (id, lead_id, file_type, file_name, file_size, mime_type, r2_key, uploaded_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `, [id, data.leadId, data.fileType, data.fileName, data.fileSize, data.mimeType, data.r2Key, now]);
+    INSERT INTO lead_files (id, site_id, lead_id, file_type, file_name, file_size, mime_type, r2_key, uploaded_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `, [id, siteId, data.leadId, data.fileType, data.fileName, data.fileSize, data.mimeType, data.r2Key, now]);
 
   return { ...data, id, uploadedAt: now };
 }
 
 // AI Evaluations
-export async function getAIEvaluation(dbInput: DatabaseInput, leadId: string): Promise<LeadAIResult | null> {
+export async function getAIEvaluation(dbInput: DatabaseInput, siteId: string, leadId: string): Promise<LeadAIResult | null> {
   const db = normalizeDb(dbInput);
-  const result = await db.queryOne('SELECT * FROM lead_ai_evaluations WHERE lead_id = ?', [leadId]);
+  const result = await db.queryOne('SELECT * FROM lead_ai_evaluations WHERE lead_id = ? AND site_id = ?', [leadId, siteId]);
   return result ? mapAIEvaluationFromDb(result) : null;
 }
 
-export async function createAIEvaluation(dbInput: DatabaseInput, data: Omit<LeadAIResult, 'id' | 'evaluatedAt'>): Promise<LeadAIResult> {
+export async function createAIEvaluation(dbInput: DatabaseInput, siteId: string, data: Omit<LeadAIResult, 'id' | 'evaluatedAt'>): Promise<LeadAIResult> {
   const db = normalizeDb(dbInput);
   const id = generateId('eval');
   const now = new Date().toISOString();
 
   await db.execute(`
-    INSERT INTO lead_ai_evaluations (id, lead_id, score, label, summary, risk_flags, recommendation, fraud_signals, model_version, evaluated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO lead_ai_evaluations (id, site_id, lead_id, score, label, summary, risk_flags, recommendation, fraud_signals, model_version, evaluated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `, [
     id,
+    siteId,
     data.leadId,
     data.score,
     data.label,
@@ -205,14 +207,14 @@ export async function createAIEvaluation(dbInput: DatabaseInput, data: Omit<Lead
 }
 
 // Properties
-export async function getProperties(dbInput: DatabaseInput, options?: {
+export async function getProperties(dbInput: DatabaseInput, siteId: string, options?: {
   isActive?: boolean;
   propertyType?: string;
   city?: string;
 }): Promise<Property[]> {
   const db = normalizeDb(dbInput);
-  let query = 'SELECT * FROM properties WHERE 1=1';
-  const params: (string | number)[] = [];
+  let query = 'SELECT * FROM properties WHERE site_id = ?';
+  const params: (string | number)[] = [siteId];
 
   if (options?.isActive !== undefined) {
     query += ' AND is_active = ?';
@@ -232,25 +234,25 @@ export async function getProperties(dbInput: DatabaseInput, options?: {
   return results.map(mapPropertyFromDb);
 }
 
-export async function getPropertyById(dbInput: DatabaseInput, id: string): Promise<Property | null> {
+export async function getPropertyById(dbInput: DatabaseInput, siteId: string, id: string): Promise<Property | null> {
   const db = normalizeDb(dbInput);
-  const result = await db.queryOne('SELECT * FROM properties WHERE id = ?', [id]);
+  const result = await db.queryOne('SELECT * FROM properties WHERE id = ? AND site_id = ?', [id, siteId]);
   return result ? mapPropertyFromDb(result) : null;
 }
 
-export async function getPropertyBySlug(dbInput: DatabaseInput, slug: string): Promise<Property | null> {
+export async function getPropertyBySlug(dbInput: DatabaseInput, siteId: string, slug: string): Promise<Property | null> {
   const db = normalizeDb(dbInput);
-  const result = await db.queryOne('SELECT * FROM properties WHERE slug = ?', [slug]);
+  const result = await db.queryOne('SELECT * FROM properties WHERE slug = ? AND site_id = ?', [slug, siteId]);
   return result ? mapPropertyFromDb(result) : null;
 }
 
-export async function getPropertyWithUnits(dbInput: DatabaseInput, id: string): Promise<Property | null> {
+export async function getPropertyWithUnits(dbInput: DatabaseInput, siteId: string, id: string): Promise<Property | null> {
   const db = normalizeDb(dbInput);
-  const property = await getPropertyById(db, id);
+  const property = await getPropertyById(db, siteId, id);
   if (!property) return null;
 
-  const units = await getUnitsByPropertyId(db, id);
-  const images = await getImagesByEntity(db, 'property', id);
+  const units = await getUnitsByPropertyId(db, siteId, id);
+  const images = await getImagesByEntity(db, siteId, 'property', id);
 
   return {
     ...property,
@@ -262,7 +264,7 @@ export async function getPropertyWithUnits(dbInput: DatabaseInput, id: string): 
   };
 }
 
-export async function createProperty(dbInput: DatabaseInput, data: {
+export async function createProperty(dbInput: DatabaseInput, siteId: string, data: {
   name: string;
   address: string;
   city: string;
@@ -282,10 +284,11 @@ export async function createProperty(dbInput: DatabaseInput, data: {
   const slug = data.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '-' + id.slice(0, 8);
 
   await db.execute(`
-    INSERT INTO properties (id, name, slug, address, city, state, zip_code, property_type, description, year_built, lot_size, amenities, latitude, longitude, is_active, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+    INSERT INTO properties (id, site_id, name, slug, address, city, state, zip_code, property_type, description, year_built, lot_size, amenities, latitude, longitude, is_active, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
   `, [
     id,
+    siteId,
     data.name,
     slug,
     data.address,
@@ -303,10 +306,10 @@ export async function createProperty(dbInput: DatabaseInput, data: {
     now
   ]);
 
-  return (await getPropertyById(db, id))!;
+  return (await getPropertyById(db, siteId, id))!;
 }
 
-export async function updateProperty(dbInput: DatabaseInput, id: string, data: Partial<{
+export async function updateProperty(dbInput: DatabaseInput, siteId: string, id: string, data: Partial<{
   name: string;
   address: string;
   city: string;
@@ -362,23 +365,23 @@ export async function updateProperty(dbInput: DatabaseInput, id: string, data: P
   params.push(new Date().toISOString());
   params.push(id);
 
-  await db.execute(`UPDATE properties SET ${updates.join(', ')} WHERE id = ?`, params);
+  await db.execute(`UPDATE properties SET ${updates.join(', ')} WHERE id = ? AND site_id = ?`, [...params, siteId]);
 }
 
-export async function deleteProperty(dbInput: DatabaseInput, id: string): Promise<void> {
+export async function deleteProperty(dbInput: DatabaseInput, siteId: string, id: string): Promise<void> {
   const db = normalizeDb(dbInput);
-  await db.execute('DELETE FROM properties WHERE id = ?', [id]);
+  await db.execute('DELETE FROM properties WHERE id = ? AND site_id = ?', [id, siteId]);
 }
 
 // Units
-export async function getUnits(dbInput: DatabaseInput, options?: {
+export async function getUnits(dbInput: DatabaseInput, siteId: string, options?: {
   propertyId?: string;
   status?: UnitStatus;
   isActive?: boolean;
 }): Promise<Unit[]> {
   const db = normalizeDb(dbInput);
-  let query = 'SELECT * FROM units WHERE 1=1';
-  const params: (string | number)[] = [];
+  let query = 'SELECT * FROM units WHERE site_id = ?';
+  const params: (string | number)[] = [siteId];
 
   if (options?.propertyId) {
     query += ' AND property_id = ?';
@@ -398,28 +401,28 @@ export async function getUnits(dbInput: DatabaseInput, options?: {
   return results.map(mapUnitFromDb);
 }
 
-export async function getUnitsByPropertyId(dbInput: DatabaseInput, propertyId: string): Promise<Unit[]> {
+export async function getUnitsByPropertyId(dbInput: DatabaseInput, siteId: string, propertyId: string): Promise<Unit[]> {
   const db = normalizeDb(dbInput);
-  return getUnits(db, { propertyId });
+  return getUnits(db, siteId, { propertyId });
 }
 
-export async function getUnitById(dbInput: DatabaseInput, id: string): Promise<Unit | null> {
+export async function getUnitById(dbInput: DatabaseInput, siteId: string, id: string): Promise<Unit | null> {
   const db = normalizeDb(dbInput);
-  const result = await db.queryOne('SELECT * FROM units WHERE id = ?', [id]);
+  const result = await db.queryOne('SELECT * FROM units WHERE id = ? AND site_id = ?', [id, siteId]);
   return result ? mapUnitFromDb(result) : null;
 }
 
-export async function getUnitWithDetails(dbInput: DatabaseInput, id: string): Promise<Unit | null> {
+export async function getUnitWithDetails(dbInput: DatabaseInput, siteId: string, id: string): Promise<Unit | null> {
   const db = normalizeDb(dbInput);
-  const unit = await getUnitById(db, id);
+  const unit = await getUnitById(db, siteId, id);
   if (!unit) return null;
 
-  const property = await getPropertyById(db, unit.propertyId);
-  const images = await getImagesByEntity(db, 'unit', id);
+  const property = await getPropertyById(db, siteId, unit.propertyId);
+  const images = await getImagesByEntity(db, siteId, 'unit', id);
 
   let currentTenant: Tenant | undefined;
   if (unit.currentTenantId) {
-    currentTenant = await getTenantById(db, unit.currentTenantId) || undefined;
+    currentTenant = await getTenantById(db, siteId, unit.currentTenantId) || undefined;
   }
 
   return {
@@ -430,7 +433,7 @@ export async function getUnitWithDetails(dbInput: DatabaseInput, id: string): Pr
   };
 }
 
-export async function createUnit(dbInput: DatabaseInput, data: {
+export async function createUnit(dbInput: DatabaseInput, siteId: string, data: {
   propertyId: string;
   unitNumber: string;
   name?: string;
@@ -449,10 +452,11 @@ export async function createUnit(dbInput: DatabaseInput, data: {
   const now = new Date().toISOString();
 
   await db.execute(`
-    INSERT INTO units (id, property_id, unit_number, name, bedrooms, bathrooms, sqft, rent_amount, deposit_amount, status, floor, features, available_date, is_active, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+    INSERT INTO units (id, site_id, property_id, unit_number, name, bedrooms, bathrooms, sqft, rent_amount, deposit_amount, status, floor, features, available_date, is_active, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
   `, [
     id,
+    siteId,
     data.propertyId,
     data.unitNumber,
     data.name || null,
@@ -469,10 +473,10 @@ export async function createUnit(dbInput: DatabaseInput, data: {
     now
   ]);
 
-  return (await getUnitById(db, id))!;
+  return (await getUnitById(db, siteId, id))!;
 }
 
-export async function updateUnit(dbInput: DatabaseInput, id: string, data: Partial<{
+export async function updateUnit(dbInput: DatabaseInput, siteId: string, id: string, data: Partial<{
   unitNumber: string;
   name: string;
   bedrooms: number;
@@ -528,22 +532,22 @@ export async function updateUnit(dbInput: DatabaseInput, id: string, data: Parti
   params.push(new Date().toISOString());
   params.push(id);
 
-  await db.execute(`UPDATE units SET ${updates.join(', ')} WHERE id = ?`, params);
+  await db.execute(`UPDATE units SET ${updates.join(', ')} WHERE id = ? AND site_id = ?`, [...params, siteId]);
 }
 
-export async function deleteUnit(dbInput: DatabaseInput, id: string): Promise<void> {
+export async function deleteUnit(dbInput: DatabaseInput, siteId: string, id: string): Promise<void> {
   const db = normalizeDb(dbInput);
-  await db.execute('DELETE FROM units WHERE id = ?', [id]);
+  await db.execute('DELETE FROM units WHERE id = ? AND site_id = ?', [id, siteId]);
 }
 
 // Unit History
-export async function getUnitHistory(dbInput: DatabaseInput, unitId: string): Promise<UnitHistory[]> {
+export async function getUnitHistory(dbInput: DatabaseInput, siteId: string, unitId: string): Promise<UnitHistory[]> {
   const db = normalizeDb(dbInput);
-  const results = await db.query('SELECT * FROM unit_history WHERE unit_id = ? ORDER BY created_at DESC', [unitId]);
+  const results = await db.query('SELECT * FROM unit_history WHERE unit_id = ? AND site_id = ? ORDER BY created_at DESC', [unitId, siteId]);
   return results.map(mapUnitHistoryFromDb);
 }
 
-export async function createUnitHistory(dbInput: DatabaseInput, data: {
+export async function createUnitHistory(dbInput: DatabaseInput, siteId: string, data: {
   unitId: string;
   eventType: UnitEventType;
   eventData: Record<string, unknown>;
@@ -553,10 +557,11 @@ export async function createUnitHistory(dbInput: DatabaseInput, data: {
   const now = new Date().toISOString();
 
   await db.execute(`
-    INSERT INTO unit_history (id, unit_id, event_type, event_data, created_at)
-    VALUES (?, ?, ?, ?, ?)
+    INSERT INTO unit_history (id, site_id, unit_id, event_type, event_data, created_at)
+    VALUES (?, ?, ?, ?, ?, ?)
   `, [
     id,
+    siteId,
     data.unitId,
     data.eventType,
     JSON.stringify(data.eventData),
@@ -573,19 +578,19 @@ export async function createUnitHistory(dbInput: DatabaseInput, data: {
 }
 
 // Images
-export async function getImagesByEntity(dbInput: DatabaseInput, entityType: 'property' | 'unit', entityId: string): Promise<PropertyImage[]> {
+export async function getImagesByEntity(dbInput: DatabaseInput, siteId: string, entityType: 'property' | 'unit', entityId: string): Promise<PropertyImage[]> {
   const db = normalizeDb(dbInput);
-  const results = await db.query('SELECT * FROM images WHERE entity_type = ? AND entity_id = ? ORDER BY sort_order ASC', [entityType, entityId]);
+  const results = await db.query('SELECT * FROM images WHERE entity_type = ? AND entity_id = ? AND site_id = ? ORDER BY sort_order ASC', [entityType, entityId, siteId]);
   return results.map(mapImageFromDb);
 }
 
-export async function getImageById(dbInput: DatabaseInput, id: string): Promise<PropertyImage | null> {
+export async function getImageById(dbInput: DatabaseInput, siteId: string, id: string): Promise<PropertyImage | null> {
   const db = normalizeDb(dbInput);
-  const result = await db.queryOne('SELECT * FROM images WHERE id = ?', [id]);
+  const result = await db.queryOne('SELECT * FROM images WHERE id = ? AND site_id = ?', [id, siteId]);
   return result ? mapImageFromDb(result) : null;
 }
 
-export async function createImage(dbInput: DatabaseInput, data: {
+export async function createImage(dbInput: DatabaseInput, siteId: string, data: {
   entityType: 'property' | 'unit';
   entityId: string;
   r2Key: string;
@@ -603,10 +608,11 @@ export async function createImage(dbInput: DatabaseInput, data: {
   const now = new Date().toISOString();
 
   await db.execute(`
-    INSERT INTO images (id, entity_type, entity_id, r2_key, filename, content_type, size_bytes, width, height, sort_order, is_cover, alt_text, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO images (id, site_id, entity_type, entity_id, r2_key, filename, content_type, size_bytes, width, height, sort_order, is_cover, alt_text, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `, [
     id,
+    siteId,
     data.entityType,
     data.entityId,
     data.r2Key,
@@ -621,10 +627,10 @@ export async function createImage(dbInput: DatabaseInput, data: {
     now
   ]);
 
-  return (await getImageById(db, id))!;
+  return (await getImageById(db, siteId, id))!;
 }
 
-export async function updateImage(dbInput: DatabaseInput, id: string, data: Partial<{
+export async function updateImage(dbInput: DatabaseInput, siteId: string, id: string, data: Partial<{
   sortOrder: number;
   isCover: boolean;
   altText: string;
@@ -649,27 +655,27 @@ export async function updateImage(dbInput: DatabaseInput, id: string, data: Part
   if (updates.length === 0) return;
   params.push(id);
 
-  await db.execute(`UPDATE images SET ${updates.join(', ')} WHERE id = ?`, params);
+  await db.execute(`UPDATE images SET ${updates.join(', ')} WHERE id = ? AND site_id = ?`, [...params, siteId]);
 }
 
-export async function deleteImage(dbInput: DatabaseInput, id: string): Promise<void> {
+export async function deleteImage(dbInput: DatabaseInput, siteId: string, id: string): Promise<void> {
   const db = normalizeDb(dbInput);
-  await db.execute('DELETE FROM images WHERE id = ?', [id]);
+  await db.execute('DELETE FROM images WHERE id = ? AND site_id = ?', [id, siteId]);
 }
 
-export async function setCoverImage(dbInput: DatabaseInput, entityType: 'property' | 'unit', entityId: string, imageId: string): Promise<void> {
+export async function setCoverImage(dbInput: DatabaseInput, siteId: string, entityType: 'property' | 'unit', entityId: string, imageId: string): Promise<void> {
   const db = normalizeDb(dbInput);
   // Remove cover from all images for this entity
-  await db.execute('UPDATE images SET is_cover = 0 WHERE entity_type = ? AND entity_id = ?', [entityType, entityId]);
+  await db.execute('UPDATE images SET is_cover = 0 WHERE entity_type = ? AND entity_id = ? AND site_id = ?', [entityType, entityId, siteId]);
   // Set the new cover
-  await db.execute('UPDATE images SET is_cover = 1 WHERE id = ?', [imageId]);
+  await db.execute('UPDATE images SET is_cover = 1 WHERE id = ? AND site_id = ?', [imageId, siteId]);
 }
 
 // Work Orders
-export async function getWorkOrders(dbInput: DatabaseInput, options?: { status?: string; propertyId?: string }): Promise<WorkOrder[]> {
+export async function getWorkOrders(dbInput: DatabaseInput, siteId: string, options?: { status?: string; propertyId?: string }): Promise<WorkOrder[]> {
   const db = normalizeDb(dbInput);
-  let query = 'SELECT * FROM work_orders WHERE 1=1';
-  const params: string[] = [];
+  let query = 'SELECT * FROM work_orders WHERE site_id = ?';
+  const params: string[] = [siteId];
 
   if (options?.status) {
     query += ' AND status = ?';
@@ -686,29 +692,29 @@ export async function getWorkOrders(dbInput: DatabaseInput, options?: { status?:
   return results.map(mapWorkOrderFromDb);
 }
 
-export async function getWorkOrderById(dbInput: DatabaseInput, id: string): Promise<WorkOrder | null> {
+export async function getWorkOrderById(dbInput: DatabaseInput, siteId: string, id: string): Promise<WorkOrder | null> {
   const db = normalizeDb(dbInput);
-  const result = await db.queryOne('SELECT * FROM work_orders WHERE id = ?', [id]);
+  const result = await db.queryOne('SELECT * FROM work_orders WHERE id = ? AND site_id = ?', [id, siteId]);
   return result ? mapWorkOrderFromDb(result) : null;
 }
 
-export async function createWorkOrder(dbInput: DatabaseInput, data: Omit<WorkOrder, 'id' | 'createdAt' | 'updatedAt' | 'status'>): Promise<WorkOrder> {
+export async function createWorkOrder(dbInput: DatabaseInput, siteId: string, data: Omit<WorkOrder, 'id' | 'createdAt' | 'updatedAt' | 'status'>): Promise<WorkOrder> {
   const db = normalizeDb(dbInput);
   const id = generateId('wo');
   const now = new Date().toISOString();
 
   await db.execute(`
-    INSERT INTO work_orders (id, property_id, tenant_id, title, description, category, priority, status, assigned_to, scheduled_date, notes, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, 'open', ?, ?, ?, ?, ?)
+    INSERT INTO work_orders (id, site_id, property_id, tenant_id, title, description, category, priority, status, assigned_to, scheduled_date, notes, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'open', ?, ?, ?, ?, ?)
   `, [
-    id, data.propertyId, data.tenantId || null, data.title, data.description, data.category, data.priority,
+    id, siteId, data.propertyId, data.tenantId || null, data.title, data.description, data.category, data.priority,
     data.assignedTo || null, data.scheduledDate || null, data.notes || null, now, now
   ]);
 
-  return (await getWorkOrderById(db, id))!;
+  return (await getWorkOrderById(db, siteId, id))!;
 }
 
-export async function updateWorkOrder(dbInput: DatabaseInput, id: string, data: Partial<WorkOrder>): Promise<void> {
+export async function updateWorkOrder(dbInput: DatabaseInput, siteId: string, id: string, data: Partial<WorkOrder>): Promise<void> {
   const db = normalizeDb(dbInput);
   const updates: string[] = [];
   const params: (string | number | null)[] = [];
@@ -733,31 +739,31 @@ export async function updateWorkOrder(dbInput: DatabaseInput, id: string, data: 
   params.push(new Date().toISOString());
   params.push(id);
 
-  await db.execute(`UPDATE work_orders SET ${updates.join(', ')} WHERE id = ?`, params);
+  await db.execute(`UPDATE work_orders SET ${updates.join(', ')} WHERE id = ? AND site_id = ?`, [...params, siteId]);
 }
 
-export async function deleteWorkOrder(dbInput: DatabaseInput, id: string): Promise<void> {
+export async function deleteWorkOrder(dbInput: DatabaseInput, siteId: string, id: string): Promise<void> {
   const db = normalizeDb(dbInput);
-  await db.execute('DELETE FROM work_orders WHERE id = ?', [id]);
+  await db.execute('DELETE FROM work_orders WHERE id = ? AND site_id = ?', [id, siteId]);
 }
 
 // Tenants
-export async function getTenants(dbInput: DatabaseInput): Promise<Tenant[]> {
+export async function getTenants(dbInput: DatabaseInput, siteId: string): Promise<Tenant[]> {
   const db = normalizeDb(dbInput);
-  const results = await db.query('SELECT * FROM tenants ORDER BY created_at DESC');
+  const results = await db.query('SELECT * FROM tenants WHERE site_id = ? ORDER BY created_at DESC', [siteId]);
   return results.map(mapTenantFromDb);
 }
 
-export async function getTenantById(dbInput: DatabaseInput, id: string): Promise<Tenant | null> {
+export async function getTenantById(dbInput: DatabaseInput, siteId: string, id: string): Promise<Tenant | null> {
   const db = normalizeDb(dbInput);
-  const result = await db.queryOne('SELECT * FROM tenants WHERE id = ?', [id]);
+  const result = await db.queryOne('SELECT * FROM tenants WHERE id = ? AND site_id = ?', [id, siteId]);
   return result ? mapTenantFromDb(result) : null;
 }
 
 // Users
-export async function getUserByEmail(dbInput: DatabaseInput, email: string): Promise<User & { passwordHash: string } | null> {
+export async function getUserByEmail(dbInput: DatabaseInput, siteId: string, email: string): Promise<User & { passwordHash: string } | null> {
   const db = normalizeDb(dbInput);
-  const result = await db.queryOne('SELECT * FROM users WHERE email = ?', [email]);
+  const result = await db.queryOne('SELECT * FROM users WHERE email = ? AND site_id = ?', [email, siteId]);
   if (!result) return null;
   const row = result as Record<string, unknown>;
   return {
@@ -771,9 +777,9 @@ export async function getUserByEmail(dbInput: DatabaseInput, email: string): Pro
   };
 }
 
-export async function getUserById(dbInput: DatabaseInput, id: string): Promise<User | null> {
+export async function getUserById(dbInput: DatabaseInput, siteId: string, id: string): Promise<User | null> {
   const db = normalizeDb(dbInput);
-  const result = await db.queryOne('SELECT id, email, name, role, created_at, last_login_at FROM users WHERE id = ?', [id]);
+  const result = await db.queryOne('SELECT id, email, name, role, created_at, last_login_at FROM users WHERE id = ? AND site_id = ?', [id, siteId]);
   if (!result) return null;
   const row = result as Record<string, unknown>;
   return {
@@ -786,13 +792,14 @@ export async function getUserById(dbInput: DatabaseInput, id: string): Promise<U
   };
 }
 
-export async function updateUserPassword(dbInput: DatabaseInput, userId: string, passwordHash: string): Promise<void> {
+export async function updateUserPassword(dbInput: DatabaseInput, siteId: string, userId: string, passwordHash: string): Promise<void> {
   const db = normalizeDb(dbInput);
-  await db.execute('UPDATE users SET password_hash = ? WHERE id = ?', [passwordHash, userId]);
+  await db.execute('UPDATE users SET password_hash = ? WHERE id = ? AND site_id = ?', [passwordHash, userId, siteId]);
 }
 
 export async function updateUserProfile(
   dbInput: DatabaseInput,
+  siteId: string,
   userId: string,
   data: { name?: string; email?: string }
 ): Promise<void> {
@@ -801,8 +808,8 @@ export async function updateUserProfile(
   // If email is being updated, check for uniqueness
   if (data.email) {
     const existingUser = await db.queryOne(
-      'SELECT id FROM users WHERE email = ? AND id != ?',
-      [data.email, userId]
+      'SELECT id FROM users WHERE email = ? AND id != ? AND site_id = ?',
+      [data.email, userId, siteId]
     );
     if (existingUser) {
       throw new Error('Email already in use by another account');
@@ -810,7 +817,7 @@ export async function updateUserProfile(
   }
 
   const updates: string[] = [];
-  const params: string[] = [];
+  const params: (string | number)[] = [];
 
   if (data.name !== undefined) {
     updates.push('name = ?');
@@ -825,7 +832,7 @@ export async function updateUserProfile(
   if (updates.length === 0) return;
 
   params.push(userId);
-  await db.execute(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`, params);
+  await db.execute(`UPDATE users SET ${updates.join(', ')} WHERE id = ? AND site_id = ?`, [...params, siteId]);
 }
 
 

@@ -2,6 +2,7 @@ import type { ActionFunctionArgs } from '@remix-run/cloudflare';
 import { json } from '@remix-run/cloudflare';
 import { LeadSubmissionSchema } from '@leaselab/shared-config';
 import { createLead, getPropertyById } from '~/lib/db.server';
+import { getSiteId } from '~/lib/site.server';
 
 export async function action({ request, context }: ActionFunctionArgs) {
   if (request.method !== 'POST') {
@@ -9,6 +10,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
   }
 
   const db = context.cloudflare.env.DB;
+  const siteId = getSiteId(request);
 
   try {
     const body = await request.json();
@@ -24,7 +26,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
     const data = validationResult.data;
 
     // Verify property exists
-    const property = await getPropertyById(db, data.propertyId);
+    const property = await getPropertyById(db, siteId, data.propertyId);
     if (!property) {
       return json(
         { success: false, error: 'Property not found' },
@@ -33,7 +35,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
     }
 
     // Create the lead
-    const lead = await createLead(db, {
+    const lead = await createLead(db, siteId, {
       propertyId: data.propertyId,
       firstName: data.firstName,
       lastName: data.lastName,

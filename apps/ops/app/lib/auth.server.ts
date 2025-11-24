@@ -135,7 +135,8 @@ export function createLogoutCookie(): string {
 export async function requireAuth(
   request: Request,
   dbInput: DatabaseInput,
-  cacheInput: CacheInput
+  cacheInput: CacheInput,
+  siteId: string
 ): Promise<User> {
   const sessionId = getSessionIdFromCookie(request);
 
@@ -148,7 +149,7 @@ export async function requireAuth(
     throw redirect('/login');
   }
 
-  const user = await getUserById(dbInput, session.userId);
+  const user = await getUserById(dbInput, siteId, session.userId);
   if (!user) {
     await deleteSession(cacheInput, sessionId);
     throw redirect('/login');
@@ -160,7 +161,8 @@ export async function requireAuth(
 export async function getOptionalUser(
   request: Request,
   dbInput: DatabaseInput,
-  cacheInput: CacheInput
+  cacheInput: CacheInput,
+  siteId: string
 ): Promise<User | null> {
   const sessionId = getSessionIdFromCookie(request);
   if (!sessionId) return null;
@@ -168,16 +170,17 @@ export async function getOptionalUser(
   const session = await getSession(cacheInput, sessionId);
   if (!session) return null;
 
-  return getUserById(dbInput, session.userId);
+  return getUserById(dbInput, siteId, session.userId);
 }
 
 export async function login(
   dbInput: DatabaseInput,
   cacheInput: CacheInput,
+  siteId: string,
   email: string,
   password: string
 ): Promise<{ sessionId: string; user: User } | null> {
-  const userWithPassword = await getUserByEmail(dbInput, email);
+  const userWithPassword = await getUserByEmail(dbInput, siteId, email);
   if (!userWithPassword) return null;
 
   const isValid = await verifyPassword(password, userWithPassword.passwordHash);
