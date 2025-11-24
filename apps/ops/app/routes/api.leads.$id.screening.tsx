@@ -1,5 +1,5 @@
-import type { ActionFunctionArgs } from '@remix-run/cloudflare';
-import { json } from '@remix-run/cloudflare';
+import type { ActionFunctionArgs } from '@remix-run/node';
+import { json } from '@remix-run/node';
 import { getLeadById, updateLead } from '~/lib/db.server';
 import { generateId } from '@leaselab/shared-utils';
 

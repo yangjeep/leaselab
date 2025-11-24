@@ -1,5 +1,5 @@
-import type { LoaderFunctionArgs, ActionFunctionArgs, MetaFunction } from '@remix-run/cloudflare';
-import { json, redirect } from '@remix-run/cloudflare';
+import type { LoaderFunctionArgs, ActionFunctionArgs, MetaFunction } from '@remix-run/node';
+import { json, redirect } from '@remix-run/node';
 import { useLoaderData, Form, useNavigation } from '@remix-run/react';
 import { getLeadById, getLeadFiles, getAIEvaluation, getPropertyById, updateLead } from '~/lib/db.server';
 import { formatCurrency, formatPhoneNumber } from '@leaselab/shared-utils';

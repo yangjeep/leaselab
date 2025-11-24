@@ -797,6 +797,27 @@ export async function getUserById(dbInput: DatabaseInput, siteId: string, id: st
   };
 }
 
+export async function getUsers(dbInput: DatabaseInput): Promise<User[]> {
+  const db = normalizeDb(dbInput);
+  const results = await db.query(`
+    SELECT id, email, name, role, password_hash, site_id, is_super_admin, created_at, updated_at 
+    FROM users 
+    ORDER BY created_at DESC
+  `);
+
+  return results.map((row: Record<string, unknown>) => ({
+    id: row.id as string,
+    email: row.email as string,
+    name: row.name as string,
+    role: row.role as User['role'],
+    passwordHash: row.password_hash as string,
+    siteId: row.site_id as string,
+    isSuperAdmin: Boolean(row.is_super_admin),
+    createdAt: row.created_at as string,
+    updatedAt: row.updated_at as string,
+  }));
+}
+
 export async function updateUserPassword(dbInput: DatabaseInput, siteId: string, userId: string, passwordHash: string): Promise<void> {
   const db = normalizeDb(dbInput);
   await db.execute('UPDATE users SET password_hash = ? WHERE id = ? AND site_id = ?', [passwordHash, userId, siteId]);

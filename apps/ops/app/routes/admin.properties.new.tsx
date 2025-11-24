@@ -1,5 +1,5 @@
-import type { ActionFunctionArgs, MetaFunction } from '@remix-run/cloudflare';
-import { json, redirect } from '@remix-run/cloudflare';
+import type { ActionFunctionArgs, MetaFunction } from '@remix-run/node';
+import { json, redirect } from '@remix-run/node';
 import { Form, Link, useNavigation, useActionData } from '@remix-run/react';
 import { createProperty } from '~/lib/db.server';
 import { CreatePropertySchema } from '@leaselab/shared-config';

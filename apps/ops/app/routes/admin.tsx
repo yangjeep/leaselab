@@ -1,5 +1,5 @@
-import type { LoaderFunctionArgs } from '@remix-run/cloudflare';
-import { json } from '@remix-run/cloudflare';
+import type { LoaderFunctionArgs } from '@remix-run/node';
+import { json } from '@remix-run/node';
 import { Outlet, Link, useLocation, useLoaderData, Form } from '@remix-run/react';
 import { requireAuth } from '~/lib/auth.server';
 import { getSiteId } from '~/lib/site.server';
@@ -28,6 +28,7 @@ const navItems = [
   { path: '/admin/properties', label: 'Properties', icon: '🏠' },
   { path: '/admin/tenants', label: 'Tenants', icon: '🔑' },
   { path: '/admin/work-orders', label: 'Work Orders', icon: '🔧' },
+  { path: '/admin/users', label: 'Users', icon: '👥' },
   { path: '/admin/settings', label: 'Settings', icon: '⚙️' },
 ];
 

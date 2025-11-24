@@ -1,4 +1,4 @@
-import type { MetaFunction, LoaderFunctionArgs } from "@remix-run/cloudflare";
+import type { MetaFunction, LoaderFunctionArgs } from "@remix-run/node";
 import { Link } from "@remix-run/react";
 
 import { getSiteId } from "~/lib/site.server";

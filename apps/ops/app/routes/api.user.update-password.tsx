@@ -1,5 +1,5 @@
-import type { ActionFunctionArgs } from '@remix-run/cloudflare';
-import { json } from '@remix-run/cloudflare';
+import type { ActionFunctionArgs } from '@remix-run/node';
+import { json } from '@remix-run/node';
 import { requireAuth, hashPassword, verifyPassword } from '~/lib/auth.server';
 import { getUserByEmail, updateUserPassword } from '~/lib/db.server';
 

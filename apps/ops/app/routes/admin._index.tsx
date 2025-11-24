@@ -1,5 +1,5 @@
-import type { LoaderFunctionArgs, MetaFunction } from '@remix-run/cloudflare';
-import { json } from '@remix-run/cloudflare';
+import type { LoaderFunctionArgs, MetaFunction } from '@remix-run/node';
+import { json } from '@remix-run/node';
 import { useLoaderData, Link } from '@remix-run/react';
 import { getLeads, getProperties, getWorkOrders, getTenants } from '~/lib/db.server';
 import { getSiteId } from '~/lib/site.server';

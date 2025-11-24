@@ -1,4 +1,4 @@
-import { json, type ActionFunctionArgs } from '@remix-run/cloudflare';
+import { json, type ActionFunctionArgs } from '@remix-run/node';
 import { updateImage } from '~/lib/db.server';
 import { ReorderImagesSchema } from '@leaselab/shared-config';
 import { getSiteId } from '~/lib/site.server';

@@ -1,5 +1,5 @@
-import type { LoaderFunctionArgs, MetaFunction } from '@remix-run/cloudflare';
-import { json } from '@remix-run/cloudflare';
+import type { LoaderFunctionArgs, MetaFunction } from '@remix-run/node';
+import { json } from '@remix-run/node';
 import { useLoaderData, Link } from '@remix-run/react';
 import { getTenants } from '~/lib/db.server';
 import { formatPhoneNumber } from '@leaselab/shared-utils';

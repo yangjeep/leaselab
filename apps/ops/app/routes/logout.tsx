@@ -1,5 +1,5 @@
-import type { ActionFunctionArgs } from '@remix-run/cloudflare';
-import { redirect } from '@remix-run/cloudflare';
+import type { ActionFunctionArgs } from '@remix-run/node';
+import { redirect } from '@remix-run/node';
 import { logout, createLogoutCookie } from '~/lib/auth.server';
 
 export async function action({ request, context }: ActionFunctionArgs) {

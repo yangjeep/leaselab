@@ -1,4 +1,4 @@
-import { json, type ActionFunctionArgs, type LoaderFunctionArgs } from '@remix-run/cloudflare';
+import { json, type ActionFunctionArgs, type LoaderFunctionArgs } from '@remix-run/node';
 import { getProperties, createProperty } from '~/lib/db.server';
 import { CreatePropertySchema } from '@leaselab/shared-config';
 import { getSiteId } from '~/lib/site.server';

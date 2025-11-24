@@ -1,4 +1,4 @@
-import { json, type LoaderFunctionArgs } from "@remix-run/cloudflare";
+import { json, type LoaderFunctionArgs, type LinksFunction } from "@remix-run/node";
 import {
   Links,
   Meta,
@@ -9,7 +9,6 @@ import {
   isRouteErrorResponse,
   useLoaderData,
 } from "@remix-run/react";
-import type { LinksFunction } from "@remix-run/cloudflare";
 import { getSiteId } from "~/lib/site.server";
 
 import "./tailwind.css";
