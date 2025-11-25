@@ -16,11 +16,11 @@
     "hash-password": "node scripts/hash-password.js"
   },
   "dependencies": {
+    "@leaselab/shared-config": "*",
     "@leaselab/shared-types": "*",
     "@leaselab/shared-utils": "*",
-    "@leaselab/shared-config": "*",
-    "@leaselab/storage-core": "*",
     "@leaselab/storage-cloudflare": "*",
+    "@leaselab/storage-core": "*",
     "@remix-run/cloudflare": "^2.15.0",
     "@remix-run/cloudflare-pages": "^2.15.0",
     "@remix-run/react": "^2.15.0",
@@ -28,6 +28,7 @@
     "openai": "^4.70.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-dropzone": "^14.3.8",
     "zod": "^3.22.4"
   },
   "devDependencies": {
