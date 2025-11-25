@@ -8,7 +8,7 @@ import { SiteSwitcher } from '~/components/SiteSwitcher';
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
   const db = context.cloudflare.env.DB;
-  const kv = context.cloudflare.env.SESSION_STORE;
+  const kv = context.cloudflare.env.SESSION_KV;
   const siteId = getSiteId(request);
 
   const user = await requireAuth(request, db, kv, siteId);

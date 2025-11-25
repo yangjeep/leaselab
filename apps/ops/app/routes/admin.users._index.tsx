@@ -7,7 +7,7 @@ import { getSiteId } from '~/lib/site.server';
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
     const db = context.cloudflare.env.DB;
-    const kv = context.cloudflare.env.SESSION_STORE;
+    const kv = context.cloudflare.env.SESSION_KV;
     const siteId = getSiteId(request);
 
     const currentUser = await requireAuth(request, db, kv, siteId);

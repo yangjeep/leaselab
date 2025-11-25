@@ -16,7 +16,7 @@ export async function loader({ params, request, context }: LoaderFunctionArgs) {
     if (!id) throw new Response('Not found', { status: 404 });
 
     const db = context.cloudflare.env.DB;
-    const kv = context.cloudflare.env.SESSION_STORE;
+    const kv = context.cloudflare.env.SESSION_KV;
     const siteId = getSiteId(request);
 
     const currentUser = await requireAuth(request, db, kv, siteId);
@@ -41,7 +41,7 @@ export async function action({ params, request, context }: ActionFunctionArgs) {
     if (!id) return json({ error: 'User ID required' }, { status: 400 });
 
     const db = context.cloudflare.env.DB;
-    const kv = context.cloudflare.env.SESSION_STORE;
+    const kv = context.cloudflare.env.SESSION_KV;
     const siteId = getSiteId(request);
 
     const currentUser = await requireAuth(request, db, kv, siteId);

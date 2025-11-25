@@ -13,7 +13,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
     }
 
     const db = context.cloudflare.env.DB;
-    const kv = context.cloudflare.env.SESSION_STORE;
+    const kv = context.cloudflare.env.SESSION_KV;
 
     try {
         // Get current user from session
