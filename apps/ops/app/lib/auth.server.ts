@@ -245,11 +245,12 @@ export async function login(
 
   const sessionId = await createSession(cacheInput, userWithPassword.id);
 
+  // TODO: Re-enable last login tracking after verifying column exists
   // Update last login using raw D1 API
-  const d1 = dbInput as D1Database;
-  await d1.prepare('UPDATE users SET last_login_at = ? WHERE id = ?')
-    .bind(new Date().toISOString(), userWithPassword.id)
-    .run();
+  // const d1 = dbInput as D1Database;
+  // await d1.prepare('UPDATE users SET last_login_at = ? WHERE id = ?')
+  //   .bind(new Date().toISOString(), userWithPassword.id)
+  //   .run();
 
   const { passwordHash: _, ...user } = userWithPassword;
   return { sessionId, user };

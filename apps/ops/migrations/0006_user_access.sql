@@ -13,8 +13,8 @@ CREATE TABLE IF NOT EXISTS user_access (
 );
 
 -- Create indexes for user_access
-CREATE INDEX idx_user_access_user ON user_access(user_id);
-CREATE INDEX idx_user_access_site ON user_access(site_id);
+CREATE INDEX IF NOT EXISTS idx_user_access_user ON user_access(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_access_site ON user_access(site_id);
 
 -- Add super admin flag to users table
 ALTER TABLE users ADD COLUMN is_super_admin INTEGER NOT NULL DEFAULT 0;

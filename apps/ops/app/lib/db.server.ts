@@ -763,7 +763,7 @@ export async function getTenantById(dbInput: DatabaseInput, siteId: string, id: 
 // Users
 export async function getUserByEmail(dbInput: DatabaseInput, siteId: string, email: string): Promise<User | null> {
   const db = normalizeDb(dbInput);
-  const result = await db.queryOne('SELECT id, email, name, role, password_hash, site_id, is_super_admin, created_at, updated_at FROM users WHERE email = ? AND site_id = ?', [email, siteId]);
+  const result = await db.queryOne('SELECT id, email, name, role, password_hash, site_id, is_super_admin, created_at FROM users WHERE email = ? AND site_id = ?', [email, siteId]);
   if (!result) return null;
   const row = result as Record<string, unknown>;
   return {
@@ -775,13 +775,13 @@ export async function getUserByEmail(dbInput: DatabaseInput, siteId: string, ema
     siteId: row.site_id as string,
     isSuperAdmin: Boolean(row.is_super_admin),
     createdAt: row.created_at as string,
-    updatedAt: row.updated_at as string,
+    updatedAt: row.created_at as string,
   };
 }
 
 export async function getUserById(dbInput: DatabaseInput, siteId: string, id: string): Promise<User | null> {
   const db = normalizeDb(dbInput);
-  const result = await db.queryOne('SELECT id, email, name, role, password_hash, site_id, is_super_admin, created_at, updated_at FROM users WHERE id = ? AND site_id = ?', [id, siteId]);
+  const result = await db.queryOne('SELECT id, email, name, role, password_hash, site_id, is_super_admin, created_at FROM users WHERE id = ? AND site_id = ?', [id, siteId]);
   if (!result) return null;
   const row = result as Record<string, unknown>;
   return {
@@ -793,7 +793,7 @@ export async function getUserById(dbInput: DatabaseInput, siteId: string, id: st
     siteId: row.site_id as string,
     isSuperAdmin: Boolean(row.is_super_admin),
     createdAt: row.created_at as string,
-    updatedAt: row.updated_at as string,
+    updatedAt: row.created_at as string,
   };
 }
 
