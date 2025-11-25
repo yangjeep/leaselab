@@ -25,7 +25,17 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
     throw new Response('Property not found', { status: 404 });
   }
 
-  return json({ property });
+  // Fetch images for the property
+  const images = await getImagesByEntity(db, siteId, 'property', id);
+
+  // Generate URLs for images
+  const baseUrl = context.cloudflare.env.R2_PUBLIC_URL || '';
+  const imagesWithUrls = images.map(img => ({
+    ...img,
+    url: baseUrl ? `${baseUrl}/${img.r2Key}` : `/api/images/${img.id}/file`,
+  }));
+
+  return json({ property: { ...property, images: imagesWithUrls } });
 }
 
 export async function action({ request, params, context }: ActionFunctionArgs) {
