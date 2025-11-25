@@ -12,6 +12,7 @@ declare module "@remix-run/cloudflare" {
         OPENAI_API_KEY: string;
         SESSION_SECRET: string;
         ENVIRONMENT: string;
+        R2_PUBLIC_URL?: string;
       };
       cf: CfProperties;
       ctx: ExecutionContext;

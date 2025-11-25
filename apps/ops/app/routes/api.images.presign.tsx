@@ -1,6 +1,7 @@
 import { json, type ActionFunctionArgs } from '@remix-run/cloudflare';
 import { ImageUploadPresignSchema } from '@leaselab/shared-config';
-import { generateId } from '@leaselab/shared-utils';
+import { generateR2Key } from '@leaselab/shared-utils';
+import { getSiteId } from '~/lib/site.server';
 
 export async function action({ request, context }: ActionFunctionArgs) {
   if (request.method !== 'POST') {
@@ -8,6 +9,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
   }
 
   try {
+    const siteId = getSiteId(request);
     const body = await request.json();
     const parsed = ImageUploadPresignSchema.safeParse(body);
 
@@ -19,13 +21,10 @@ export async function action({ request, context }: ActionFunctionArgs) {
       }, { status: 400 });
     }
 
-    const { entityType, entityId, filename, contentType, sizeBytes } = parsed.data;
+    const { entityType, entityId, filename, contentType } = parsed.data;
 
-    // Generate unique R2 key
-    const timestamp = Date.now();
-    const uniqueId = generateId('img');
-    const ext = filename.split('.').pop() || 'bin';
-    const r2Key = `${entityType}/${entityId}/${timestamp}-${uniqueId}.${ext}`;
+    // Generate unique R2 key with site_id prefix
+    const r2Key = generateR2Key(siteId, entityType, entityId, filename);
 
     // Get the R2 bucket
     const bucket = context.cloudflare.env.FILE_BUCKET;

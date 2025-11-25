@@ -305,3 +305,6 @@ export async function retry<T>(
 
   throw new Error('Retry failed');
 }
+
+// Export image utilities
+export * from './image';

@@ -12,6 +12,7 @@ declare module "@remix-run/cloudflare" {
         OPS_API_URL: string;
         GOOGLE_MAPS_API_KEY: string;
         ENVIRONMENT: string;
+        R2_PUBLIC_URL?: string;
       };
       cf: CfProperties;
       ctx: ExecutionContext;

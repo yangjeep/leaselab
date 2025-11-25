@@ -1,6 +1,8 @@
 import type { LoaderFunctionArgs } from '@remix-run/cloudflare';
+import { redirect } from '@remix-run/cloudflare';
 import { getImageById } from '~/lib/db.server';
 import { getSiteId } from '~/lib/site.server';
+import { generateImageResizingUrl } from '@leaselab/shared-utils';
 
 export async function loader({ params, context, request }: LoaderFunctionArgs) {
   const db = context.cloudflare.env.DB;
@@ -23,11 +25,36 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
       return new Response('Image not found', { status: 404 });
     }
 
-    // Get from R2
+    // Check for resizing parameters
+    const url = new URL(request.url);
+    const width = url.searchParams.get('width');
+    const height = url.searchParams.get('height');
+    const quality = url.searchParams.get('quality');
+    const fit = url.searchParams.get('fit');
+    const format = url.searchParams.get('format');
+
+    // If we have resizing parameters and a public URL is configured, redirect to Cloudflare Image Resizing
+    const publicUrl = context.cloudflare.env.R2_PUBLIC_URL;
+    if (publicUrl && (width || height || quality || fit || format)) {
+      const resizingUrl = generateImageResizingUrl(
+        publicUrl,
+        image.r2Key,
+        {
+          width: width ? parseInt(width) : undefined,
+          height: height ? parseInt(height) : undefined,
+          quality: quality ? parseInt(quality) : undefined,
+          fit: fit as any,
+          format: format as any,
+        }
+      );
+      return redirect(resizingUrl, { status: 302 });
+    }
+
+    // Otherwise, serve directly from R2
     const object = await bucket.get(image.r2Key);
 
     if (!object) {
-      return new Response('File not found in storage', { status: 404 });
+      return new Response('Image not found in storage', { status: 404 });
     }
 
     // Return the file with appropriate headers
