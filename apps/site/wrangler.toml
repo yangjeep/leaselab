@@ -44,5 +44,5 @@ bucket_name = "leaselab-files"
 
 [env.production.vars]
 ENVIRONMENT = "production"
-# WORKER_URL = "https://crud-worker.your-account.workers.dev"  # Commented out - worker not deployed yet
+WORKER_URL = "crud-worker.yangjeep.workers.dev"  # Commented out - worker not deployed yet
 OPS_API_URL = "https://leaselab-ops.pages.dev"
