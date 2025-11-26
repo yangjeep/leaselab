@@ -1,6 +1,6 @@
-import type { IDatabase, ICache, IObjectStore } from '@leaselab/storage-core';
-import '@leaselab/storage-cloudflare'; // Register Cloudflare providers
-import { createDatabase, createCache, createObjectStore } from '@leaselab/storage-core';
+import type { IDatabase, ICache, IObjectStore } from '~/shared/storage-core';
+import '~/shared/storage-cloudflare'; // Register Cloudflare providers
+import { createDatabase, createCache, createObjectStore } from '~/shared/storage-core';
 
 /**
  * Environment bindings from Cloudflare
@@ -12,7 +12,6 @@ export interface CloudflareEnv {
   OPENAI_API_KEY?: string;
   SESSION_SECRET?: string;
   ENVIRONMENT?: string;
-  }
 }
 
 /**

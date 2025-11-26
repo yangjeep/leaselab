@@ -5,8 +5,8 @@ import type {
   CacheListOptions,
   CacheListResult,
   CacheConfig,
-} from '@leaselab/storage-core';
-import { registerCacheProvider } from '@leaselab/storage-core';
+} from '../storage-core';
+import { registerCacheProvider } from '../storage-core';
 
 /**
  * KV Cache adapter implementing ICache interface

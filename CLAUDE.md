@@ -16,13 +16,16 @@ The repository MUST follow this layout:
 
 leaselab/
 ├─ apps/
-│  ├─ site/        # Storefront (Remix + Cloudflare Pages) – migrated from Next.js
-│  └─ ops/         # Ops backend (Remix + Cloudflare Workers)
+│  ├─ site/        # Storefront (Remix + Cloudflare Pages)
+│  ├─ ops/         # Ops backend (Remix + Cloudflare Workers)
+│  └─ worker/      # Backend API (Hono + Cloudflare Workers)
 │
-├─ packages/
-│  ├─ shared-types/
-│  ├─ shared-utils/
-│  └─ shared-config/
+├─ shared/
+│  ├─ types/           # Shared TypeScript types
+│  ├─ utils/           # Shared utilities
+│  ├─ config/          # Shared configuration and schemas
+│  ├─ storage-core/    # Storage abstraction interfaces
+│  └─ storage-cloudflare/ # Cloudflare storage adapters
 │
 ├─ package.json         # root workspace config
 ├─ turbo.json           # optional (if using TurboRepo)

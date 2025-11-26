@@ -1,8 +1,8 @@
 import type { ActionFunctionArgs } from '@remix-run/cloudflare';
 import { json } from '@remix-run/cloudflare';
-import { FileUploadSchema } from '@leaselab/shared-config';
+import { FileUploadSchema } from '~/shared/config';
 import { getLeadById, createLeadFile, updateLead } from '~/lib/db.server';
-import { generateId } from '@leaselab/shared-utils';
+import { generateId } from '~/shared/utils';
 import { getSiteId } from '~/lib/site.server';
 
 export async function action({ request, params, context }: ActionFunctionArgs) {

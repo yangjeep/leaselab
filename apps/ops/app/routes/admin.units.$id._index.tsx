@@ -2,7 +2,7 @@ import type { LoaderFunctionArgs, ActionFunctionArgs, MetaFunction } from '@remi
 import { json, redirect } from '@remix-run/cloudflare';
 import { useLoaderData, Link, Form, useNavigation } from '@remix-run/react';
 import { getUnitWithDetails, updateUnit, deleteUnit, getUnitHistory, getImagesByEntity, createUnitHistory } from '~/lib/db.server';
-import { formatCurrency } from '@leaselab/shared-utils';
+import { formatCurrency } from '~/shared/utils';
 import { getSiteId } from '~/lib/site.server';
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {

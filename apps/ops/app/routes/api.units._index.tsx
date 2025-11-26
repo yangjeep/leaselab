@@ -1,6 +1,6 @@
 import { json, type ActionFunctionArgs, type LoaderFunctionArgs } from '@remix-run/cloudflare';
 import { getUnits, createUnit } from '~/lib/db.server';
-import { CreateUnitSchema } from '@leaselab/shared-config';
+import { CreateUnitSchema } from '~/shared/config';
 import { getSiteId } from '~/lib/site.server';
 
 export async function loader({ request, context }: LoaderFunctionArgs) {

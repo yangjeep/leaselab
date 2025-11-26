@@ -2,7 +2,7 @@ import type { LoaderFunctionArgs } from '@remix-run/cloudflare';
 import { redirect } from '@remix-run/cloudflare';
 import { getImageById } from '~/lib/db.server';
 import { getSiteId } from '~/lib/site.server';
-import { generateImageResizingUrl } from '@leaselab/shared-utils';
+import { generateImageResizingUrl } from '~/shared/utils';
 
 export async function loader({ params, context, request }: LoaderFunctionArgs) {
   const db = context.cloudflare.env.DB;

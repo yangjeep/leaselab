@@ -7,13 +7,16 @@ AI-First Rental Operations Platform - Monorepo with Remix + Cloudflare
 ```
 leaselab/
 ├── apps/
-│   ├── site/          # Public storefront (Remix + Cloudflare Pages)
-│   └── ops/           # Admin operations backend (Remix + Cloudflare Pages)
-├── packages/
-│   ├── shared-types/  # TypeScript interfaces
-│   ├── shared-utils/  # Utility functions
-│   └── shared-config/ # Schemas, enums, configs
-└── package.json       # Workspace root
+│   ├── site/        # Public storefront (Remix + Cloudflare Pages)
+│   ├── ops/         # Admin dashboard (Remix + Cloudflare Workers)
+│   └── worker/      # Backend API (Hono + Cloudflare Workers)
+├── shared/
+│   ├── types/           # Shared TypeScript types
+│   ├── utils/           # Shared utilities
+│   ├── config/          # Shared configuration and schemas
+│   ├── storage-core/    # Storage abstraction interfaces
+│   └── storage-cloudflare/ # Cloudflare storage adapters
+└── docs/
 ```
 
 ## Prerequisites

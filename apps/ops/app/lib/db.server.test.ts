@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { IDatabase } from '@leaselab/storage-core';
+import type { IDatabase } from '~/shared/storage-core';
 
 // Test the normalizeDb pattern and functions that use it
 // We need to test that functions work with both D1Database and IDatabase

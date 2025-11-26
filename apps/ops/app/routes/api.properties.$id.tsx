@@ -1,6 +1,6 @@
 import { json, type ActionFunctionArgs, type LoaderFunctionArgs } from '@remix-run/cloudflare';
 import { getPropertyWithUnits, updateProperty, deleteProperty } from '~/lib/db.server';
-import { UpdatePropertySchema } from '@leaselab/shared-config';
+import { UpdatePropertySchema } from '~/shared/config';
 import { getSiteId } from '~/lib/site.server';
 
 export async function loader({ params, context, request }: LoaderFunctionArgs) {

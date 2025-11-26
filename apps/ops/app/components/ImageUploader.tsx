@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
-import type { PropertyImage } from '@leaselab/shared-types';
+import type { PropertyImage } from '~/shared/types';
 
 interface ImageUploaderProps {
   entityType: 'property' | 'unit';

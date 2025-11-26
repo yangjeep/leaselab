@@ -3,8 +3,8 @@ import type {
   ITransaction,
   ExecuteResult,
   DatabaseConfig,
-} from '@leaselab/storage-core';
-import { registerDatabaseProvider } from '@leaselab/storage-core';
+} from '../storage-core';
+import { registerDatabaseProvider } from '../storage-core';
 
 /**
  * D1 Database adapter implementing IDatabase interface

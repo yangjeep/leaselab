@@ -1,6 +1,6 @@
 import type { ActionFunctionArgs } from '@remix-run/cloudflare';
 import { json } from '@remix-run/cloudflare';
-import { LeadSubmissionSchema } from '@leaselab/shared-config';
+import { LeadSubmissionSchema } from '~/shared/config';
 import { createLead, getPropertyById } from '~/lib/db.server';
 import { getSiteId } from '~/lib/site.server';
 

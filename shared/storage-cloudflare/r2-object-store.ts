@@ -7,8 +7,8 @@ import type {
   ObjectListResult,
   SignedUrlOptions,
   ObjectStoreConfig,
-} from '@leaselab/storage-core';
-import { registerObjectStoreProvider } from '@leaselab/storage-core';
+} from '../storage-core';
+import { registerObjectStoreProvider } from '../storage-core';
 
 /**
  * R2 Object Store adapter implementing IObjectStore interface

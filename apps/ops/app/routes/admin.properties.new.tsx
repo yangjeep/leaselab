@@ -2,7 +2,7 @@ import type { ActionFunctionArgs, MetaFunction } from '@remix-run/cloudflare';
 import { json, redirect } from '@remix-run/cloudflare';
 import { Form, Link, useNavigation, useActionData } from '@remix-run/react';
 import { createProperty } from '~/lib/db.server';
-import { CreatePropertySchema } from '@leaselab/shared-config';
+import { CreatePropertySchema } from '~/shared/config';
 import { getSiteId } from '~/lib/site.server';
 
 export const meta: MetaFunction = () => {

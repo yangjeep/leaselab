@@ -2,8 +2,8 @@ import type { LoaderFunctionArgs, ActionFunctionArgs, MetaFunction } from '@remi
 import { json, redirect } from '@remix-run/cloudflare';
 import { useLoaderData, Link, Form, useNavigation } from '@remix-run/react';
 import { getPropertyWithUnits, updateProperty, deleteProperty, getImagesByEntity } from '~/lib/db.server';
-import { formatCurrency } from '@leaselab/shared-utils';
-import type { Property, Unit, PropertyImage } from '@leaselab/shared-types';
+import { formatCurrency } from '~/shared/utils';
+import type { Property, Unit, PropertyImage } from '~/shared/types';
 import { getSiteId } from '~/lib/site.server';
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {

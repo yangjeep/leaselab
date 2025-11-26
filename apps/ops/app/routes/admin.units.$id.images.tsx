@@ -4,7 +4,7 @@ import { json } from '@remix-run/cloudflare';
 import { useLoaderData, Link, useRevalidator } from '@remix-run/react';
 import { getUnitById, getPropertyById, getImagesByEntity } from '~/lib/db.server';
 import { ImageUploader } from '~/components/ImageUploader';
-import type { PropertyImage } from '@leaselab/shared-types';
+import type { PropertyImage } from '~/shared/types';
 import { getSiteId } from '~/lib/site.server';
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {

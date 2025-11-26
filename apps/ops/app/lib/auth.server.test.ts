@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { ICache } from '@leaselab/storage-core';
+import type { ICache } from '~/shared/storage-core';
 
 // Test the normalizeCache pattern and session management functions
 

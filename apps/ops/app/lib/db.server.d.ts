@@ -1,5 +1,5 @@
-import type { Lead, LeadFile, LeadAIResult, Property, Tenant, WorkOrder, User, Unit, UnitHistory, PropertyImage, UnitStatus, UnitEventType } from '@leaselab/shared-types';
-import type { IDatabase } from '@leaselab/storage-core';
+import type { Lead, LeadFile, LeadAIResult, Property, Tenant, WorkOrder, User, Unit, UnitHistory, PropertyImage, UnitStatus, UnitEventType } from '~/shared/types';
+import type { IDatabase } from '~/shared/storage-core';
 export type DatabaseInput = D1Database | IDatabase;
 export declare function getLeads(dbInput: DatabaseInput, siteId: string, options?: {
     status?: string;

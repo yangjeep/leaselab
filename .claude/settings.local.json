@@ -9,7 +9,9 @@
       "Bash(npx tsx:*)",
       "Bash(npm run dev:*)",
       "Bash(npx tsc:*)",
-      "Bash(npx wrangler:*)"
+      "Bash(npx wrangler:*)",
+      "Bash(find:*)",
+      "Bash(git -C /Users/yangjeep/ws/yangjeep/leaselab2 status --short)"
     ],
     "deny": [],
     "ask": []

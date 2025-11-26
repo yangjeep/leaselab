@@ -1,9 +1,9 @@
 import type {
     Lead, LeadFile, LeadAIResult, Property, Tenant, Lease, WorkOrder, User,
     Unit, UnitHistory, PropertyImage, UnitStatus, UnitEventType
-} from '@leaselab/shared-types';
-import { generateId } from '@leaselab/shared-utils';
-import type { IDatabase } from '@leaselab/storage-core';
+} from '~/shared/types';
+import { generateId } from '~/shared/utils';
+import type { IDatabase } from '~/shared/storage-core';
 
 // User Access type for multi-tenant management
 export interface UserAccess {

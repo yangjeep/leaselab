@@ -1,7 +1,7 @@
 import type { LoaderFunctionArgs } from '@remix-run/cloudflare';
 import { json } from '@remix-run/cloudflare';
 import { extractBearerToken, validateApiToken } from '~/lib/api-auth.server';
-import type { IDatabase } from '@leaselab/storage-core';
+import type { IDatabase } from '~/shared/storage-core';
 
 /**
  * Public API endpoint for fetching site configuration

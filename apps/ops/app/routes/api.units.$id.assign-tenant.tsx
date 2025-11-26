@@ -1,6 +1,6 @@
 import { json, type ActionFunctionArgs } from '@remix-run/cloudflare';
 import { getUnitById, updateUnit, createUnitHistory, getTenantById } from '~/lib/db.server';
-import { AssignTenantSchema } from '@leaselab/shared-config';
+import { AssignTenantSchema } from '~/shared/config';
 import { getSiteId } from '~/lib/site.server';
 
 export async function action({ request, params, context }: ActionFunctionArgs) {

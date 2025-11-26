@@ -1,6 +1,6 @@
 import { redirect } from '@remix-run/cloudflare';
 import { getUserById, getUserByEmail, type DatabaseInput } from './db.server';
-import type { User } from '@leaselab/shared-types';
+import type { User } from '~/shared/types';
 import {
   createSessionCookie,
   verifySessionCookie,

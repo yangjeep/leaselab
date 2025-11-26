@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react';
-import type { PropertyImage } from '@leaselab/shared-types';
+import type { PropertyImage } from '~/shared/types';
 import {
     generateImageResizingUrl,
     generateImageSrcSet,
     ImageSizePresets,
     type ImageResizingOptions,
-} from '@leaselab/shared-utils';
+} from '~/shared/utils';
 
 interface PropertyImageProps {
     image: PropertyImage | { r2Key: string; url?: string; filename?: string; altText?: string };

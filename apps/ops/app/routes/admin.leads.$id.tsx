@@ -2,7 +2,7 @@ import type { LoaderFunctionArgs, ActionFunctionArgs, MetaFunction } from '@remi
 import { json, redirect } from '@remix-run/cloudflare';
 import { useLoaderData, Form, useNavigation } from '@remix-run/react';
 import { getLeadById, getLeadFiles, getAIEvaluation, getPropertyById, updateLead } from '~/lib/db.server';
-import { formatCurrency, formatPhoneNumber } from '@leaselab/shared-utils';
+import { formatCurrency, formatPhoneNumber } from '~/shared/utils';
 import { getSiteId } from '~/lib/site.server';
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {

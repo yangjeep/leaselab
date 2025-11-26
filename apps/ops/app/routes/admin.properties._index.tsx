@@ -2,7 +2,7 @@ import type { LoaderFunctionArgs, MetaFunction } from '@remix-run/cloudflare';
 import { json } from '@remix-run/cloudflare';
 import { useLoaderData, Link } from '@remix-run/react';
 import { getProperties, getUnitsByPropertyId, getImagesByEntity } from '~/lib/db.server';
-import type { Property, Unit, PropertyImage } from '@leaselab/shared-types';
+import type { Property, Unit, PropertyImage } from '~/shared/types';
 import { getSiteId } from '~/lib/site.server';
 
 export const meta: MetaFunction = () => {

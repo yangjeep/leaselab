@@ -4,7 +4,7 @@ import { useLoaderData, Link, useRevalidator } from '@remix-run/react';
 import { getPropertyById, getImagesByEntity } from '~/lib/db.server';
 import { getSiteId } from '~/lib/site.server';
 import { ImageUploader } from '~/components/ImageUploader';
-import type { PropertyImage } from '@leaselab/shared-types';
+import type { PropertyImage } from '~/shared/types';
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
   return [{ title: data?.property ? `Manage Images - ${data.property.name}` : 'Manage Images' }];

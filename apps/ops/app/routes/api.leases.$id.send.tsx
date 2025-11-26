@@ -1,6 +1,6 @@
 import type { ActionFunctionArgs } from '@remix-run/cloudflare';
 import { json } from '@remix-run/cloudflare';
-import { generateId } from '@leaselab/shared-utils';
+import { generateId } from '~/shared/utils';
 
 // Placeholder for DocuSign integration
 export async function action({ request, params, context }: ActionFunctionArgs) {

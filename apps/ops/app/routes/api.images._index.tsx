@@ -1,6 +1,6 @@
 import { json, type ActionFunctionArgs, type LoaderFunctionArgs } from '@remix-run/cloudflare';
 import { createImage, getImagesByEntity, updateImage, deleteImage } from '~/lib/db.server';
-import { RegisterImageSchema, ReorderImagesSchema } from '@leaselab/shared-config';
+import { RegisterImageSchema, ReorderImagesSchema } from '~/shared/config';
 import { getSiteId } from '~/lib/site.server';
 
 export async function loader({ request, context }: LoaderFunctionArgs) {

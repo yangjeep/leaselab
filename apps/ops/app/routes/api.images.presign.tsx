@@ -1,6 +1,6 @@
 import { json, type ActionFunctionArgs } from '@remix-run/cloudflare';
-import { ImageUploadPresignSchema } from '@leaselab/shared-config';
-import { generateR2Key } from '@leaselab/shared-utils';
+import { ImageUploadPresignSchema } from '~/shared/config';
+import { generateR2Key } from '~/shared/utils';
 import { getSiteId } from '~/lib/site.server';
 
 export async function action({ request, context }: ActionFunctionArgs) {

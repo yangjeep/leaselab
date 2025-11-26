@@ -20,14 +20,14 @@
       "~/*": [
         "./app/*"
       ],
-      "@leaselab/shared-types": [
-        "../../packages/shared-types/src"
+      "~/shared/types": [
+        "../../shared/types"
       ],
-      "@leaselab/shared-utils": [
-        "../../packages/shared-utils/src"
+      "~/shared/utils": [
+        "../../shared/utils"
       ],
-      "@leaselab/shared-config": [
-        "../../packages/shared-config/src"
+      "~/shared/config": [
+        "../../shared/config"
       ]
     }
   },

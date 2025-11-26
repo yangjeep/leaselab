@@ -1,4 +1,4 @@
-import type { IDatabase } from '@leaselab/storage-core';
+import type { IDatabase } from '~/shared/storage-core';
 import type { DatabaseInput } from './db.server';
 import crypto from 'crypto';
 

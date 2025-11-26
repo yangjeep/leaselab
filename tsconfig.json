@@ -18,21 +18,11 @@
     "declarationMap": true,
     "baseUrl": ".",
     "paths": {
-      "@leaselab/shared-types": [
-        "packages/shared-types/src"
-      ],
-      "@leaselab/shared-utils": [
-        "packages/shared-utils/src"
-      ],
-      "@leaselab/shared-config": [
-        "packages/shared-config/src"
-      ],
-      "@leaselab/storage-core": [
-        "packages/storage-core/src"
-      ],
-      "@leaselab/storage-cloudflare": [
-        "packages/storage-cloudflare/src"
-      ]
+      "~/shared/types": ["shared/types"],
+      "~/shared/utils": ["shared/utils"],
+      "~/shared/config": ["shared/config"],
+      "~/shared/storage-core": ["shared/storage-core"],
+      "~/shared/storage-cloudflare": ["shared/storage-cloudflare"]
     }
   },
   "include": [

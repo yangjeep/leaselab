@@ -1,7 +1,7 @@
 import type { ActionFunctionArgs, MetaFunction } from '@remix-run/cloudflare';
 import { json, redirect } from '@remix-run/cloudflare';
 import { Form, Link, useActionData, useNavigation } from '@remix-run/react';
-import { LoginSchema } from '@leaselab/shared-config';
+import { LoginSchema } from '~/shared/config';
 import { login } from '~/lib/auth.server';
 import { createSessionCookieHeader } from '~/lib/session-cookie.server';
 import { getSiteId } from '~/lib/site.server';

@@ -4,7 +4,7 @@ import './kv-cache';
 import './r2-object-store';
 
 // Import createStorageProvider for use in initCloudflareStorage
-import { createStorageProvider } from '@leaselab/storage-core';
+import { createStorageProvider } from '../storage-core';
 
 // Re-export adapter classes
 export { D1Database, D1DatabaseAdapter, createD1Database } from './d1-database';
@@ -21,14 +21,14 @@ export type {
   ObjectStoreConfig,
   StorageConfig,
   StorageProvider,
-} from '@leaselab/storage-core';
+} from '../storage-core';
 
 export {
   createDatabase,
   createCache,
   createObjectStore,
   createStorageProvider,
-} from '@leaselab/storage-core';
+} from '../storage-core';
 
 /**
  * Initialize all Cloudflare storage providers from environment bindings

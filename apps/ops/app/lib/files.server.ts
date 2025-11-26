@@ -1,4 +1,4 @@
-import type { IObjectStore, ObjectGetResult, ObjectListResult } from '@leaselab/storage-core';
+import type { IObjectStore, ObjectGetResult, ObjectListResult } from '~/shared/storage-core';
 
 /**
  * File upload options
