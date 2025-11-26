@@ -2,39 +2,64 @@
 
 ## Overview
 
-The `apps/site` application has been re-architected to be a templated solution that uses a backend API layer (`apps/ops`) for all data access. This provides:
+LeaseLab uses a centralized backend worker (`leaselab-worker`) that handles all database, cache, and storage operations. This provides:
 
-- **Security**: No direct database access from the frontend
+- **Security**: No direct database access from frontend apps
 - **Scalability**: Multiple sites can use the same backend with token-based authentication
 - **Configurability**: Site-specific branding and content stored in the database
 - **Multi-tenancy**: Each site has its own isolated data via `site_id`
+- **Separation of Concerns**: UI apps (site/ops) focus on presentation, worker handles data
 
 ## Architecture
 
 ```
-┌─────────────┐          API Requests          ┌─────────────┐
-│             │  ───────────────────────────▶  │             │
-│  apps/site  │    (Bearer Token Auth)         │  apps/ops   │
-│  (Frontend) │                                 │  (Backend)  │
-│             │  ◀───────────────────────────  │             │
-└─────────────┘          JSON Response         └─────────────┘
-                                                       │
-                                                       │
-                                                       ▼
-                                                ┌─────────────┐
-                                                │ D1 Database │
-                                                │  + R2 Files │
-                                                └─────────────┘
+┌─────────────┐                                    ┌─────────────┐
+│  apps/site  │         /api/public/*              │  apps/ops   │
+│  (Frontend) │──────────(Bearer Token)───────┐    │  (Admin UI) │
+└─────────────┘                               │    └─────────────┘
+                                              │            │
+                                              ▼            │
+                                       ┌──────────────┐    │
+                                       │   leaselab-  │    │
+                                       │    worker    │◄───┤
+                                       │  (Backend)   │    │ /api/ops/*
+                                       └──────────────┘    │ (Session Auth)
+                                              │            │
+                                              ▼            │
+                                       ┌──────────────┐    │
+                                       │ D1 Database  │    │
+                                       │ KV Sessions  │    │
+                                       │  R2 Files    │    │
+                                       └──────────────┘    │
 ```
+
+## Worker vs. Ops
+
+- **leaselab-worker**: Cloudflare Worker that owns all D1/KV/R2 operations
+  - Handles all CRUD operations
+  - Manages file uploads/downloads (R2)
+  - Runs AI evaluation pipeline
+  - Provides both public and ops APIs
+
+- **apps/ops**: Remix app for admin UI only
+  - No direct database access (eventually)
+  - Calls worker APIs for all data operations
+  - Handles authentication and session management
+  - Renders admin interface
 
 ## API Endpoints
 
 ### Public APIs (Token Required)
 
- All public APIs require a Bearer token in the `Authorization` header:
+These endpoints are served by `leaselab-worker` and used by `apps/site`.
 
-```bash Authorization: Bearer <your-api-token>
+All public APIs require a Bearer token in the `Authorization` header:
+
+```bash
+Authorization: Bearer <your-api-token>
 ```
+
+**Base URL**: `https://leaselab-worker.yangjeep.workers.dev` (or use `WORKER_URL` environment variable)
 
 #### 1. **GET /api/public/properties**
 Fetch all properties for the authenticated site.
@@ -121,6 +146,35 @@ Submit a tenant application (already existed, now with token auth).
   "message": "I'm interested..."
 }
 ```
+
+### Ops APIs (Session Auth Required)
+
+These endpoints are served by `leaselab-worker` and used by `apps/ops` admin interface.
+
+All ops APIs require session authentication (cookie or session header).
+
+**Base URL**: `https://leaselab-worker.yangjeep.workers.dev` (or use `WORKER_URL` environment variable)
+
+**Note**: All operations use GET (read) and POST (create/update) only.
+
+**Planned Endpoints** (see [WORKER_MIGRATION.md](./WORKER_MIGRATION.md) for full list):
+
+- `GET /api/ops/properties` - List properties
+- `GET /api/ops/properties/:id` - Get property details
+- `POST /api/ops/properties` - Create or update property
+- `GET /api/ops/units` - List units
+- `GET /api/ops/units/:id` - Get unit details
+- `POST /api/ops/units` - Create or update unit
+- `GET /api/ops/leads` - List leads
+- `GET /api/ops/leads/:id` - Get lead details
+- `POST /api/ops/leads/:id/ai` - Run AI evaluation
+- `POST /api/ops/images/upload` - Upload image to R2
+- `GET /api/ops/images/:id/file` - Download image from R2
+- `GET /api/ops/work-orders` - List work orders
+- `POST /api/ops/work-orders` - Create or update work order
+- And more...
+
+See [WORKER_MIGRATION.md](./WORKER_MIGRATION.md) for the complete migration plan.
 
 ## Token Generation
 

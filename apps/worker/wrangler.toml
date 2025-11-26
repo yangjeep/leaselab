@@ -12,9 +12,8 @@ binding = "DB"
 database_name = "leaselab-db"
 database_id = "850dc940-1021-4c48-8d40-0f18992424ac"
 
-[[kv_namespaces]]
-binding = "SESSION_KV"
-id = "a020a8412719406db3fc3066dc298981"
+# KV binding removed - sessions now use signed cookies in apps/ops
+# Worker only needs D1 and R2
 
 [[r2_buckets]]
 binding = "FILE_BUCKET"

@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(curl:*)",
+      "Bash(npx wrangler deploy)",
+      "Bash(npx wrangler d1 execute:*)",
+      "Bash(node scripts/generate-token.js:*)",
+      "Bash(npx tsx:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

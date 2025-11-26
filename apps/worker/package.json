@@ -9,5 +9,8 @@
     "scripts": {
         "build": "tsc",
         "dev": "wrangler dev"
+    },
+    "dependencies": {
+        "hono": "^4.10.6"
     }
 }
