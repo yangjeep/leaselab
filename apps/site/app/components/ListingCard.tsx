@@ -8,7 +8,8 @@ type ListingCardProps = {
 
 export default function ListingCard({ listing, queryString }: ListingCardProps) {
   const imageSrc = (listing.images && listing.images[0]) || listing.imageUrl || "/placeholder1.jpg";
-  const href = queryString ? `/properties/${listing.slug}?${queryString}` : `/properties/${listing.slug}`;
+  // Link to unit detail by unit ID (listings represent units)
+  const href = queryString ? `/units/${listing.id}?${queryString}` : `/units/${listing.id}`;
 
   return (
     <Link

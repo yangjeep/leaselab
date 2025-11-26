@@ -17,7 +17,8 @@ export const meta: MetaFunction = () => {
 };
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
-  const env = context.cloudflare.env;
+  // Handle both Cloudflare Pages and Vite dev mode
+  const env = context.cloudflare?.env || process.env;
   const url = new URL(request.url);
 
   // Get filter params

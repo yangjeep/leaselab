@@ -122,6 +122,16 @@ export async function fetchSiteConfig(
 }
 
 /**
+ * Fetch a single unit by ID (includes property details)
+ */
+export async function fetchUnitById(
+    env: { WORKER_URL?: string; OPS_API_URL?: string; SITE_API_TOKEN?: string },
+    id: string
+): Promise<any> {
+    return apiRequest<any>(env, `/api/public/units/${id}`);
+}
+
+/**
  * Submit an application with optional file uploads
  */
 export async function submitApplication(

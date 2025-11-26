@@ -6,13 +6,17 @@ declare module "@remix-run/cloudflare" {
   interface AppLoadContext {
     cloudflare: {
       env: {
-        DB: D1Database;
-        SESSION_KV: KVNamespace;
-        FILE_BUCKET: R2Bucket;
-        OPS_API_URL: string;
-        GOOGLE_MAPS_API_KEY: string;
-        ENVIRONMENT: string;
-        R2_PUBLIC_URL?: string;
+        // Worker API configuration
+        WORKER_URL?: string;
+        OPS_API_URL?: string;
+        SITE_API_TOKEN?: string;
+
+        // Other environment variables
+        GOOGLE_MAPS_API_KEY?: string;
+        ENVIRONMENT?: string;
+
+        // NO D1, KV, or R2 bindings!
+        // All data access goes through worker API
       };
       cf: CfProperties;
       ctx: ExecutionContext;

@@ -3,48 +3,24 @@ compatibility_date = "2024-11-01"
 compatibility_flags = ["nodejs_compat"]
 pages_build_output_dir = "./build/client"
 
-# D1 Database (shared with ops)
-[[d1_databases]]
-binding = "DB"
-database_name = "leaselab-db"
-database_id = "850dc940-1021-4c48-8d40-0f18992424ac"
-
-# KV Namespace for sessions (shared with ops)
-[[kv_namespaces]]
-binding = "SESSION_KV"
-id = "a020a8412719406db3fc3066dc298981"
-
-# R2 Bucket for file storage (shared with ops)
-[[r2_buckets]]
-binding = "FILE_BUCKET"
-bucket_name = "leaselab-files"
+# NO D1, KV, or R2 bindings!
+# All data access goes through leaselab-worker API
 
 [vars]
 ENVIRONMENT = "production"
 # Worker for CRUD operations (token-based authentication)
 WORKER_URL = "https://leaselab-worker.yangjeep.workers.dev"
-# SITE_API_TOKEN is set via 'wrangler pages secret put'
+# SITE_API_TOKEN is set via 'wrangler pages secret put SITE_API_TOKEN'
 OPS_API_URL = "https://leaselab-ops.pages.dev"
+# GOOGLE_MAPS_API_KEY is set via 'wrangler pages secret put GOOGLE_MAPS_API_KEY'
 
 # Production environment
 [env.production]
 name = "leaselab-site"
 
-[[env.production.d1_databases]]
-binding = "DB"
-database_name = "leaselab-db"
-database_id = "850dc940-1021-4c48-8d40-0f18992424ac"
-
-[[env.production.kv_namespaces]]
-binding = "SESSION_KV"
-id = "a020a8412719406db3fc3066dc298981"
-
-[[env.production.r2_buckets]]
-binding = "FILE_BUCKET"
-bucket_name = "leaselab-files"
+# NO bindings in production either!
 
 [env.production.vars]
 ENVIRONMENT = "production"
 WORKER_URL = "https://leaselab-worker.yangjeep.workers.dev"
-# SITE_API_TOKEN is set via 'wrangler pages secret put'
 OPS_API_URL = "https://leaselab-ops.pages.dev"

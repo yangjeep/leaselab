@@ -32,8 +32,9 @@ export async function action({ request, context }: ActionFunctionArgs) {
     return json({ error: "Invalid email format" }, { status: 400 });
   }
 
-  // Get Ops API URL from environment
-  const opsApiUrl = context.cloudflare.env.OPS_API_URL;
+  // Handle both Cloudflare Pages and Vite dev mode
+  const env = context.cloudflare?.env || process.env;
+  const opsApiUrl = env.OPS_API_URL;
 
   if (!opsApiUrl) {
     console.error("OPS_API_URL not configured");

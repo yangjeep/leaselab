@@ -6,7 +6,10 @@
       "Bash(npx wrangler deploy)",
       "Bash(npx wrangler d1 execute:*)",
       "Bash(node scripts/generate-token.js:*)",
-      "Bash(npx tsx:*)"
+      "Bash(npx tsx:*)",
+      "Bash(npm run dev:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx wrangler:*)"
     ],
     "deny": [],
     "ask": []

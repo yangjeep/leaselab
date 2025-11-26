@@ -373,6 +373,77 @@ export async function deleteProperty(dbInput: DatabaseInput, siteId: string, id:
   await db.execute('DELETE FROM properties WHERE id = ? AND site_id = ?', [id, siteId]);
 }
 
+// Listings (for storefront - properties with units)
+export async function getPublicListings(dbInput: DatabaseInput, siteId: string, filters?: {
+  city?: string;
+  status?: string;
+}): Promise<any[]> {
+  const db = normalizeDb(dbInput);
+
+  // Query units with property data joined
+  let query = `
+    SELECT
+      u.id as id,
+      u.unit_number,
+      u.bedrooms,
+      u.bathrooms,
+      u.rent_amount as price,
+      u.status,
+      u.sqft,
+      u.features,
+      p.id as property_id,
+      p.name as title,
+      p.slug,
+      p.address,
+      p.city,
+      p.state,
+      p.zip_code as zipCode,
+      p.description,
+      p.amenities,
+      p.latitude as lat,
+      p.longitude as lng
+    FROM units u
+    INNER JOIN properties p ON u.property_id = p.id
+    WHERE u.site_id = ? AND p.site_id = ?
+      AND u.is_active = 1 AND p.is_active = 1
+  `;
+
+  const params: (string | number)[] = [siteId, siteId];
+
+  if (filters?.city) {
+    query += ' AND p.city = ?';
+    params.push(filters.city);
+  }
+  if (filters?.status) {
+    query += ' AND u.status = ?';
+    params.push(filters.status);
+  }
+
+  query += ' ORDER BY p.name, u.unit_number';
+
+  const results = await db.query(query, params);
+
+  // Transform to listing format
+  return results.map((row: any) => ({
+    id: row.id,
+    title: row.title + (row.unit_number !== '1' ? ` - Unit ${row.unit_number}` : ''),
+    slug: row.slug,
+    price: row.price,
+    city: row.city,
+    address: row.address,
+    status: row.status === 'available' ? 'Available' : row.status === 'occupied' ? 'Rented' : 'Pending',
+    bedrooms: row.bedrooms,
+    bathrooms: row.bathrooms,
+    parking: null,
+    pets: null,
+    description: row.description,
+    imageUrl: null,
+    images: [],
+    lat: row.lat,
+    lng: row.lng,
+  }));
+}
+
 // Units
 export async function getUnits(dbInput: DatabaseInput, siteId: string, options?: {
   propertyId?: string;
