@@ -7,12 +7,12 @@ import { createDatabase, createCache, createObjectStore } from '@leaselab/storag
  */
 export interface CloudflareEnv {
   DB: D1Database;
-  // SESSION_KV?: KVNamespace; // Removed to unify on cookie-based approach
   FILE_BUCKET?: R2Bucket;
   R2_PUBLIC_URL?: string;
   OPENAI_API_KEY?: string;
   SESSION_SECRET?: string;
   ENVIRONMENT?: string;
+  }
 }
 
 /**

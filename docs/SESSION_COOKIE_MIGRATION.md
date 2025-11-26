@@ -12,7 +12,7 @@ Migrating from KV-based sessions to signed cookie sessions to eliminate KV depen
 | Session ID | Random UUID | Not needed |
 | Session data | Stored in KV | Encoded in cookie |
 | Lookup cost | KV read on every request | Zero (just verify signature) |
-| Binding needed | Yes (SESSION_KV) | No |
+| Binding needed | Yes (SESSION_SECRET) | No |
 | Monthly cost | ~$0.50+ | $0 |
 
 ## Architecture Change
@@ -230,7 +230,7 @@ export async function requireUser(
 ```typescript
 export async function action({ request, context }: ActionFunctionArgs) {
   const db = context.cloudflare.env.DB;
-  const kv = context.cloudflare.env.SESSION_KV;
+  const secret = context.cloudflare.env.SESSION_SECRET as string;
 
   // ... password validation ...
 
@@ -273,7 +273,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 **Before**:
 ```typescript
 export async function action({ request, context }: ActionFunctionArgs) {
-  const kv = context.cloudflare.env.SESSION_KV;
+  const secret = context.cloudflare.env.SESSION_SECRET as string;
 
   const cookieHeader = request.headers.get('Cookie');
   const sessionId = /* parse session_id */;
@@ -311,7 +311,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 ```typescript
 export async function loader({ request, context }: LoaderFunctionArgs) {
   const db = context.cloudflare.env.DB;
-  const kv = context.cloudflare.env.SESSION_KV;
+  const secret = context.cloudflare.env.SESSION_SECRET as string;
   const siteId = getSiteId(request);
 
   const user = await requireUser(request, db, kv, siteId);
@@ -334,7 +334,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
 ```
 
 **Search and replace across all routes**:
-- Find: `context.cloudflare.env.SESSION_KV`
+- Find: `context.cloudflare.env.SESSION_SECRET`
 - Replace: `context.cloudflare.env.SESSION_SECRET`
 
 ### Step 8: Update Environment Types
@@ -345,7 +345,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
 ```typescript
 interface Env {
   DB: D1Database;
-  SESSION_KV: KVNamespace;
+  // SESSION_KV removed; use SESSION_SECRET instead
   FILE_BUCKET: R2Bucket;
   // ...
 }
@@ -368,7 +368,7 @@ interface Env {
 **Before**:
 ```toml
 [[kv_namespaces]]
-binding = "SESSION_KV"
+binding = "SESSION_SECRET"
 id = "a020a8412719406db3fc3066dc298981"
 ```
 
@@ -389,7 +389,7 @@ id = "a020a8412719406db3fc3066dc298981"
 **Before**:
 ```toml
 [[kv_namespaces]]
-binding = "SESSION_KV"
+binding = "SESSION_SECRET"
 id = "a020a8412719406db3fc3066dc298981"
 ```
 

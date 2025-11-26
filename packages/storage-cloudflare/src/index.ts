@@ -35,7 +35,6 @@ export {
  */
 export function initCloudflareStorage(env: {
   DB?: D1Database;
-  SESSION_KV?: KVNamespace;
   FILE_BUCKET?: R2Bucket;
   R2_PUBLIC_URL?: string;
 }) {
@@ -46,12 +45,7 @@ export function initCloudflareStorage(env: {
           d1Binding: env.DB,
         }
       : undefined,
-    cache: env.SESSION_KV
-      ? {
-          provider: 'cloudflare-kv' as const,
-          kvBinding: env.SESSION_KV,
-        }
-      : undefined,
+    cache: undefined,
     objectStore: env.FILE_BUCKET
       ? {
           provider: 'cloudflare-r2' as const,

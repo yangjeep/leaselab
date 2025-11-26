@@ -35,7 +35,7 @@ All three apps currently share the same bindings:
 - **ID**: `850dc940-1021-4c48-8d40-0f18992424ac`
 
 ### KV Namespace
-- **Binding**: `SESSION_KV`
+- **Binding**: `SESSION_SECRET` (signed cookies)
 - **Name**: Sessions storage
 - **ID**: `a020a8412719406db3fc3066dc298981`
 - **Usage**: User sessions (7-day TTL)
@@ -76,7 +76,7 @@ Based on code analysis, these tables are actively used:
 binding = "DB"  # ⚠️ Should be removed after migration
 
 [[kv_namespaces]]
-binding = "SESSION_KV"  # ⚠️ Not used, should be removed
+binding = "SESSION_SECRET"
 
 [[r2_buckets]]
 binding = "FILE_BUCKET"  # ⚠️ Not used, should be removed
@@ -125,7 +125,7 @@ SITE_API_TOKEN = "set-via-secret"  # Bearer token for worker
 binding = "DB"  # ⚠️ Heavy usage, needs migration
 
 [[kv_namespaces]]
-binding = "SESSION_KV"  # ✅ Keep for sessions (Option A) or migrate (Option B)
+binding = "SESSION_SECRET"  # ✅ Sessions via signed cookies
 
 [[r2_buckets]]
 binding = "FILE_BUCKET"  # ⚠️ Heavy usage, needs migration

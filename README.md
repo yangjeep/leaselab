@@ -97,14 +97,15 @@ database_id = "YOUR_DATABASE_ID_HERE"
 #### Create KV Namespace (for sessions)
 
 ```bash
-wrangler kv:namespace create SESSION_KV
+## Sessions
+Use a signed cookie with `SESSION_SECRET`.
 ```
 
 Update `apps/ops/wrangler.toml` with the namespace ID:
 
 ```toml
 [[kv_namespaces]]
-binding = "SESSION_KV"
+env = "SESSION_SECRET"
 id = "YOUR_KV_NAMESPACE_ID"
 ```
 
@@ -167,7 +168,7 @@ In Cloudflare Dashboard, go to each Pages project's Settings > Functions:
 
 **For leaselab-ops:**
 - D1 Database: `DB` → `leaselab-db`
-- KV Namespace: `SESSION_KV` → your KV namespace
+- Session Secret: `SESSION_SECRET` → long random string
 - R2 Bucket: `FILE_BUCKET` → `leaselab-files`
 
 ### Step 7: Deploy

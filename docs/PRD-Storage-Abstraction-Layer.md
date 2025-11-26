@@ -113,7 +113,7 @@ const config: StorageConfig = {
   cache: {
     provider: process.env.CACHE_PROVIDER || 'cloudflare-kv', // 'kv' | 'redis'
     redisUrl: process.env.REDIS_URL,
-    kvBinding: env.SESSION_KV,
+    // kvBinding removed; sessions use signed cookies
   },
   objectStore: {
     provider: process.env.STORAGE_PROVIDER || 'cloudflare-r2', // 'r2' | 's3'

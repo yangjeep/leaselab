@@ -10,7 +10,7 @@
 
 ### 1. Configure Bindings
 
-Bindings connect your Pages deployment to Cloudflare services (D1, KV, R2).
+Bindings connect your Pages deployment to Cloudflare services (D1, R2). Sessions use a signed cookie.
 
 **Navigate to**: Dashboard → Pages → leaselab-ops → Settings → Functions
 
@@ -21,21 +21,21 @@ Add the following bindings in the **Production** environment:
 - **D1 database**: `leaselab-db`
 - **Database ID**: `850dc940-1021-4c48-8d40-0f18992424ac`
 
-#### KV Namespace
-- **Variable name**: `SESSION_KV`
-- **KV namespace**: Select your namespace
-- **Namespace ID**: `a020a8412719406db3fc3066dc298981`
+#### Session Secret
+- **Environment variable**: `SESSION_SECRET`
+- **Value**: Long random string (32+ chars)
 
 #### R2 Bucket
 - **Variable name**: `FILE_BUCKET`
 - **R2 bucket**: `leaselab-files`
 
-### 2. Environment Variables (Optional)
+### 2. Environment Variables
 
 **Navigate to**: Settings → Environment variables
 
 Add any secrets:
 ```
+SESSION_SECRET = <random-32+>
 OPENAI_API_KEY = <your-key>
 ```
 
@@ -75,7 +75,7 @@ wrangler d1 execute leaselab-db --remote --command="SELECT name FROM sqlite_mast
 
 **Fix**:
 1. Go to Settings → Functions
-2. Add all bindings (DB, SESSION_KV, FILE_BUCKET)
+2. Add all bindings (DB, FILE_BUCKET) and env vars (`SESSION_SECRET`)
 3. Redeploy
 
 ### Database Not Found
@@ -87,11 +87,11 @@ wrangler d1 execute leaselab-db --remote --command="SELECT name FROM sqlite_mast
 npm run db:migrate:prod
 ```
 
-### KV/Session Errors
+### Session Errors
 
-**Cause**: SESSION_KV binding missing
+**Cause**: `SESSION_SECRET` missing or invalid cookie
 
-**Fix**: Add KV binding in dashboard
+**Fix**: Set `SESSION_SECRET` and clear cookies; redeploy
 
 ## Viewing Logs
 
