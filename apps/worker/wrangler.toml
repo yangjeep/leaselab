@@ -19,3 +19,18 @@ database_id = "850dc940-1021-4c48-8d40-0f18992424ac"
 [[r2_buckets]]
 binding = "FILE_BUCKET"
 bucket_name = "leaselab-files"
+
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+persist = true
+invocation_logs = true
+
+[observability.traces]
+enabled = false
+persist = true
+head_sampling_rate = 1

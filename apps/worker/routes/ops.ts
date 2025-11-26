@@ -322,4 +322,30 @@ opsRoutes.post('/work-orders', async (c: Context) => {
   }
 });
 
+// ==================== USERS ====================
+
+/**
+ * POST /api/ops/users/:id/update-login
+ * Update user's last login timestamp
+ */
+opsRoutes.post('/users/:id/update-login', async (c: Context) => {
+  try {
+    const userId = c.req.param('id');
+    
+    await c.env.DB.prepare('UPDATE users SET last_login_at = ? WHERE id = ?')
+      .bind(new Date().toISOString(), userId)
+      .run();
+
+    return c.json({
+      success: true,
+    });
+  } catch (error) {
+    console.error('Error updating last login:', error);
+    return c.json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    }, 500);
+  }
+});
+
 export { opsRoutes };

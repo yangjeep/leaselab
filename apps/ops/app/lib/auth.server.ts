@@ -8,6 +8,7 @@ import {
   clearSessionCookieHeader,
   getSessionCookie,
 } from './session-cookie.server';
+import { updateUserLastLoginToWorker, isWorkerConfigured } from './worker-client';
 
 // Simple password hashing (in production, use bcrypt or argon2)
 export async function hashPassword(password: string): Promise<string> {
@@ -126,8 +127,9 @@ export async function login(
   sessionSecret: string,
   siteId: string,
   email: string,
-  password: string
-): Promise<{ sessionId: string; user: User } | null> {
+  password: string,
+  workerEnv?: { WORKER_URL?: string; WORKER_INTERNAL_KEY?: string }
+): Promise<{ sessionId: string; user: Omit<User, 'passwordHash'> } | null> {
   const userWithPassword = await getUserByEmail(dbInput, siteId, email);
   if (!userWithPassword) return null;
 
@@ -138,17 +140,15 @@ export async function login(
   // Store the user's assigned site_id in the session, not the request's site_id
   const sessionValue = await createSessionCookie({ userId: userWithPassword.id, siteId: userWithPassword.siteId, expiresAt }, sessionSecret);
 
-  // TODO: Re-enable last login tracking after verifying column exists
-  // Update last login using raw D1 API
-  // const d1 = dbInput as D1Database;
-  // await d1.prepare('UPDATE users SET last_login_at = ? WHERE id = ?')
-  //   .bind(new Date().toISOString(), userWithPassword.id)
-  //   .run();
+  // Update last_login_at via worker API
+  if (workerEnv && isWorkerConfigured(workerEnv)) {
+    await updateUserLastLoginToWorker(workerEnv as any, userWithPassword.id);
+  }
 
   const { passwordHash: _, ...user } = userWithPassword;
   return { sessionId: sessionValue, user };
 }
 
-export async function logout(cacheInput: CacheInput, request: Request): Promise<void> {
+export async function logout(request: Request): Promise<void> {
   // Nothing to do server-side for signed cookies
 }

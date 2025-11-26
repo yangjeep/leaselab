@@ -193,3 +193,18 @@ export function getWorkerUrl(env: Partial<WorkerEnv>): string {
   }
   return env.WORKER_URL;
 }
+
+// ==================== USERS ====================
+
+/**
+ * Update user's last login timestamp
+ */
+export async function updateUserLastLoginToWorker(
+  env: WorkerEnv,
+  userId: string
+): Promise<void> {
+  const url = `${env.WORKER_URL}/api/ops/users/${userId}/update-login`;
+  await workerFetch(url, env, {
+    method: 'POST',
+  });
+}

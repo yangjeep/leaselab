@@ -14,6 +14,10 @@ export async function action({ request, context }: ActionFunctionArgs) {
   const db = context.cloudflare.env.DB;
   const secret = context.cloudflare.env.SESSION_SECRET as string;
   const siteId = getSiteId(request);
+  const workerEnv = {
+    WORKER_URL: context.cloudflare.env.WORKER_URL,
+    WORKER_INTERNAL_KEY: context.cloudflare.env.WORKER_INTERNAL_KEY,
+  };
 
   const formData = await request.formData();
   const email = formData.get('email') as string;
@@ -27,7 +31,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
     );
   }
 
-  const result = await login(db, secret, siteId, email, password);
+  const result = await login(db, secret, siteId, email, password, workerEnv);
   if (!result) {
     return json(
       { error: 'Invalid email or password' },
