@@ -1,7 +1,11 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "module": "ESNext",
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
@@ -14,12 +18,25 @@
     "declarationMap": true,
     "baseUrl": ".",
     "paths": {
-      "@leaselab/shared-types": ["packages/shared-types/src"],
-      "@leaselab/shared-utils": ["packages/shared-utils/src"],
-      "@leaselab/shared-config": ["packages/shared-config/src"],
-      "@leaselab/storage-core": ["packages/storage-core/src"],
-      "@leaselab/storage-cloudflare": ["packages/storage-cloudflare/src"]
+      "@leaselab/shared-types": [
+        "packages/shared-types/src"
+      ],
+      "@leaselab/shared-utils": [
+        "packages/shared-utils/src"
+      ],
+      "@leaselab/shared-config": [
+        "packages/shared-config/src"
+      ],
+      "@leaselab/storage-core": [
+        "packages/storage-core/src"
+      ],
+      "@leaselab/storage-cloudflare": [
+        "packages/storage-cloudflare/src"
+      ]
     }
   },
-  "exclude": ["node_modules", "dist", ".next", "build"]
+  "include": [
+    "apps/**/src/**/*.ts",
+    "apps/worker/**/*.ts"
+  ],
 }

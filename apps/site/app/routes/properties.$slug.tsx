@@ -2,8 +2,7 @@ import type { LoaderFunctionArgs, MetaFunction } from "@remix-run/cloudflare";
 import { json } from "@remix-run/cloudflare";
 import { useLoaderData, useSearchParams, Link } from "@remix-run/react";
 import { useState } from "react";
-import { getListingBySlug, getListings } from "~/lib/db.server";
-import { getSiteId } from "~/lib/site.server";
+import { fetchPropertyById, fetchProperties, fetchSiteConfig } from "~/lib/api-client";
 import ListingGallery from "~/components/ListingGallery";
 import TabbedLayout from "~/components/TabbedLayout";
 import ContactForm from "~/components/ContactForm";
@@ -20,27 +19,30 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 };
 
 export async function loader({ params, request, context }: LoaderFunctionArgs) {
-  const db = context.cloudflare.env.DB;
+  const env = context.cloudflare.env;
   const { slug } = params;
-  const siteId = getSiteId(request);
 
   if (!slug) {
     throw new Response("Not Found", { status: 404 });
   }
 
-  const listing = await getListingBySlug(db, slug, siteId);
-  if (!listing) {
+  try {
+    // Fetch data from backend API
+    const [listing, allListings, siteConfig] = await Promise.all([
+      fetchPropertyById(env, slug),
+      fetchProperties(env),
+      fetchSiteConfig(env),
+    ]);
+
+    return json({ listing, allListings, siteConfig });
+  } catch (error) {
+    console.error('Error loading property:', error);
     throw new Response("Property not found", { status: 404 });
   }
-
-  // Get all listings for the contact form dropdown
-  const allListings = await getListings(db, siteId);
-
-  return json({ listing, allListings });
 }
 
 export default function PropertyDetail() {
-  const { listing, allListings } = useLoaderData<typeof loader>();
+  const { listing, allListings, siteConfig } = useLoaderData<typeof loader>();
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState("overview");
 
@@ -122,7 +124,7 @@ export default function PropertyDetail() {
     {
       id: "about",
       label: "About",
-      content: <AboutSection />,
+      content: <AboutSection config={siteConfig} />,
     },
   ];
 

@@ -1,0 +1,13 @@
+{
+    "name": "crud-worker",
+    "main": "worker.ts",
+    "type": "module",
+    "devDependencies": {
+        "@cloudflare/workers-types": "^4.20240903.0",
+        "typescript": "^5.5.4"
+    },
+    "scripts": {
+        "build": "tsc",
+        "dev": "wrangler dev"
+    }
+}

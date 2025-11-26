@@ -1,8 +1,8 @@
 import type { LoaderFunctionArgs, MetaFunction } from "@remix-run/cloudflare";
 import { json } from "@remix-run/cloudflare";
 import { useLoaderData, useSearchParams, Link } from "@remix-run/react";
-import { getListings, applyFilters, sortByStatus } from "~/lib/db.server";
-import { getSiteId } from "~/lib/site.server";
+import { fetchProperties, fetchSiteConfig } from "~/lib/api-client";
+import { applyFilters, sortByStatus } from "~/lib/filters";
 import ListingCard from "~/components/ListingCard";
 import Filters from "~/components/Filters";
 import TabbedLayout from "~/components/TabbedLayout";
@@ -17,9 +17,8 @@ export const meta: MetaFunction = () => {
 };
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
-  const db = context.cloudflare.env.DB;
+  const env = context.cloudflare.env;
   const url = new URL(request.url);
-  const siteId = getSiteId(request);
 
   // Get filter params
   const filters = {
@@ -31,19 +30,30 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
     pet: url.searchParams.get("pet") || undefined,
   };
 
-  const allListings = await getListings(db, siteId);
-  const filtered = applyFilters(allListings, filters);
-  const sorted = sortByStatus(filtered);
+  try {
+    // Fetch data from backend API
+    const [allListings, siteConfig] = await Promise.all([
+      fetchProperties(env, filters),
+      fetchSiteConfig(env),
+    ]);
 
-  return json({
-    listings: sorted,
-    allListings,
-    hasFilters: Object.values(filters).some(Boolean),
-  });
+    const filtered = applyFilters(allListings, filters);
+    const sorted = sortByStatus(filtered);
+
+    return json({
+      listings: sorted,
+      allListings,
+      siteConfig,
+      hasFilters: Object.values(filters).some(Boolean),
+    });
+  } catch (error) {
+    console.error('Error loading data:', error);
+    throw new Response('Failed to load properties', { status: 500 });
+  }
 }
 
 export default function Index() {
-  const { listings, allListings, hasFilters } = useLoaderData<typeof loader>();
+  const { listings, allListings, siteConfig, hasFilters } = useLoaderData<typeof loader>();
   const [searchParams] = useSearchParams();
 
   // Build query string for property links
@@ -127,7 +137,7 @@ export default function Index() {
     {
       id: "about",
       label: "About",
-      content: <AboutSection />,
+      content: <AboutSection config={siteConfig} />,
     },
   ];
 
