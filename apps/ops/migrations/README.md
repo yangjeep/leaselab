@@ -15,7 +15,6 @@ These migrations can be safely re-run multiple times:
 - `0008_api_tokens.sql` - Uses `IF NOT EXISTS`
 - `0010_test_rental_applications.sql` - Uses `INSERT OR IGNORE`
 - `0011_canadian_test_properties.sql` - Uses `UPDATE` (safe to re-run)
-- `0013_lead_notes_history.sql` - Uses `IF NOT EXISTS` and conditional updates
 
 ### Conditionally Idempotent Migrations ⚠️
 These migrations will **fail on re-run** if already applied (expected behavior):
@@ -25,6 +24,7 @@ These migrations will **fail on re-run** if already applied (expected behavior):
 - `0006_user_access.sql` - `ALTER TABLE ADD COLUMN` (fails if column exists)
 - `0009_canadian_format.sql` - `ALTER TABLE RENAME COLUMN` (fails if already renamed)
 - `0012_add_updated_at_to_users.sql` - `ALTER TABLE ADD COLUMN` (fails if column exists)
+- `0013_lead_notes_history.sql` - `ALTER TABLE ADD COLUMN` (fails if columns exist), but table/index creation is idempotent
 
 **Why they fail:** SQLite doesn't support `IF NOT EXISTS` for `ALTER TABLE ADD COLUMN` or conditional column renames. This is **expected** and **safe** - the error indicates the migration was already applied.
 

@@ -19,6 +19,8 @@ import {
   updateUnit,
   getLeads,
   getLeadById,
+  updateLead,
+  getLeadHistory,
   getWorkOrders,
   createWorkOrder,
   updateWorkOrder,
@@ -137,7 +139,7 @@ opsRoutes.get('/units', async (c: Context) => {
     const siteId = c.req.header('X-Site-Id') || 'default';
     const propertyId = c.req.query('propertyId');
 
-    const units = await getUnits(c.env.DB, siteId, propertyId);
+    const units = await getUnits(c.env.DB, siteId, propertyId ? { propertyId } : undefined);
 
     return c.json({
       success: true,
@@ -261,6 +263,62 @@ opsRoutes.get('/leads/:id', async (c: Context) => {
     });
   } catch (error) {
     console.error('Error fetching lead:', error);
+    return c.json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    }, 500);
+  }
+});
+
+/**
+ * GET /api/ops/leads/:id/history
+ * Get history records for a lead
+ */
+opsRoutes.get('/leads/:id/history', async (c: Context) => {
+  try {
+    const siteId = c.req.header('X-Site-Id') || 'default';
+    const id = c.req.param('id');
+
+    const history = await getLeadHistory(c.env.DB, siteId, id);
+
+    return c.json({
+      success: true,
+      data: history,
+    });
+  } catch (error) {
+    console.error('Error fetching lead history:', error);
+    return c.json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    }, 500);
+  }
+});
+
+/**
+ * POST /api/ops/leads/:id/notes
+ * Update landlord and application notes for a lead
+ */
+opsRoutes.post('/leads/:id/notes', async (c: Context) => {
+  try {
+    const siteId = c.req.header('X-Site-Id') || 'default';
+    const id = c.req.param('id');
+    const body = await c.req.json();
+
+    // Update lead with notes (will automatically record history)
+    await updateLead(c.env.DB, siteId, id, {
+      landlordNote: body.landlordNote,
+      applicationNote: body.applicationNote,
+    });
+
+    // Fetch updated lead
+    const updatedLead = await getLeadById(c.env.DB, siteId, id);
+
+    return c.json({
+      success: true,
+      data: updatedLead,
+    });
+  } catch (error) {
+    console.error('Error updating lead notes:', error);
     return c.json({
       error: 'Internal server error',
       message: error instanceof Error ? error.message : 'Unknown error',
