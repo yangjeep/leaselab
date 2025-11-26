@@ -7,7 +7,7 @@ import { createDatabase, createCache, createObjectStore } from '@leaselab/storag
  */
 export interface CloudflareEnv {
   DB: D1Database;
-  SESSION_KV?: KVNamespace;
+  // SESSION_KV?: KVNamespace; // Removed to unify on cookie-based approach
   FILE_BUCKET?: R2Bucket;
   R2_PUBLIC_URL?: string;
   OPENAI_API_KEY?: string;
@@ -33,12 +33,7 @@ export function createStorage(env: CloudflareEnv): Storage {
     d1Binding: env.DB,
   });
 
-  const cache = env.SESSION_KV
-    ? createCache({
-      provider: 'cloudflare-kv',
-      kvBinding: env.SESSION_KV,
-    })
-    : undefined;
+  const cache = undefined; // Unified on cookie-based approach
 
   const objectStore = env.FILE_BUCKET
     ? createObjectStore({
@@ -67,11 +62,7 @@ export function getDatabase(env: CloudflareEnv): IDatabase {
  * Convenience function for routes that only need cache access
  */
 export function getCache(env: CloudflareEnv): ICache | undefined {
-  if (!env.SESSION_KV) return undefined;
-  return createCache({
-    provider: 'cloudflare-kv',
-    kvBinding: env.SESSION_KV,
-  });
+  return undefined; // Unified on cookie-based approach
 }
 
 /**

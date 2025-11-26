@@ -1,12 +1,8 @@
 import type { ActionFunctionArgs } from '@remix-run/cloudflare';
 import { redirect } from '@remix-run/cloudflare';
-import { logout, createLogoutCookie } from '~/lib/auth.server';
+import { createLogoutCookie } from '~/lib/auth.server';
 
-export async function action({ request, context }: ActionFunctionArgs) {
-  const kv = context.cloudflare.env.SESSION_KV;
-
-  await logout(kv, request);
-
+export async function action({ request }: ActionFunctionArgs) {
   return redirect('/login', {
     headers: {
       'Set-Cookie': createLogoutCookie(),

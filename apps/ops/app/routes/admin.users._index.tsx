@@ -7,12 +7,12 @@ import { getSiteId } from '~/lib/site.server';
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
     const db = context.cloudflare.env.DB;
-    const kv = context.cloudflare.env.SESSION_KV;
     const siteId = getSiteId(request);
+    const secret = context.cloudflare.env.SESSION_SECRET as string;
 
-    const currentUser = await requireAuth(request, db, kv, siteId);
+    const currentUser = await requireAuth(request, db, secret, siteId);
 
-    // Only super admins can view user list
+    // Only super admins can view user list (previous working policy)
     if (!currentUser.isSuperAdmin) {
         throw new Response('Unauthorized', { status: 403 });
     }
@@ -50,7 +50,7 @@ export default function UsersIndex() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
-                            {users.map((user) => (
+                            {users.map((user: any) => (
                                 <tr key={user.id} className="hover:bg-gray-50">
                                     <td className="px-6 py-4">
                                         <div>

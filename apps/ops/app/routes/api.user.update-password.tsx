@@ -8,11 +8,11 @@ export async function action({ request, context }: ActionFunctionArgs) {
         return json({ error: 'Method not allowed' }, { status: 405 });
     }
 
-    const db = context.cloudflare.env.DB;
-    const kv = context.cloudflare.env.SESSION_KV;
+        const db = context.env.DB as unknown;
+        const secret = context.env.SESSION_SECRET as string;
 
     // Ensure user is authenticated
-    const user = await requireAuth(request, db, kv);
+        const user = await requireAuth(request, db, secret);
 
     const body = await request.json();
     const { currentPassword, newPassword } = body;
