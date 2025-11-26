@@ -63,8 +63,8 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
       name: formData.get('name') as string,
       address: formData.get('address') as string,
       city: formData.get('city') as string,
-      state: formData.get('state') as string,
-      zipCode: formData.get('zipCode') as string,
+      province: formData.get('province') as string,
+      postalCode: formData.get('postalCode') as string,
       propertyType: formData.get('propertyType') as string,
       description: formData.get('description') as string || undefined,
       yearBuilt: formData.get('yearBuilt') ? parseInt(formData.get('yearBuilt') as string) : undefined,
@@ -96,7 +96,7 @@ export default function PropertyDetail() {
             ← Back to Properties
           </Link>
           <h1 className="text-2xl font-bold text-gray-900">{property.name}</h1>
-          <p className="text-sm text-gray-500">{property.address}, {property.city}, {property.state} {property.zipCode}</p>
+          <p className="text-sm text-gray-500">{property.address}, {property.city}, {property.province} {property.postalCode}</p>
         </div>
         <div className="flex items-center gap-3">
           <Link
@@ -166,22 +166,24 @@ export default function PropertyDetail() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Province</label>
                   <input
                     type="text"
-                    name="state"
-                    defaultValue={property.state}
+                    name="province"
+                    defaultValue={property.province}
                     maxLength={2}
+                    placeholder="ON"
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">ZIP Code</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Postal Code</label>
                   <input
                     type="text"
-                    name="zipCode"
-                    defaultValue={property.zipCode}
+                    name="postalCode"
+                    defaultValue={property.postalCode}
+                    placeholder="M5A 1A1"
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     required
                   />
