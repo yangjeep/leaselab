@@ -152,7 +152,7 @@ function ListView({ properties }: { properties: PropertyWithStats[] }) {
         </thead>
         <tbody className="bg-white divide-y divide-gray-200">
           {properties.map((property) => (
-            <tr key={property.id} className="hover:bg-gray-50">
+            <tr key={property.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => window.location.href = `/admin/properties/${property.id}`}>
               <td className="px-6 py-4 whitespace-nowrap">
                 <div className="flex items-center">
                   <div className="flex-shrink-0 h-12 w-12 rounded-lg overflow-hidden bg-gray-100">
@@ -212,6 +212,7 @@ function ListView({ properties }: { properties: PropertyWithStats[] }) {
                 <Link
                   to={`/admin/properties/${property.id}`}
                   className="text-indigo-600 hover:text-indigo-900"
+                  onClick={(e) => e.stopPropagation()}
                 >
                   View
                 </Link>
