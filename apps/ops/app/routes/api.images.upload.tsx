@@ -16,13 +16,10 @@ export async function action({ request, context }: ActionFunctionArgs) {
   const bucket = context.cloudflare.env.FILE_BUCKET;
 
   if (!bucket) {
-    console.error('[Upload] Storage bucket (FILE_BUCKET) not configured');
     return json({ success: false, error: 'Storage not configured' }, { status: 500 });
   }
 
   try {
-    console.log(`[Upload] Starting upload for key: ${r2Key}, contentType: ${contentType}`);
-
     // Use request.body (ReadableStream) directly for streaming upload
     // This avoids buffering the entire file in memory
     if (!request.body) {
@@ -33,8 +30,6 @@ export async function action({ request, context }: ActionFunctionArgs) {
     const object = await bucket.put(r2Key, request.body, {
       httpMetadata: contentType ? { contentType } : undefined,
     });
-
-    console.log(`[Upload] Upload successful for key: ${r2Key}, version: ${object?.version}`);
 
     return json({
       success: true,
@@ -48,7 +43,6 @@ export async function action({ request, context }: ActionFunctionArgs) {
     return json({
       success: false,
       error: 'Failed to upload file',
-      details: process.env.NODE_ENV === 'development' ? String(error) : undefined
     }, { status: 500 });
   }
 }

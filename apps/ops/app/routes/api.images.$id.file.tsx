@@ -55,7 +55,6 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
     const object = await bucket.get(image.r2Key);
 
     if (!object) {
-      console.warn(`File not found in R2 bucket: ${image.r2Key}`);
       // Return a 1x1 transparent PNG as placeholder
       // 1x1 transparent PNG bytes
       const transparentPng = new Uint8Array([
@@ -87,12 +86,6 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
 
     return new Response(object.body, { headers });
   } catch (error) {
-    console.error('Error serving image:', error);
-    // Return detailed error in development, generic in production
-    const errorMessage = process.env.NODE_ENV === 'development'
-      ? `Failed to serve image: ${error instanceof Error ? error.message : String(error)}`
-      : 'Failed to serve image';
-
-    return new Response(errorMessage, { status: 500 });
+    return new Response('Failed to serve image', { status: 500 });
   }
 }

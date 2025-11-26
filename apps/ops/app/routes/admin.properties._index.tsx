@@ -11,7 +11,7 @@ export const meta: MetaFunction = () => {
 
 type PropertyWithStats = Property & {
   units: Unit[];
-  images: PropertyImage[];
+  images: (PropertyImage & { url: string })[];
   unitCount: number;
   occupiedCount: number;
   vacantCount: number;
@@ -22,12 +22,19 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   const db = context.cloudflare.env.DB;
   const siteId = getSiteId(request);
   const properties = await getProperties(db, siteId);
+  const baseUrl = context.cloudflare.env.R2_PUBLIC_URL || '';
 
   // Fetch units and images for each property
   const propertiesWithStats: PropertyWithStats[] = await Promise.all(
     properties.map(async (property) => {
       const units = await getUnitsByPropertyId(db, siteId, property.id);
-      const images = await getImagesByEntity(db, siteId, 'property', property.id);
+      const rawImages = await getImagesByEntity(db, siteId, 'property', property.id);
+
+      const images = rawImages.map(img => ({
+        ...img,
+        url: baseUrl ? `${baseUrl}/${img.r2Key}` : `/api/images/${img.id}/file`,
+      }));
+
       const occupiedCount = units.filter(u => u.status === 'occupied').length;
       const totalRent = units.reduce((sum, u) => sum + u.rentAmount, 0);
 
