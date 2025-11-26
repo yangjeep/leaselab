@@ -2,6 +2,7 @@ import type { LoaderFunctionArgs, MetaFunction } from "@remix-run/cloudflare";
 import { json } from "@remix-run/cloudflare";
 import { useLoaderData, useSearchParams, Link } from "@remix-run/react";
 import { getListings, applyFilters, sortByStatus } from "~/lib/db.server";
+import { getSiteId } from "~/lib/site.server";
 import ListingCard from "~/components/ListingCard";
 import Filters from "~/components/Filters";
 import TabbedLayout from "~/components/TabbedLayout";
@@ -18,6 +19,7 @@ export const meta: MetaFunction = () => {
 export async function loader({ request, context }: LoaderFunctionArgs) {
   const db = context.cloudflare.env.DB;
   const url = new URL(request.url);
+  const siteId = getSiteId(request);
 
   // Get filter params
   const filters = {
@@ -29,7 +31,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
     pet: url.searchParams.get("pet") || undefined,
   };
 
-  const allListings = await getListings(db);
+  const allListings = await getListings(db, siteId);
   const filtered = applyFilters(allListings, filters);
   const sorted = sortByStatus(filtered);
 

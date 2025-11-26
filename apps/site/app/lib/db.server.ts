@@ -1,6 +1,6 @@
 import type { Listing } from './types';
 
-export async function getListings(db: D1Database): Promise<Listing[]> {
+export async function getListings(db: D1Database, siteId: string): Promise<Listing[]> {
   try {
     const result = await db.prepare(`
       SELECT
@@ -20,6 +20,7 @@ export async function getListings(db: D1Database): Promise<Listing[]> {
         available_date,
         status
       FROM properties
+      WHERE site_id = ?
       ORDER BY
         CASE status
           WHEN 'available' THEN 1
@@ -28,7 +29,7 @@ export async function getListings(db: D1Database): Promise<Listing[]> {
           ELSE 4
         END,
         created_at DESC
-    `).all();
+    `).bind(siteId).all();
 
     return result.results.map(mapPropertyToListing);
   } catch (error) {
@@ -37,7 +38,7 @@ export async function getListings(db: D1Database): Promise<Listing[]> {
   }
 }
 
-export async function getListingBySlug(db: D1Database, slug: string): Promise<Listing | null> {
+export async function getListingBySlug(db: D1Database, slug: string, siteId: string): Promise<Listing | null> {
   try {
     // Slug is the ID in our case
     const result = await db.prepare(`
@@ -58,8 +59,8 @@ export async function getListingBySlug(db: D1Database, slug: string): Promise<Li
         available_date,
         status
       FROM properties
-      WHERE id = ?
-    `).bind(slug).first();
+      WHERE id = ? AND site_id = ?
+    `).bind(slug, siteId).first();
 
     if (!result) return null;
     return mapPropertyToListing(result);

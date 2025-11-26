@@ -3,6 +3,7 @@ import { json } from "@remix-run/cloudflare";
 import { useLoaderData, useSearchParams, Link } from "@remix-run/react";
 import { useState } from "react";
 import { getListingBySlug, getListings } from "~/lib/db.server";
+import { getSiteId } from "~/lib/site.server";
 import ListingGallery from "~/components/ListingGallery";
 import TabbedLayout from "~/components/TabbedLayout";
 import ContactForm from "~/components/ContactForm";
@@ -18,21 +19,22 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
   ];
 };
 
-export async function loader({ params, context }: LoaderFunctionArgs) {
+export async function loader({ params, request, context }: LoaderFunctionArgs) {
   const db = context.cloudflare.env.DB;
   const { slug } = params;
+  const siteId = getSiteId(request);
 
   if (!slug) {
     throw new Response("Not Found", { status: 404 });
   }
 
-  const listing = await getListingBySlug(db, slug);
+  const listing = await getListingBySlug(db, slug, siteId);
   if (!listing) {
     throw new Response("Property not found", { status: 404 });
   }
 
   // Get all listings for the contact form dropdown
-  const allListings = await getListings(db);
+  const allListings = await getListings(db, siteId);
 
   return json({ listing, allListings });
 }

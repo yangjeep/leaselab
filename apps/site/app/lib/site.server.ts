@@ -19,6 +19,11 @@ export function getSiteId(request: Request): string {
         return 'default';
     }
 
+    // Cloudflare Pages deployment handling (*.pages.dev)
+    if (hostname.endsWith('.pages.dev')) {
+        return 'default';
+    }
+
     // Split by dot
     const parts = hostname.split('.');
 
