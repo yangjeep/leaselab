@@ -46,9 +46,9 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
       siteConfig,
       hasFilters: Object.values(filters).some(Boolean),
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error loading data:', error);
-    throw new Response('Failed to load properties', { status: 500 });
+    return new Response(`Failed to load properties: ${error.message || error}`, { status: 500 });
   }
 }
 

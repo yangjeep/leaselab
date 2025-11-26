@@ -41,7 +41,10 @@ export default {
         }
 
         const url = new URL(request.url);
-        const pathname = url.pathname.replace(/^\//, ""); // e.g. "properties"
+        // Normalize pathname: remove leading slash and optional /api/public prefix
+        const pathname = url.pathname
+            .replace(/^\//, "")
+            .replace(/^api\/public\//, "");
         const method = request.method.toUpperCase();
 
         try {
