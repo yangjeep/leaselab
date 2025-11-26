@@ -11,10 +11,7 @@ binding = "DB"
 database_name = "leaselab-db"
 database_id = "850dc940-1021-4c48-8d40-0f18992424ac"
 
-# KV Namespace for sessions
-[[kv_namespaces]]
-binding = "SESSION_KV"
-id = "a020a8412719406db3fc3066dc298981"
+# KV binding removed — using signed cookies
 
 # R2 Bucket for file storage
 [[r2_buckets]]
@@ -40,9 +37,7 @@ binding = "DB"
 database_name = "leaselab-db"
 database_id = "850dc940-1021-4c48-8d40-0f18992424ac"
 
-[[env.production.kv_namespaces]]
-binding = "SESSION_KV"
-id = "a020a8412719406db3fc3066dc298981"
+# No KV namespaces in production either
 
 [[env.production.r2_buckets]]
 binding = "FILE_BUCKET"

@@ -13,7 +13,7 @@ export const meta: MetaFunction = () => {
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
   const siteId = getSiteId(request);
-  const user = await getOptionalUser(request, context.cloudflare.env.DB, context.cloudflare.env.KV, siteId);
+  const user = await getOptionalUser(request, context.cloudflare.env.DB, context.cloudflare.env.SESSION_SECRET as string, siteId);
   return null;
 }
 

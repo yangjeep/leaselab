@@ -1,8 +1,7 @@
 import type { ActionFunctionArgs } from '@remix-run/cloudflare';
 import { json } from '@remix-run/cloudflare';
-import { setActiveSite } from '~/lib/auth.server';
+import { setActiveSite, getOptionalUser } from '~/lib/auth.server';
 import { userHasAccessToSite, getUserAccessibleSites } from '~/lib/db.server';
-import { getSessionIdFromCookie, getSession } from '~/lib/auth.server';
 
 /**
  * API route for super admins to switch their active site
@@ -13,30 +12,25 @@ export async function action({ request, context }: ActionFunctionArgs) {
     }
 
     const db = context.cloudflare.env.DB;
-    const kv = context.cloudflare.env.SESSION_KV;
+    const secret = context.cloudflare.env.SESSION_SECRET as string;
 
     try {
         // Get current user from session
-        const sessionId = getSessionIdFromCookie(request);
-        if (!sessionId) {
-            return json({ success: false, error: 'Unauthorized' }, { status: 401 });
-        }
-
-        const session = await getSession(kv, sessionId);
-        if (!session) {
+        const siteIdFromReq = (await request.json()).siteId as string | undefined;
+        const user = await getOptionalUser(request, db, secret, siteIdFromReq || '');
+        if (!user) {
             return json({ success: false, error: 'Unauthorized' }, { status: 401 });
         }
 
         // Get requested site from body
-        const body = await request.json();
-        const { siteId } = body;
+        const siteId = siteIdFromReq;
 
         if (!siteId || typeof siteId !== 'string') {
             return json({ success: false, error: 'siteId is required' }, { status: 400 });
         }
 
         // Verify user has access to this site
-        const hasAccess = await userHasAccessToSite(db, session.userId, siteId);
+        const hasAccess = await userHasAccessToSite(db, user.id, siteId);
         if (!hasAccess) {
             return json({
                 success: false,
@@ -45,10 +39,10 @@ export async function action({ request, context }: ActionFunctionArgs) {
         }
 
         // Set active site in session
-        await setActiveSite(request, kv, siteId);
+        await setActiveSite(request, undefined, siteId);
 
         // Return available sites for UI update
-        const accessibleSites = await getUserAccessibleSites(db, session.userId);
+        const accessibleSites = await getUserAccessibleSites(db, user.id);
 
         return json({
             success: true,

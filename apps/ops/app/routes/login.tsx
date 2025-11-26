@@ -2,7 +2,8 @@ import type { ActionFunctionArgs, MetaFunction } from '@remix-run/cloudflare';
 import { json, redirect } from '@remix-run/cloudflare';
 import { Form, Link, useActionData, useNavigation } from '@remix-run/react';
 import { LoginSchema } from '@leaselab/shared-config';
-import { login, createSessionCookie } from '~/lib/auth.server';
+import { login } from '~/lib/auth.server';
+import { createSessionCookieHeader } from '~/lib/session-cookie.server';
 import { getSiteId } from '~/lib/site.server';
 
 export const meta: MetaFunction = () => {
@@ -11,7 +12,7 @@ export const meta: MetaFunction = () => {
 
 export async function action({ request, context }: ActionFunctionArgs) {
   const db = context.cloudflare.env.DB;
-  const kv = context.cloudflare.env.SESSION_KV;
+  const secret = context.cloudflare.env.SESSION_SECRET as string;
   const siteId = getSiteId(request);
 
   const formData = await request.formData();
@@ -26,7 +27,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
     );
   }
 
-  const result = await login(db, kv, siteId, email, password);
+  const result = await login(db, secret, siteId, email, password);
   if (!result) {
     return json(
       { error: 'Invalid email or password' },
@@ -34,9 +35,10 @@ export async function action({ request, context }: ActionFunctionArgs) {
     );
   }
 
+  const setCookie = createSessionCookieHeader(result.sessionId);
   return redirect('/admin', {
     headers: {
-      'Set-Cookie': createSessionCookie(result.sessionId),
+      'Set-Cookie': setCookie,
     },
   });
 }

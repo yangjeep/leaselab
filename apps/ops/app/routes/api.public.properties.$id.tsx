@@ -1,5 +1,5 @@
-import type { LoaderFunctionArgs } from '@remix-run/cloudflare';
-<parameter name="json } from '@remix-run/cloudflare';
+import type { LoaderFunctionArgs, ActionFunctionArgs } from '@remix-run/cloudflare';
+import { json } from '@remix-run/cloudflare';
 import { extractBearerToken, validateApiToken } from '~/lib/api-auth.server';
 import { getPropertyById } from '~/lib/db.server';
 
@@ -116,7 +116,7 @@ export async function loader({ params, request, context }: LoaderFunctionArgs) {
 }
 
 // Handle CORS preflight
-export async function action({ request }: LoaderFunctionArgs) {
+export async function action({ request }: ActionFunctionArgs) {
   if (request.method === 'OPTIONS') {
     return new Response(null, {
       headers: {

@@ -6,9 +6,9 @@ declare module "@remix-run/cloudflare" {
   interface AppLoadContext {
     cloudflare: {
       env: {
-        DB: D1Database;
-        SESSION_KV: KVNamespace;
-        FILE_BUCKET: R2Bucket;
+          DB: D1Database;
+          SESSION_SECRET: string;
+          FILE_BUCKET: R2Bucket;
         OPENAI_API_KEY: string;
         SESSION_SECRET: string;
         ENVIRONMENT: string;

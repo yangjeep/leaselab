@@ -8,10 +8,10 @@ import { SiteSwitcher } from '~/components/SiteSwitcher';
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
   const db = context.cloudflare.env.DB;
-  const kv = context.cloudflare.env.SESSION_KV;
+  const secret = context.cloudflare.env.SESSION_SECRET as string;
   const siteId = getSiteId(request);
 
-  const user = await requireAuth(request, db, kv, siteId);
+  const user = await requireAuth(request, db, secret, siteId);
 
   // Get available sites for super admins
   let availableSites: AccessibleSite[] = [];
