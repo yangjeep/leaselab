@@ -184,7 +184,6 @@ describe('Lead Operations', () => {
       status: 'new',
       ai_score: 85,
       landlord_note: 'Internal note',
-      application_note: 'Processing note',
       created_at: '2024-01-01T00:00:00Z',
       updated_at: '2024-01-01T00:00:00Z',
     };
@@ -201,7 +200,6 @@ describe('Lead Operations', () => {
       status: dbRow.status,
       aiScore: dbRow.ai_score,
       landlordNote: dbRow.landlord_note,
-      applicationNote: dbRow.application_note,
       createdAt: dbRow.created_at,
       updatedAt: dbRow.updated_at,
     };

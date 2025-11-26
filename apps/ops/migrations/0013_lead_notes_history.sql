@@ -1,14 +1,12 @@
 -- Migration: Lead Notes & History
 -- Date: 2025-11-26
--- Description: Add landlord/application notes fields and history tracking for leads
+-- Description: Add landlord notes field and history tracking for leads
 
--- ==================== STEP 1: Add note columns to leads table ====================
+-- ==================== STEP 1: Add note column to leads table ====================
 
 -- Add landlord_note column (internal notes for landlord/admin)
+-- NOTE: If this migration was already run, this will fail (expected in SQLite)
 ALTER TABLE leads ADD COLUMN landlord_note TEXT;
-
--- Add application_note column (additional processing notes)
-ALTER TABLE leads ADD COLUMN application_note TEXT;
 
 -- ==================== STEP 2: Create lead_history table ====================
 

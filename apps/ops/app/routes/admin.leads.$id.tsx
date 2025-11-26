@@ -54,10 +54,8 @@ export async function action({ params, request, context }: ActionFunctionArgs) {
 
   if (action === 'updateNotes') {
     const landlordNote = formData.get('landlordNote') as string | null;
-    const applicationNote = formData.get('applicationNote') as string | null;
     await updateLead(db, siteId, leadId, {
       landlordNote: landlordNote || undefined,
-      applicationNote: applicationNote || undefined,
     });
     return json({ success: true });
   }
@@ -156,12 +154,6 @@ export default function LeadDetail() {
                 <dd className="text-sm text-gray-900 mt-1 whitespace-pre-wrap">{lead.landlordNote}</dd>
               </div>
             )}
-            {lead.applicationNote && (
-              <div>
-                <dt className="text-sm font-medium text-gray-500">Application Note</dt>
-                <dd className="text-sm text-gray-900 mt-1 whitespace-pre-wrap">{lead.applicationNote}</dd>
-              </div>
-            )}
 
             {/* Current Address */}
             {lead.currentAddress && (
@@ -206,10 +198,6 @@ export default function LeadDetail() {
               <div>
                 <label htmlFor="landlordNote" className="text-sm font-medium text-gray-700">Landlord Note</label>
                 <textarea id="landlordNote" name="landlordNote" rows={4} className="input w-full mt-1" defaultValue={lead.landlordNote || ''} />
-              </div>
-              <div>
-                <label htmlFor="applicationNote" className="text-sm font-medium text-gray-700">Application Note</label>
-                <textarea id="applicationNote" name="applicationNote" rows={4} className="input w-full mt-1" defaultValue={lead.applicationNote || ''} />
               </div>
               <button type="submit" className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700">Save Notes</button>
             </form>

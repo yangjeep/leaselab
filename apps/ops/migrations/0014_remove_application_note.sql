@@ -1,0 +1,37 @@
+-- Migration: Remove Application Note Column
+-- Date: 2025-11-26
+-- Description: Document removal of application_note from application code
+-- Reason: No use case for separate application note; landlord_note is sufficient
+
+-- ==================== MIGRATION STRATEGY ====================
+-- 
+-- The application_note column physically exists in the database but is now
+-- deprecated and unused in application code. 
+--
+-- APPROACH: Leave column in database, remove from code (already done)
+--
+-- Why not drop the column?
+-- 1. SQLite requires table rebuild pattern which is risky with foreign keys
+-- 2. Column doesn't hurt anything being there (just wastes minimal space)
+-- 3. Safer to leave it and simply not use it in application code
+--
+-- Code changes already completed:
+-- - Removed from Lead interface (shared/types/index.ts)
+-- - Removed from updateLead() (apps/ops/app/lib/db.server.ts)  
+-- - Removed from mapLeadFromDb() (apps/ops/app/lib/db.server.ts)
+-- - Removed from worker API routes (apps/worker/routes/ops.ts)
+-- - Removed from UI forms and displays (apps/ops/app/routes/admin.leads.$id.tsx)
+-- - Removed from SQL schema config (shared/config/index.ts)
+-- - Removed from tests (apps/ops/app/lib/db.server.test.ts)
+--
+-- The column will remain in the database as a deprecated field.
+-- If needed in the future, a more complex migration can remove it via:
+-- 1. Backup data
+-- 2. Drop all dependent tables (lead_files, lead_history, etc.)
+-- 3. Rebuild leads table without application_note
+-- 4. Recreate dependent tables
+-- 5. Restore data
+--
+-- For now, this no-op migration documents the decision.
+
+-- No SQL operations needed - column exists but is ignored by application code

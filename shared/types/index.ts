@@ -118,7 +118,6 @@ export interface Lead {
   aiScore?: number;
   aiLabel?: AILabel;
   landlordNote?: string; // Internal-only notes (includes legacy income info)
-  applicationNote?: string; // Additional application processing notes
   createdAt: string;
   updatedAt: string;
   // Computed fields (from joins)

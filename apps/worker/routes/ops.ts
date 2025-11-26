@@ -307,7 +307,6 @@ opsRoutes.post('/leads/:id/notes', async (c: Context) => {
     // Update lead with notes (will automatically record history)
     await updateLead(c.env.DB, siteId, id, {
       landlordNote: body.landlordNote,
-      applicationNote: body.applicationNote,
     });
 
     // Fetch updated lead

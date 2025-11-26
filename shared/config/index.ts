@@ -373,7 +373,6 @@ export const SQL_SCHEMAS = {
       ai_score INTEGER,
       ai_label TEXT,
       landlord_note TEXT,
-      application_note TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now')),
       FOREIGN KEY (property_id) REFERENCES properties(id)

@@ -15,6 +15,7 @@ These migrations can be safely re-run multiple times:
 - `0008_api_tokens.sql` - Uses `IF NOT EXISTS`
 - `0010_test_rental_applications.sql` - Uses `INSERT OR IGNORE`
 - `0011_canadian_test_properties.sql` - Uses `UPDATE` (safe to re-run)
+- `0014_remove_application_note.sql` - No-op documentation migration (safe to re-run)
 
 ### Conditionally Idempotent Migrations ⚠️
 These migrations will **fail on re-run** if already applied (expected behavior):

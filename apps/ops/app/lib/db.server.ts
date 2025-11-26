@@ -155,10 +155,6 @@ export async function updateLead(dbInput: DatabaseInput, siteId: string, id: str
     updates.push('landlord_note = ?');
     params.push(data.landlordNote || null);
   }
-  if (data.applicationNote !== undefined) {
-    updates.push('application_note = ?');
-    params.push(data.applicationNote || null);
-  }
 
   if (updates.length === 0) return;
 
@@ -994,7 +990,6 @@ function mapLeadFromDb(row: unknown): Lead {
     aiScore: r.ai_score as number | undefined,
     aiLabel: r.ai_label as Lead['aiLabel'] | undefined,
     landlordNote: r.landlord_note as string | undefined,
-    applicationNote: r.application_note as string | undefined,
     createdAt: r.created_at as string,
     updatedAt: r.updated_at as string,
   };
