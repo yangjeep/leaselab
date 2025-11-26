@@ -21,10 +21,15 @@ export default function Filters({ allListings }: FiltersProps) {
     setSearchParams(params);
   };
 
+  const handleReset = () => {
+    setSearchParams(new URLSearchParams());
+  };
+
   return (
     <div className="card p-4">
-      {/* Full-width evenly spaced filters */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+      {/* Full-width evenly spaced filters with Reset button */}
+      <div className="flex items-end gap-4">
+        <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         {/* City Filter */}
         <div className="flex flex-col gap-1">
           <label className="label">City</label>
@@ -103,6 +108,13 @@ export default function Filters({ allListings }: FiltersProps) {
             <option value="Rented">Rented</option>
           </select>
         </div>
+        </div>
+        <button
+          onClick={handleReset}
+          className="btn bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg whitespace-nowrap"
+        >
+          Reset
+        </button>
       </div>
     </div>
   );

@@ -6,14 +6,15 @@ compatibility_flags = ["nodejs_compat"]
 main = "worker.ts"
 type = "javascript"
 
+# Environment variables
+[vars]
+R2_PUBLIC_URL = "https://pub-9c388444983e4f50aa4035f40026bfa0.r2.dev"
+
 # Bindings (same as ops)
 [[d1_databases]]
 binding = "DB"
 database_name = "leaselab-db"
 database_id = "850dc940-1021-4c48-8d40-0f18992424ac"
-
-# KV binding removed - sessions now use signed cookies in apps/ops
-# Worker only needs D1 and R2
 
 [[r2_buckets]]
 binding = "FILE_BUCKET"

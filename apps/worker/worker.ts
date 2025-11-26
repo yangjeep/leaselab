@@ -21,6 +21,7 @@ export interface Env {
   FILE_BUCKET: R2Bucket;
   OPENAI_API_KEY: string;
   WORKER_INTERNAL_KEY?: string;
+  R2_PUBLIC_URL?: string;
 }
 
 // Create Hono app with typed bindings

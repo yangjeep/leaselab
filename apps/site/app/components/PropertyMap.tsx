@@ -27,6 +27,7 @@ export default function PropertyMap({
 }) {
   const mapRef = useRef<HTMLDivElement | null>(null);
   const mapInstance = useRef<any | null>(null);
+  const markersRef = useRef<any[]>([]);
   const [ready, setReady] = useState<boolean>(false);
 
   // Compute initial center
@@ -72,6 +73,14 @@ export default function PropertyMap({
 
     // Place markers using geocoded addresses (ignore lat/lng entirely)
     (async () => {
+      // Clear any existing markers when listings change
+      if (markersRef.current.length) {
+        for (const m of markersRef.current) {
+          m.setMap(null);
+        }
+        markersRef.current = [];
+      }
+
       const positions: Array<{ listing: Listing; pos: { lat: number; lng: number } }> = [];
       for (const listing of listings) {
         if (!apiKey) continue;
@@ -103,6 +112,9 @@ export default function PropertyMap({
           map,
           title: listing.title,
         });
+
+        // Track marker so we can remove it on next update
+        markersRef.current.push(marker);
 
         const detailUrl = `/properties/${listing.slug}`;
         const content = `

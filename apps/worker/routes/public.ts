@@ -20,6 +20,7 @@ import {
 type Bindings = {
   DB: D1Database;
   FILE_BUCKET: R2Bucket;
+  R2_PUBLIC_URL?: string;
 };
 
 const publicRoutes = new Hono<{ Bindings: Bindings }>();
@@ -45,7 +46,7 @@ publicRoutes.get('/properties', async (c: Context) => {
     if (city) filters.city = city;
     if (status) filters.status = status;
 
-    const listings = await getPublicListings(c.env.DB, siteId, filters);
+    const listings = await getPublicListings(c.env.DB, siteId, filters, c.env.R2_PUBLIC_URL);
 
     return c.json({
       success: true,

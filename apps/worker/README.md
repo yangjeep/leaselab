@@ -61,7 +61,16 @@ npx wrangler secret put OPENAI_API_KEY
 
 # Optional: For internal ops→worker auth (if using keyMiddleware)
 npx wrangler secret put WORKER_INTERNAL_KEY
+
+# R2 public URL for serving images (required for image display)
+# Example: https://files.yourdomain.com or https://pub-xxxxx.r2.dev
+npx wrangler secret put R2_PUBLIC_URL
 ```
+
+**Setting up R2 Public Access:**
+1. Enable public access on your R2 bucket via Cloudflare dashboard
+2. Set custom domain or use the default `r2.dev` URL
+3. Configure `R2_PUBLIC_URL` to point to your public R2 endpoint
 
 ## Bindings
 

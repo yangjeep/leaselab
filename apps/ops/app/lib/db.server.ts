@@ -377,7 +377,7 @@ export async function deleteProperty(dbInput: DatabaseInput, siteId: string, id:
 export async function getPublicListings(dbInput: DatabaseInput, siteId: string, filters?: {
   city?: string;
   status?: string;
-}): Promise<any[]> {
+}, r2PublicUrl?: string): Promise<any[]> {
   const db = normalizeDb(dbInput);
 
   // Query units with property data joined
@@ -423,25 +423,40 @@ export async function getPublicListings(dbInput: DatabaseInput, siteId: string, 
 
   const results = await db.query(query, params);
 
-  // Transform to listing format
-  return results.map((row: any) => ({
-    id: row.id,
-    title: row.title + (row.unit_number !== '1' ? ` - Unit ${row.unit_number}` : ''),
-    slug: row.slug,
-    price: row.price,
-    city: row.city,
-    address: row.address,
-    status: row.status === 'available' ? 'Available' : row.status === 'occupied' ? 'Rented' : 'Pending',
-    bedrooms: row.bedrooms,
-    bathrooms: row.bathrooms,
-    parking: null,
-    pets: null,
-    description: row.description,
-    imageUrl: null,
-    images: [],
-    lat: row.lat,
-    lng: row.lng,
+  // Fetch images for each unit/property and generate R2 URLs
+  const listings = await Promise.all(results.map(async (row: any) => {
+    // Try to get unit-specific images first, fall back to property images
+    let images = await getImagesByEntity(db, siteId, 'unit', row.id);
+    if (images.length === 0) {
+      images = await getImagesByEntity(db, siteId, 'property', row.property_id);
+    }
+
+    // Generate R2 public URLs from image r2Keys
+    const imageUrls = r2PublicUrl
+      ? images.map(img => `${r2PublicUrl}/${img.r2Key}`)
+      : [];
+
+    return {
+      id: row.id,
+      title: row.title + (row.unit_number !== '1' ? ` - Unit ${row.unit_number}` : ''),
+      slug: row.slug,
+      price: row.price,
+      city: row.city,
+      address: row.address,
+      status: row.status === 'available' ? 'Available' : row.status === 'occupied' ? 'Rented' : 'Pending',
+      bedrooms: row.bedrooms,
+      bathrooms: row.bathrooms,
+      parking: null,
+      pets: null,
+      description: row.description,
+      imageUrl: imageUrls[0] || null,
+      images: imageUrls,
+      lat: row.lat,
+      lng: row.lng,
+    };
   }));
+
+  return listings;
 }
 
 // Units
