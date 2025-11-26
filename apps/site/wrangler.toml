@@ -21,6 +21,8 @@ bucket_name = "leaselab-files"
 
 [vars]
 ENVIRONMENT = "production"
+# Worker for CRUD operations (token-based authentication)
+WORKER_URL = "http://localhost:8787"  # Update to production URL after deploying worker
 OPS_API_URL = "https://leaselab-ops.pages.dev"
 
 # Production environment
@@ -42,4 +44,5 @@ bucket_name = "leaselab-files"
 
 [env.production.vars]
 ENVIRONMENT = "production"
+WORKER_URL = "https://crud-worker.your-account.workers.dev"  # Update with actual worker URL
 OPS_API_URL = "https://leaselab-ops.pages.dev"
