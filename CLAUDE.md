@@ -25,8 +25,7 @@ leaselab/
 │  └─ shared-config/
 │
 ├─ package.json         # root workspace config
-├─ pnpm-workspace.yaml  # (or yarn/npm workspaces)
-├─ turbo.json           # optional
+├─ turbo.json           # optional (if using TurboRepo)
 └─ README.md
 
 ⚠️ 2. Critical Safety Rules for Cursor

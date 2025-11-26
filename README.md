@@ -19,7 +19,7 @@ leaselab/
 ## Prerequisites
 
 - Node.js 18+
-- npm or pnpm
+- npm (Node 18+)
 - [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/install-and-update/) (`npm install -g wrangler`)
 - Cloudflare account
 
