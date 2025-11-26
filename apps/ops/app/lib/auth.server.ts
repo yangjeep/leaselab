@@ -46,17 +46,15 @@ export async function requireAuth(
     throw redirect('/login');
   }
 
-  // Fetch user using session's siteId by default
+  // Fetch user by ID (site_id filtering is not needed for authentication)
   const user = await getUserById(dbInput, session.siteId, session.userId);
   if (!user) {
     throw redirect('/login');
   }
 
-  // Enforce site context for non-super-admins
-  // Super admins can access any site context (and switch via UI)
-  if (!user.isSuperAdmin && session.siteId !== siteId) {
-    throw redirect('/login');
-  }
+  // Users can access the ops panel from any domain
+  // Data access is controlled by user.siteId, not the request domain
+  // Super admins can potentially access multiple sites via UI switching
 
   return user;
 }
@@ -118,9 +116,9 @@ export async function getOptionalUser(
   if (!cookie) return null;
 
   const session = await verifySessionCookie(cookie, sessionSecret);
-  if (!session || session.siteId !== siteId) return null;
+  if (!session) return null;
 
-  return getUserById(dbInput, siteId, session.userId);
+  return getUserById(dbInput, session.siteId, session.userId);
 }
 
 export async function login(
@@ -137,7 +135,8 @@ export async function login(
   if (!isValid) return null;
 
   const expiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000;
-  const sessionValue = await createSessionCookie({ userId: userWithPassword.id, siteId, expiresAt }, sessionSecret);
+  // Store the user's assigned site_id in the session, not the request's site_id
+  const sessionValue = await createSessionCookie({ userId: userWithPassword.id, siteId: userWithPassword.siteId, expiresAt }, sessionSecret);
 
   // TODO: Re-enable last login tracking after verifying column exists
   // Update last login using raw D1 API

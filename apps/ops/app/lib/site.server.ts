@@ -24,6 +24,11 @@ export function getSiteId(request: Request): string {
     return 'default';
   }
 
+  // leaselab.io domains - the ops app uses 'default' site_id
+  if (hostname.endsWith('.leaselab.io') || hostname === 'leaselab.io') {
+    return 'default';
+  }
+
   // Split by dot
   const parts = hostname.split('.');
 

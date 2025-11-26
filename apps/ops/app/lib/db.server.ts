@@ -849,7 +849,9 @@ export async function getTenantById(dbInput: DatabaseInput, siteId: string, id: 
 // Users
 export async function getUserByEmail(dbInput: DatabaseInput, siteId: string, email: string): Promise<User | null> {
   const db = normalizeDb(dbInput);
-  const result = await db.queryOne('SELECT id, email, name, role, password_hash, site_id, is_super_admin, created_at FROM users WHERE email = ? AND site_id = ?', [email, siteId]);
+  // Note: We don't filter by site_id here - users should be able to login from any domain
+  // Their assigned site_id determines what data they can access
+  const result = await db.queryOne('SELECT id, email, name, role, password_hash, site_id, is_super_admin, created_at FROM users WHERE email = ?', [email]);
   if (!result) return null;
   const row = result as Record<string, unknown>;
   return {
@@ -867,7 +869,9 @@ export async function getUserByEmail(dbInput: DatabaseInput, siteId: string, ema
 
 export async function getUserById(dbInput: DatabaseInput, siteId: string, id: string): Promise<User | null> {
   const db = normalizeDb(dbInput);
-  const result = await db.queryOne('SELECT id, email, name, role, password_hash, site_id, is_super_admin, created_at FROM users WHERE id = ? AND site_id = ?', [id, siteId]);
+  // Note: We don't filter by site_id here - users should be able to login from any domain
+  // Their assigned site_id determines what data they can access
+  const result = await db.queryOne('SELECT id, email, name, role, password_hash, site_id, is_super_admin, created_at FROM users WHERE id = ?', [id]);
   if (!result) return null;
   const row = result as Record<string, unknown>;
   return {
