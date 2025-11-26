@@ -13,7 +13,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
     return json({ success: false, error: 'Missing key parameter' }, { status: 400 });
   }
 
-  const bucket = context.cloudflare.env.FILE_BUCKET;
+  const bucket = context.cloudflare.env.PUBLIC_BUCKET; // Use public bucket for property images
 
   if (!bucket) {
     return json({ success: false, error: 'Storage not configured' }, { status: 500 });

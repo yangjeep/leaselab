@@ -15,7 +15,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
   }
 
   const db = context.cloudflare.env.DB;
-  const bucket = context.cloudflare.env.FILE_BUCKET;
+  const bucket = context.cloudflare.env.PRIVATE_BUCKET; // Use private bucket for application files
   const openaiApiKey = context.cloudflare.env.OPENAI_API_KEY;
   const siteId = getSiteId(request);
 

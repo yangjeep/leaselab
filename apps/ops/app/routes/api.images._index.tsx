@@ -5,7 +5,7 @@ import { getSiteId } from '~/lib/site.server';
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
   const db = context.cloudflare.env.DB;
-  const bucket = context.cloudflare.env.FILE_BUCKET;
+  const bucket = context.cloudflare.env.PUBLIC_BUCKET; // Use public bucket for property images
   const siteId = getSiteId(request);
   const url = new URL(request.url);
   const entityType = url.searchParams.get('entityType') as 'property' | 'unit';

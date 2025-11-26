@@ -29,7 +29,8 @@ import {
 // Define environment bindings type
 type Bindings = {
   DB: D1Database;
-  FILE_BUCKET: R2Bucket;
+  PUBLIC_BUCKET: R2Bucket;
+  PRIVATE_BUCKET: R2Bucket;
   OPENAI_API_KEY: string;
   WORKER_INTERNAL_KEY?: string;
 };

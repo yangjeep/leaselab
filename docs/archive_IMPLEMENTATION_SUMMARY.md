@@ -49,7 +49,7 @@ Complete audit trail for each applicant:
 **History UI:**
 - Timeline view showing all events chronologically
 - Each event displays:
-  - Event type
+  - Event type 
   - Timestamp
   - Changed fields (JSON format)
 - Read-only history (append-only audit log)

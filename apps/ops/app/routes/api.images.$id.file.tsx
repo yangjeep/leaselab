@@ -6,7 +6,7 @@ import { generateImageResizingUrl } from '~/shared/utils';
 
 export async function loader({ params, context, request }: LoaderFunctionArgs) {
   const db = context.cloudflare.env.DB;
-  const bucket = context.cloudflare.env.FILE_BUCKET;
+  const bucket = context.cloudflare.env.PUBLIC_BUCKET; // Use public bucket for property images
   const siteId = getSiteId(request);
   const { id } = params;
 
@@ -15,7 +15,7 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
   }
 
   if (!bucket) {
-    console.error('Storage bucket (FILE_BUCKET) not configured in environment');
+    console.error('Storage bucket (PUBLIC_BUCKET) not configured in environment');
     return new Response('Storage not configured', { status: 500 });
   }
 

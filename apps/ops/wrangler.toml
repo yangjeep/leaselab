@@ -13,10 +13,16 @@ database_id = "850dc940-1021-4c48-8d40-0f18992424ac"
 
 # KV binding removed — using signed cookies
 
-# R2 Bucket for file storage
+# R2 Buckets for file storage
+# Public bucket for property images, etc.
 [[r2_buckets]]
-binding = "FILE_BUCKET"
-bucket_name = "leaselab-files"
+binding = "PUBLIC_BUCKET"
+bucket_name = "leaselab-pub"
+
+# Private bucket for applications, leases, N11s, etc.
+[[r2_buckets]]
+binding = "PRIVATE_BUCKET"
+bucket_name = "leaselab-pri"
 
 [vars]
 ENVIRONMENT = "development"
@@ -39,9 +45,15 @@ database_id = "850dc940-1021-4c48-8d40-0f18992424ac"
 
 # No KV namespaces in production either
 
+# Public bucket for property images, etc.
 [[env.production.r2_buckets]]
-binding = "FILE_BUCKET"
-bucket_name = "leaselab-files"
+binding = "PUBLIC_BUCKET"
+bucket_name = "leaselab-pub"
+
+# Private bucket for applications, leases, N11s, etc.
+[[env.production.r2_buckets]]
+binding = "PRIVATE_BUCKET"
+bucket_name = "leaselab-pri"
 
 [env.production.vars]
 ENVIRONMENT = "production"

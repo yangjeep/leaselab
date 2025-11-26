@@ -18,7 +18,8 @@ import { opsRoutes } from './routes/ops';
 // Environment bindings interface
 export interface Env {
   DB: D1Database;
-  FILE_BUCKET: R2Bucket;
+  PUBLIC_BUCKET: R2Bucket;
+  PRIVATE_BUCKET: R2Bucket;
   OPENAI_API_KEY: string;
   WORKER_INTERNAL_KEY?: string;
   R2_PUBLIC_URL?: string;

@@ -8,7 +8,7 @@ type = "javascript"
 
 # Environment variables
 [vars]
-R2_PUBLIC_URL = "https://pub-9c388444983e4f50aa4035f40026bfa0.r2.dev"
+R2_PUBLIC_URL = "https://pub-08cf33d3a3ab49bda744210087b16bae.r2.dev"
 
 # Bindings (same as ops)
 [[d1_databases]]
@@ -16,9 +16,15 @@ binding = "DB"
 database_name = "leaselab-db"
 database_id = "850dc940-1021-4c48-8d40-0f18992424ac"
 
+# Public bucket for property images, etc.
 [[r2_buckets]]
-binding = "FILE_BUCKET"
-bucket_name = "leaselab-files"
+binding = "PUBLIC_BUCKET"
+bucket_name = "leaselab-pub"
+
+# Private bucket for applications, leases, N11s, etc.
+[[r2_buckets]]
+binding = "PRIVATE_BUCKET"
+bucket_name = "leaselab-pri"
 
 [observability]
 enabled = true

@@ -19,7 +19,8 @@ import {
 // Define environment bindings type
 type Bindings = {
   DB: D1Database;
-  FILE_BUCKET: R2Bucket;
+  PUBLIC_BUCKET: R2Bucket;
+  PRIVATE_BUCKET: R2Bucket;
   R2_PUBLIC_URL?: string;
 };
 

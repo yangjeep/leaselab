@@ -32,6 +32,7 @@ export {
 
 /**
  * Initialize all Cloudflare storage providers from environment bindings
+ * @deprecated Use initCloudflareStorageV2 for multi-bucket support
  */
 export function initCloudflareStorage(env: {
   DB?: D1Database;
@@ -54,4 +55,42 @@ export function initCloudflareStorage(env: {
         }
       : undefined,
   });
+}
+
+/**
+ * Initialize Cloudflare storage with separate public and private buckets
+ */
+export function initCloudflareStorageV2(env: {
+  DB?: D1Database;
+  PUBLIC_BUCKET?: R2Bucket;
+  PRIVATE_BUCKET?: R2Bucket;
+  R2_PUBLIC_URL?: string;
+}) {
+  return {
+    database: env.DB
+      ? createStorageProvider({
+          database: {
+            provider: 'cloudflare-d1' as const,
+            d1Binding: env.DB,
+          },
+        })
+      : undefined,
+    publicBucket: env.PUBLIC_BUCKET
+      ? createStorageProvider({
+          objectStore: {
+            provider: 'cloudflare-r2' as const,
+            r2Binding: env.PUBLIC_BUCKET,
+            publicUrlBase: env.R2_PUBLIC_URL,
+          },
+        })
+      : undefined,
+    privateBucket: env.PRIVATE_BUCKET
+      ? createStorageProvider({
+          objectStore: {
+            provider: 'cloudflare-r2' as const,
+            r2Binding: env.PRIVATE_BUCKET,
+          },
+        })
+      : undefined,
+  };
 }

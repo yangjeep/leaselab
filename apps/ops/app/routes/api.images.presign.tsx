@@ -28,8 +28,8 @@ export async function action({ request, context }: ActionFunctionArgs) {
     // Generate unique R2 key with site_id prefix
     const r2Key = generateR2Key(siteId, entityType, entityId, filename);
 
-    // Get the R2 bucket
-    const bucket = context.cloudflare.env.FILE_BUCKET;
+    // Get the R2 bucket (use public bucket for property images)
+    const bucket = context.cloudflare.env.PUBLIC_BUCKET;
 
     if (!bucket) {
       return json({ success: false, error: 'Storage not configured' }, { status: 500 });

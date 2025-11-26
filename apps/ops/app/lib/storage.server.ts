@@ -7,7 +7,8 @@ import { createDatabase, createCache, createObjectStore } from '~/shared/storage
  */
 export interface CloudflareEnv {
   DB: D1Database;
-  FILE_BUCKET?: R2Bucket;
+  PUBLIC_BUCKET?: R2Bucket;
+  PRIVATE_BUCKET?: R2Bucket;
   R2_PUBLIC_URL?: string;
   OPENAI_API_KEY?: string;
   SESSION_SECRET?: string;
@@ -20,7 +21,8 @@ export interface CloudflareEnv {
 export interface Storage {
   database: IDatabase;
   cache?: ICache;
-  objectStore?: IObjectStore;
+  publicBucket?: IObjectStore;
+  privateBucket?: IObjectStore;
 }
 
 /**
@@ -34,15 +36,22 @@ export function createStorage(env: CloudflareEnv): Storage {
 
   const cache = undefined; // Unified on cookie-based approach
 
-  const objectStore = env.FILE_BUCKET
+  const publicBucket = env.PUBLIC_BUCKET
     ? createObjectStore({
       provider: 'cloudflare-r2',
-      r2Binding: env.FILE_BUCKET,
+      r2Binding: env.PUBLIC_BUCKET,
       publicUrlBase: env.R2_PUBLIC_URL,
     })
     : undefined;
 
-  return { database, cache, objectStore };
+  const privateBucket = env.PRIVATE_BUCKET
+    ? createObjectStore({
+      provider: 'cloudflare-r2',
+      r2Binding: env.PRIVATE_BUCKET,
+    })
+    : undefined;
+
+  return { database, cache, publicBucket, privateBucket };
 }
 
 /**
@@ -65,14 +74,26 @@ export function getCache(env: CloudflareEnv): ICache | undefined {
 }
 
 /**
- * Get object store from Cloudflare environment
- * Convenience function for routes that only need file storage access
+ * Get public bucket from Cloudflare environment
+ * For property images and other publicly accessible files
  */
-export function getObjectStore(env: CloudflareEnv): IObjectStore | undefined {
-  if (!env.FILE_BUCKET) return undefined;
+export function getPublicBucket(env: CloudflareEnv): IObjectStore | undefined {
+  if (!env.PUBLIC_BUCKET) return undefined;
   return createObjectStore({
     provider: 'cloudflare-r2',
-    r2Binding: env.FILE_BUCKET,
+    r2Binding: env.PUBLIC_BUCKET,
     publicUrlBase: env.R2_PUBLIC_URL,
+  });
+}
+
+/**
+ * Get private bucket from Cloudflare environment
+ * For applications, leases, N11s, and other private documents
+ */
+export function getPrivateBucket(env: CloudflareEnv): IObjectStore | undefined {
+  if (!env.PRIVATE_BUCKET) return undefined;
+  return createObjectStore({
+    provider: 'cloudflare-r2',
+    r2Binding: env.PRIVATE_BUCKET,
   });
 }

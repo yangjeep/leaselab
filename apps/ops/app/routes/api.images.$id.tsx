@@ -33,7 +33,7 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
 
 export async function action({ request, params, context }: ActionFunctionArgs) {
   const db = context.cloudflare.env.DB;
-  const bucket = context.cloudflare.env.FILE_BUCKET;
+  const bucket = context.cloudflare.env.PUBLIC_BUCKET; // Use public bucket for property images
   const siteId = getSiteId(request);
   const { id } = params;
 
