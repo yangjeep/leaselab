@@ -12,14 +12,21 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
 
     const currentUser = await requireAuth(request, db, secret, siteId);
 
+
+
     // Only super admins can view user list (previous working policy)
     if (!currentUser.isSuperAdmin) {
         throw new Response('Unauthorized', { status: 403 });
     }
 
-    const users = await getUsers(db);
+    try {
+        const users = await getUsers(db);
+        return json({ users });
+    } catch (error) {
+        console.error('Admin Users Loader - Error fetching users:', error);
+        throw new Response('Unexpected Server Error', { status: 500 });
+    }
 
-    return json({ users });
 }
 
 export default function UsersIndex() {

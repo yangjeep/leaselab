@@ -1,4 +1,4 @@
--- 0000_reset.sql: Reset the entire production database
+-- Reset script placeholder; not used for migrations
 -- WARNING: This will delete all data! Use only for full reset in production.
 
 PRAGMA foreign_keys = OFF;
@@ -37,6 +37,7 @@ PRAGMA foreign_keys = ON;
 
 -- Run add_site_id migration
 .read apps/ops/migrations/0005_add_site_id.sql
+.read apps/ops/migrations/0012_add_updated_at_to_users.sql
 
 -- Run user_access migration
 .read apps/ops/migrations/0006_user_access.sql
