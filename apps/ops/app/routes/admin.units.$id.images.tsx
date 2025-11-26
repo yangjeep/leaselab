@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import type { LoaderFunctionArgs, MetaFunction } from '@remix-run/cloudflare';
 import { json } from '@remix-run/cloudflare';
 import { useLoaderData, Link, useRevalidator } from '@remix-run/react';
@@ -54,6 +55,12 @@ export default function UnitImages() {
     revalidator.revalidate();
   };
 
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   return (
     <div className="p-8">
       <div className="mb-6">
@@ -67,14 +74,21 @@ export default function UnitImages() {
       </div>
 
       <div className="bg-white rounded-xl shadow-sm p-6">
-        <ImageUploader
-          entityType="unit"
-          entityId={unit.id}
-          images={images as PropertyImage[]}
-          onUploadComplete={handleUploadComplete}
-          onDelete={handleDelete}
-          onSetCover={handleSetCover}
-        />
+        {mounted ? (
+          <ImageUploader
+            entityType="unit"
+            entityId={unit.id}
+            images={images as PropertyImage[]}
+            onUploadComplete={handleUploadComplete}
+            onDelete={handleDelete}
+            onSetCover={handleSetCover}
+          />
+        ) : (
+          <div className="animate-pulse space-y-4">
+            <div className="h-64 bg-gray-100 rounded-lg"></div>
+            <div className="h-10 bg-gray-100 rounded w-1/4"></div>
+          </div>
+        )}
       </div>
     </div>
   );

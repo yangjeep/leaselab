@@ -23,6 +23,8 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
     const { entityType, entityId, filename, contentType } = parsed.data;
 
+    console.log(`[Presign] Generating key for ${entityType} ${entityId}, file: ${filename}`);
+
     // Generate unique R2 key with site_id prefix
     const r2Key = generateR2Key(siteId, entityType, entityId, filename);
 

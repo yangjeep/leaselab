@@ -22,11 +22,6 @@ export function ImageUploader({
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
-  const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
-
-  const handleImageError = useCallback((imageId: string) => {
-    setImageErrors(prev => new Set(prev).add(imageId));
-  }, []);
 
   const handleUpload = useCallback(async (files: File[]) => {
     if (files.length === 0) return;
@@ -188,70 +183,46 @@ export function ImageUploader({
       {/* Image Grid */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {/* Existing Images */}
-        {images.map((image) => {
-          const hasError = imageErrors.has(image.id);
+        {images.map((image) => (
+          <div
+            key={image.id}
+            className="relative aspect-square bg-gray-100 rounded-lg overflow-hidden group hover:shadow-lg transition-shadow"
+          >
+            <img
+              src={image.url || `/api/images/${image.id}/file`}
+              alt={image.altText || image.filename}
+              className="w-full h-full object-cover"
+            />
 
-          return (
-            <div
-              key={image.id}
-              className="relative aspect-square bg-gray-100 rounded-lg overflow-hidden group hover:shadow-lg transition-shadow"
+            {/* Cover Badge */}
+            {image.isCover && (
+              <div className="absolute top-2 left-2 px-2 py-1 bg-green-600 text-white text-xs font-medium rounded shadow-lg">
+                ⭐ Cover
+              </div>
+            )}
+
+            {/* Delete Button (X) - Top Right */}
+            <button
+              onClick={() => handleDelete(image.id)}
+              className="absolute top-2 right-2 w-7 h-7 bg-red-600 hover:bg-red-700 text-white rounded-full flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+              title="Delete image"
             >
-              {!hasError ? (
-                <img
-                  src={image.url || `/api/images/${image.id}/file`}
-                  alt={image.altText || image.filename}
-                  className="w-full h-full object-cover"
-                  onError={() => handleImageError(image.id)}
-                />
-              ) : (
-                // Not Found Placeholder
-                <div className="w-full h-full flex flex-col items-center justify-center bg-gray-200 text-gray-500">
-                  <svg className="w-12 h-12 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  <span className="text-xs font-medium">Not Found</span>
-                  <span className="text-xs text-gray-400 mt-1 px-2 text-center">File missing in storage</span>
-                </div>
-              )}
+              ✕
+            </button>
 
-              {/* Warning badge for missing files */}
-              {hasError && (
-                <div className="absolute top-2 left-2 px-2 py-1 bg-yellow-600 text-white text-xs font-medium rounded shadow-lg">
-                  ⚠️ Missing
-                </div>
-              )}
-
-              {/* Cover Badge */}
-              {image.isCover && !hasError && (
-                <div className="absolute top-2 left-2 px-2 py-1 bg-green-600 text-white text-xs font-medium rounded shadow-lg">
-                  ⭐ Cover
-                </div>
-              )}
-
-              {/* Delete Button (X) - Top Right - Always visible for broken images */}
-              <button
-                onClick={() => handleDelete(image.id)}
-                className={`absolute top-2 right-2 w-7 h-7 bg-red-600 hover:bg-red-700 text-white rounded-full flex items-center justify-center shadow-lg transition-opacity ${hasError ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-                  }`}
-                title={hasError ? "Delete broken image record" : "Delete image"}
-              >
-                ✕
-              </button>
-
-              {/* Action Buttons - Bottom (show on hover, hide for broken images) */}
-              {!image.isCover && !hasError && (
-                <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button
-                    onClick={() => handleSetCover(image.id)}
-                    className="w-full px-3 py-1.5 bg-white text-gray-900 text-xs font-medium rounded hover:bg-gray-100 transition-colors"
-                  >
-                    Set as Cover
-                  </button>
-                </div>
-              )}
-            </div>
-          );
-        })}
+            {/* Action Buttons - Bottom (show on hover) */}
+            {!image.isCover && (
+              <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                <button
+                  onClick={() => handleSetCover(image.id)}
+                  className="w-full px-3 py-1.5 bg-white text-gray-900 text-xs font-medium rounded hover:bg-gray-100 transition-colors"
+                >
+                  Set as Cover
+                </button>
+              </div>
+            )}
+          </div>
+        ))}
 
         {/* Upload Placeholder with "+" */}
         <div

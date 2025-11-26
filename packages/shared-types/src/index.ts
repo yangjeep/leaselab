@@ -98,6 +98,7 @@ export interface PropertyImage {
   // Computed
   url?: string;
   isPropertyImage?: boolean; // For combined gallery display
+  isMissing?: boolean; // True if R2 file is missing
 }
 
 // Lead Types

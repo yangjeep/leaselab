@@ -15,6 +15,7 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
   }
 
   if (!bucket) {
+    console.error('Storage bucket (FILE_BUCKET) not configured in environment');
     return new Response('Storage not configured', { status: 500 });
   }
 
@@ -22,7 +23,7 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
     const image = await getImageById(db, siteId, id);
 
     if (!image) {
-      return new Response('Image not found', { status: 404 });
+      return new Response('Image not found in database', { status: 404 });
     }
 
     // Check for resizing parameters
@@ -54,7 +55,24 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
     const object = await bucket.get(image.r2Key);
 
     if (!object) {
-      return new Response('Image not found in storage', { status: 404 });
+      console.warn(`File not found in R2 bucket: ${image.r2Key}`);
+      // Return a 1x1 transparent PNG as placeholder
+      // 1x1 transparent PNG bytes
+      const transparentPng = new Uint8Array([
+        137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82,
+        0, 0, 0, 1, 0, 0, 0, 1, 8, 6, 0, 0, 0, 31, 21, 196, 137, 0,
+        0, 0, 10, 73, 68, 65, 84, 120, 156, 99, 0, 1, 0, 0, 5, 0, 1,
+        13, 10, 45, 180, 0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130
+      ]);
+
+      const headers = new Headers();
+      headers.set('Content-Type', 'image/png');
+      headers.set('Cache-Control', 'no-cache');
+      headers.set('X-Image-Missing', 'true');
+      return new Response(transparentPng, {
+        status: 200,
+        headers
+      });
     }
 
     // Return the file with appropriate headers
@@ -70,6 +88,11 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
     return new Response(object.body, { headers });
   } catch (error) {
     console.error('Error serving image:', error);
-    return new Response('Failed to serve image', { status: 500 });
+    // Return detailed error in development, generic in production
+    const errorMessage = process.env.NODE_ENV === 'development'
+      ? `Failed to serve image: ${error instanceof Error ? error.message : String(error)}`
+      : 'Failed to serve image';
+
+    return new Response(errorMessage, { status: 500 });
   }
 }

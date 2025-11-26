@@ -8,7 +8,7 @@
     "dev": "remix vite:dev",
     "build": "remix vite:build",
     "start": "wrangler pages dev ./build/client",
-    "deploy": "wrangler pages deploy ./build/client",
+    "deploy": "npm run build && wrangler pages deploy ./build/client",
     "typecheck": "tsc --noEmit",
     "db:migrate": "wrangler d1 execute leaselab-db --local --file=./migrations/0001_init.sql && wrangler d1 execute leaselab-db --local --file=./migrations/0002_property_units.sql && wrangler d1 execute leaselab-db --local --file=./migrations/0003_default_admin.sql && wrangler d1 execute leaselab-db --local --file=./migrations/0005_add_site_id.sql && wrangler d1 execute leaselab-db --local --file=./migrations/0006_user_access.sql",
     "db:migrate:prod": "wrangler d1 execute leaselab-db --remote --file=./migrations/0001_init.sql && wrangler d1 execute leaselab-db --remote --file=./migrations/0002_property_units.sql && wrangler d1 execute leaselab-db --remote --file=./migrations/0003_default_admin.sql && wrangler d1 execute leaselab-db --remote --file=./migrations/0005_add_site_id.sql && wrangler d1 execute leaselab-db --remote --file=./migrations/0006_user_access.sql",

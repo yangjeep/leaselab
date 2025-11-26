@@ -35,17 +35,17 @@ export function createStorage(env: CloudflareEnv): Storage {
 
   const cache = env.SESSION_KV
     ? createCache({
-        provider: 'cloudflare-kv',
-        kvBinding: env.SESSION_KV,
-      })
+      provider: 'cloudflare-kv',
+      kvBinding: env.SESSION_KV,
+    })
     : undefined;
 
   const objectStore = env.FILE_BUCKET
     ? createObjectStore({
-        provider: 'cloudflare-r2',
-        r2Binding: env.FILE_BUCKET,
-        publicUrlBase: env.R2_PUBLIC_URL,
-      })
+      provider: 'cloudflare-r2',
+      r2Binding: env.FILE_BUCKET,
+      publicUrlBase: env.R2_PUBLIC_URL,
+    })
     : undefined;
 
   return { database, cache, objectStore };

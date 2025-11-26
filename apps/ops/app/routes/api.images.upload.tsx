@@ -16,27 +16,39 @@ export async function action({ request, context }: ActionFunctionArgs) {
   const bucket = context.cloudflare.env.FILE_BUCKET;
 
   if (!bucket) {
+    console.error('[Upload] Storage bucket (FILE_BUCKET) not configured');
     return json({ success: false, error: 'Storage not configured' }, { status: 500 });
   }
 
   try {
-    // Get the file data from the request body
-    const fileData = await request.arrayBuffer();
+    console.log(`[Upload] Starting upload for key: ${r2Key}, contentType: ${contentType}`);
+
+    // Use request.body (ReadableStream) directly for streaming upload
+    // This avoids buffering the entire file in memory
+    if (!request.body) {
+      throw new Error('No request body found');
+    }
 
     // Upload to R2
-    await bucket.put(r2Key, fileData, {
+    const object = await bucket.put(r2Key, request.body, {
       httpMetadata: contentType ? { contentType } : undefined,
     });
+
+    console.log(`[Upload] Upload successful for key: ${r2Key}, version: ${object?.version}`);
 
     return json({
       success: true,
       data: {
         r2Key,
-        size: fileData.byteLength,
+        // size: fileData.byteLength, // Size is not easily available with streaming without reading it
       }
     });
   } catch (error) {
-    console.error('Error uploading to R2:', error);
-    return json({ success: false, error: 'Failed to upload file' }, { status: 500 });
+    console.error('[Upload] Error uploading to R2:', error);
+    return json({
+      success: false,
+      error: 'Failed to upload file',
+      details: process.env.NODE_ENV === 'development' ? String(error) : undefined
+    }, { status: 500 });
   }
 }
