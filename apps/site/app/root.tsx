@@ -39,6 +39,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <Meta />
         <Links />
+        {/* Google Maps JS API loader (only if key is present) */}
+        {typeof window === "undefined" ? null : null}
+        {process.env.GOOGLE_MAPS_API_KEY ? (
+          <script
+            src={`https://maps.googleapis.com/maps/api/js?key=${process.env.GOOGLE_MAPS_API_KEY}`}
+            defer
+          />
+        ) : null}
       </head>
       <body className="min-h-screen antialiased">
         {children}

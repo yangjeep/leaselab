@@ -11,6 +11,26 @@ cp env.example .env.local
 npm run dev
 ```
 
+## Google Maps Integration
+
+The listings page can display a side-by-side Google Map with property pins.
+
+- Set `GOOGLE_MAPS_API_KEY` in your environment. Example:
+
+```bash
+cp env.example .env.local
+echo "GOOGLE_MAPS_API_KEY=your-key" >> .env.local
+```
+
+- On Cloudflare Pages, set the secret:
+
+```bash
+cd apps/site
+wrangler pages secrets put GOOGLE_MAPS_API_KEY
+```
+
+- Pins show title and link to the property detail page. If latitude/longitude are missing, addresses are geocoded client-side.
+
 Deploy to Vercel and set the same env vars in Project Settings.
 
 ## Datasource (Airtable)

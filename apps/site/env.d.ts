@@ -23,3 +23,10 @@ declare module "@remix-run/cloudflare" {
     };
   }
 }
+
+// Minimal global declaration to satisfy TS when using Google Maps JS API
+declare global {
+  interface Window {
+    google?: any;
+  }
+}

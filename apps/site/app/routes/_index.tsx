@@ -1,6 +1,8 @@
 import type { LoaderFunctionArgs, MetaFunction } from "@remix-run/cloudflare";
 import { json } from "@remix-run/cloudflare";
 import { useLoaderData, useSearchParams, Link } from "@remix-run/react";
+import { useState } from "react";
+import PropertyMap from "~/components/PropertyMap";
 import { fetchProperties, fetchSiteConfig } from "~/lib/api-client";
 import { applyFilters, sortByStatus } from "~/lib/filters";
 import ListingCard from "~/components/ListingCard";
@@ -45,6 +47,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
       listings: sorted,
       allListings,
       siteConfig,
+      mapsApiKey: env.GOOGLE_MAPS_API_KEY || undefined,
       hasFilters: Object.values(filters).some(Boolean),
     });
   } catch (error: any) {
@@ -54,8 +57,9 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
 }
 
 export default function Index() {
-  const { listings, allListings, siteConfig, hasFilters } = useLoaderData<typeof loader>();
+  const { listings, allListings, siteConfig, hasFilters, mapsApiKey } = useLoaderData<typeof loader>();
   const [searchParams] = useSearchParams();
+  const [showMap, setShowMap] = useState(true);
 
   // Build query string for property links
   const queryString = searchParams.toString();
@@ -84,7 +88,20 @@ export default function Index() {
             </Link>
           )}
 
-          <Filters allListings={allListings} />
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold">Browse Listings</h2>
+              <button
+                className="rounded-md border border-white/20 px-3 py-2 text-sm hover:border-white/40"
+                onClick={() => setShowMap((v) => !v)}
+                aria-pressed={showMap}
+              >
+                {showMap ? "Hide Map" : "Show Map"}
+              </button>
+            </div>
+            {/* Filters take full width */}
+            <Filters allListings={allListings} />
+          </div>
 
           {listings.length === 0 ? (
             <div className="card p-8 text-center">
@@ -113,14 +130,25 @@ export default function Index() {
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {listings.map((listing) => (
-                <ListingCard
-                  key={listing.id}
-                  listing={listing}
-                  queryString={queryString}
-                />
-              ))}
+            <div className="space-y-6">
+              {showMap && (
+                <div>
+                  {/* Map takes full width, roughly half viewport height */}
+                  <PropertyMap
+                    listings={listings}
+                    apiKey={mapsApiKey}
+                  />
+                </div>
+              )}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {listings.map((listing) => (
+                  <ListingCard
+                    key={listing.id}
+                    listing={listing}
+                    queryString={queryString}
+                  />
+                ))}
+              </div>
             </div>
           )}
         </div>

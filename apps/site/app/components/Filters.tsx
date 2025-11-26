@@ -23,7 +23,8 @@ export default function Filters({ allListings }: FiltersProps) {
 
   return (
     <div className="card p-4">
-      <div className="flex flex-wrap gap-4">
+      {/* Full-width evenly spaced filters */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         {/* City Filter */}
         <div className="flex flex-col gap-1">
           <label className="label">City</label>
