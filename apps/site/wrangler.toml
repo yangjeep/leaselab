@@ -22,7 +22,7 @@ bucket_name = "leaselab-files"
 [vars]
 ENVIRONMENT = "production"
 # Worker for CRUD operations (token-based authentication)
-WORKER_URL = "https://crud-worker.yangjeep.workers.dev"
+WORKER_URL = "https://leaselab-worker.yangjeep.workers.dev"
 # SITE_API_TOKEN is set via 'wrangler pages secret put'
 OPS_API_URL = "https://leaselab-ops.pages.dev"
 
@@ -45,6 +45,6 @@ bucket_name = "leaselab-files"
 
 [env.production.vars]
 ENVIRONMENT = "production"
-WORKER_URL = "https://crud-worker.yangjeep.workers.dev"
+WORKER_URL = "https://leaselab-worker.yangjeep.workers.dev"
 # SITE_API_TOKEN is set via 'wrangler pages secret put'
 OPS_API_URL = "https://leaselab-ops.pages.dev"

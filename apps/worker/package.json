@@ -1,5 +1,5 @@
 {
-    "name": "crud-worker",
+    "name": "leaselab-worker",
     "main": "worker.ts",
     "type": "module",
     "devDependencies": {
