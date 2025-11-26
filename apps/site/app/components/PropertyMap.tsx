@@ -7,12 +7,12 @@ type Listing = {
   slug: string;
   address?: string;
   city?: string;
-  state?: string;
-  zipCode?: string;
+  province?: string;
+  postalCode?: string;
 };
 
 function buildAddress(listing: Listing) {
-  const parts = [listing.address, listing.city, listing.state, listing.zipCode].filter(Boolean);
+  const parts = [listing.address, listing.city, listing.province, listing.postalCode].filter(Boolean);
   return parts.join(", ");
 }
 

@@ -7,11 +7,14 @@ import path from "path";
 
 export default defineConfig({
   resolve: {
-    alias: {
-      "~": path.resolve(__dirname, "./app"),
-      "~/shared/storage-core": path.resolve(__dirname, "../../shared/storage-core"),
-      "~/shared/storage-cloudflare": path.resolve(__dirname, "../../shared/storage-cloudflare"),
-    },
+    alias: [
+      { find: /^~\/shared\/types$/, replacement: path.resolve(__dirname, "../../shared/types") },
+      { find: /^~\/shared\/utils$/, replacement: path.resolve(__dirname, "../../shared/utils") },
+      { find: /^~\/shared\/config$/, replacement: path.resolve(__dirname, "../../shared/config") },
+      { find: /^~\/shared\/storage-core$/, replacement: path.resolve(__dirname, "../../shared/storage-core") },
+      { find: /^~\/shared\/storage-cloudflare$/, replacement: path.resolve(__dirname, "../../shared/storage-cloudflare") },
+      { find: "~", replacement: path.resolve(__dirname, "./app") },
+    ],
   },
   plugins: [
     remix({

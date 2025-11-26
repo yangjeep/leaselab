@@ -41,7 +41,7 @@ export default function AdminDashboard() {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <StatCard
-          title="Total Leads"
+          title="Rental Applications"
           value={stats.totalLeads}
           subtitle={`${stats.newLeads} new`}
           color="blue"
@@ -66,10 +66,10 @@ export default function AdminDashboard() {
         />
       </div>
 
-      {/* Recent Leads */}
+      {/* Recent Applications */}
       <div className="bg-white rounded-xl shadow-sm p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">Recent Leads</h2>
+          <h2 className="text-lg font-semibold text-gray-900">Recent Applications</h2>
           <Link
             to="/admin/leads"
             className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
@@ -79,7 +79,7 @@ export default function AdminDashboard() {
         </div>
 
         {recentLeads.length === 0 ? (
-          <p className="text-gray-500 text-sm">No leads yet</p>
+          <p className="text-gray-500 text-sm">No applications yet</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">

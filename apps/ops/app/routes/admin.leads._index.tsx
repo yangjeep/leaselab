@@ -6,7 +6,7 @@ import { formatCurrency } from '~/shared/utils';
 import { getSiteId } from '~/lib/site.server';
 
 export const meta: MetaFunction = () => {
-  return [{ title: 'Leads - LeaseLab.io' }];
+  return [{ title: 'Rental Applications - LeaseLab.io' }];
 };
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
@@ -40,7 +40,8 @@ export default function LeadsIndex() {
   return (
     <div className="p-8">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Leads</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Rental Applications</h1>
+        <div className="text-sm text-gray-500">{leads.length} applications</div>
       </div>
 
       {/* Filters */}
@@ -70,11 +71,11 @@ export default function LeadsIndex() {
         </div>
       </div>
 
-      {/* Leads Table */}
+      {/* Applications Table */}
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         {leads.length === 0 ? (
           <div className="p-8 text-center text-gray-500">
-            No leads found
+            No applications found
           </div>
         ) : (
           <table className="w-full">

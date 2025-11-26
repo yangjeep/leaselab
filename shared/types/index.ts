@@ -7,8 +7,8 @@ export interface Property {
   slug: string;
   address: string;
   city: string;
-  state: string;
-  zipCode: string;
+  province: string; // Changed from state
+  postalCode: string; // Changed from zipCode
   propertyType: PropertyType;
   description?: string;
   yearBuilt?: number;

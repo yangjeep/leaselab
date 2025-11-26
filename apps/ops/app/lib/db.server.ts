@@ -268,8 +268,8 @@ export async function createProperty(dbInput: DatabaseInput, siteId: string, dat
   name: string;
   address: string;
   city: string;
-  state: string;
-  zipCode: string;
+  province: string;
+  postalCode: string;
   propertyType: string;
   description?: string;
   yearBuilt?: number;
@@ -284,7 +284,7 @@ export async function createProperty(dbInput: DatabaseInput, siteId: string, dat
   const slug = data.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '-' + id.slice(0, 8);
 
   await db.execute(`
-    INSERT INTO properties (id, site_id, name, slug, address, city, state, zip_code, property_type, description, year_built, lot_size, amenities, latitude, longitude, is_active, created_at, updated_at)
+    INSERT INTO properties (id, site_id, name, slug, address, city, province, postal_code, property_type, description, year_built, lot_size, amenities, latitude, longitude, is_active, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
   `, [
     id,
@@ -293,8 +293,8 @@ export async function createProperty(dbInput: DatabaseInput, siteId: string, dat
     slug,
     data.address,
     data.city,
-    data.state,
-    data.zipCode,
+    data.province,
+    data.postalCode,
     data.propertyType,
     data.description || null,
     data.yearBuilt || null,
@@ -313,8 +313,8 @@ export async function updateProperty(dbInput: DatabaseInput, siteId: string, id:
   name: string;
   address: string;
   city: string;
-  state: string;
-  zipCode: string;
+  province: string;
+  postalCode: string;
   propertyType: string;
   description: string;
   yearBuilt: number;
@@ -333,7 +333,7 @@ export async function updateProperty(dbInput: DatabaseInput, siteId: string, id:
     address: 'address',
     city: 'city',
     state: 'state',
-    zipCode: 'zip_code',
+    postalCode: 'postal_code',
     propertyType: 'property_type',
     description: 'description',
     yearBuilt: 'year_built',
@@ -396,8 +396,8 @@ export async function getPublicListings(dbInput: DatabaseInput, siteId: string, 
       p.slug,
       p.address,
       p.city,
-      p.state,
-      p.zip_code as zipCode,
+      p.province,
+      p.postal_code as postalCode,
       p.description,
       p.amenities,
       p.latitude as lat,
@@ -1010,8 +1010,8 @@ function mapPropertyFromDb(row: unknown): Property {
     slug: r.slug as string,
     address: r.address as string,
     city: r.city as string,
-    state: r.state as string,
-    zipCode: r.zip_code as string,
+    state: r.province as string,
+    zipCode: r.postal_code as string,
     propertyType: r.property_type as Property['propertyType'],
     description: r.description as string | undefined,
     yearBuilt: r.year_built as number | undefined,
