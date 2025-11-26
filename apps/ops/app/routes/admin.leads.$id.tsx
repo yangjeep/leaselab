@@ -1,7 +1,7 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs, MetaFunction } from '@remix-run/cloudflare';
 import { json } from '@remix-run/cloudflare';
 import { useLoaderData, useSubmit } from '@remix-run/react';
-import { getLeadById, getPropertyById, updateLead } from '~/lib/db.server';
+import { getLeadById, getPropertyById, updateLead, getLeadHistory } from '~/lib/db.server';
 import { formatCurrency } from '~/shared/utils';
 import { getSiteId } from '~/lib/site.server';
 import { StageWorkflow, RENTAL_APPLICATION_STAGES } from '~/components/StageWorkflow';
@@ -30,7 +30,8 @@ export async function loader({ params, request, context }: LoaderFunctionArgs) {
     property = await getPropertyById(db, siteId, lead.propertyId);
   }
 
-  return json({ lead, property });
+  const history = await getLeadHistory(db, siteId, lead.id);
+  return json({ lead, property, history });
 }
 
 export async function action({ params, request, context }: ActionFunctionArgs) {
@@ -51,11 +52,21 @@ export async function action({ params, request, context }: ActionFunctionArgs) {
     return json({ success: true });
   }
 
+  if (action === 'updateNotes') {
+    const landlordNote = formData.get('landlordNote') as string | null;
+    const applicationNote = formData.get('applicationNote') as string | null;
+    await updateLead(db, siteId, leadId, {
+      landlordNote: landlordNote || undefined,
+      applicationNote: applicationNote || undefined,
+    });
+    return json({ success: true });
+  }
+
   return json({ success: false }, { status: 400 });
 }
 
 export default function LeadDetail() {
-  const { lead, property } = useLoaderData<typeof loader>();
+  const { lead, property, history } = useLoaderData<typeof loader>();
   const submit = useSubmit();
 
   const handleStageChange = (newStage: string) => {
@@ -65,9 +76,7 @@ export default function LeadDetail() {
     submit(formData, { method: 'post' });
   };
 
-  const incomeRatio = property?.units?.[0]?.rentAmount
-    ? (lead.monthlyIncome / property.units[0].rentAmount).toFixed(2)
-    : 'N/A';
+  // Income ratio no longer available (monthly income removed)
 
   return (
     <div className="p-8">
@@ -140,13 +149,19 @@ export default function LeadDetail() {
               </dd>
             </div>
 
-            {/* Monthly Income */}
-            <div>
-              <dt className="text-sm font-medium text-gray-500">Monthly Income</dt>
-              <dd className="text-sm text-gray-900 mt-1">
-                {formatCurrency(lead.monthlyIncome)}
-              </dd>
-            </div>
+            {/* Landlord/Internal Notes */}
+            {lead.landlordNote && (
+              <div>
+                <dt className="text-sm font-medium text-gray-500">Landlord Note</dt>
+                <dd className="text-sm text-gray-900 mt-1 whitespace-pre-wrap">{lead.landlordNote}</dd>
+              </div>
+            )}
+            {lead.applicationNote && (
+              <div>
+                <dt className="text-sm font-medium text-gray-500">Application Note</dt>
+                <dd className="text-sm text-gray-900 mt-1 whitespace-pre-wrap">{lead.applicationNote}</dd>
+              </div>
+            )}
 
             {/* Current Address */}
             {lead.currentAddress && (
@@ -180,83 +195,42 @@ export default function LeadDetail() {
           </dl>
         </div>
 
-        {/* Financial Assessment */}
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Financial Assessment</h2>
-          <dl className="space-y-4">
-            <div>
-              <dt className="text-sm font-medium text-gray-500">Monthly Rent</dt>
-              <dd className="text-sm text-gray-900 mt-1">
-                {property?.units?.[0]?.rentAmount ? formatCurrency(property.units[0].rentAmount) : 'N/A'}
-              </dd>
-            </div>
-
-            <div>
-              <dt className="text-sm font-medium text-gray-500">Income-to-Rent Ratio</dt>
-              <dd className="text-sm mt-1">
-                <span className={`font-medium ${
-                  parseFloat(incomeRatio) >= 3 ? 'text-green-600' :
-                  parseFloat(incomeRatio) >= 2.5 ? 'text-yellow-600' :
-                  'text-red-600'
-                }`}>
-                  {incomeRatio}x
-                </span>
-                <span className="text-xs text-gray-500 ml-2">
-                  (Recommended: 3x+)
-                </span>
-              </dd>
-            </div>
-
-            {lead.aiScore !== undefined && (
-              <>
-                <div>
-                  <dt className="text-sm font-medium text-gray-500">AI Screening Score</dt>
-                  <dd className="text-sm mt-1">
-                    <span className={`text-2xl font-bold ${
-                      lead.aiScore >= 80 ? 'text-green-600' :
-                      lead.aiScore >= 60 ? 'text-blue-600' :
-                      lead.aiScore >= 40 ? 'text-yellow-600' :
-                      'text-red-600'
-                    }`}>
-                      {lead.aiScore}
-                    </span>
-                    <span className="text-sm text-gray-500 ml-2">/ 100</span>
-                  </dd>
-                </div>
-
-                {lead.aiLabel && (
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500">Risk Grade</dt>
-                    <dd className="mt-1">
-                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                        lead.aiLabel === 'A' ? 'bg-green-100 text-green-800' :
-                        lead.aiLabel === 'B' ? 'bg-blue-100 text-blue-800' :
-                        lead.aiLabel === 'C' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-red-100 text-red-800'
-                      }`}>
-                        Grade {lead.aiLabel}
-                      </span>
-                    </dd>
-                  </div>
-                )}
-              </>
+        {/* Notes Editor & History */}
+        <div className="bg-white rounded-xl shadow-sm p-6 flex flex-col gap-8">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Internal Notes</h2>
+            <form method="post" className="space-y-4" onSubmit={(e) => {
+              // allow progressive enhancement
+            }}>
+              <input type="hidden" name="_action" value="updateNotes" />
+              <div>
+                <label htmlFor="landlordNote" className="text-sm font-medium text-gray-700">Landlord Note</label>
+                <textarea id="landlordNote" name="landlordNote" rows={4} className="input w-full mt-1" defaultValue={lead.landlordNote || ''} />
+              </div>
+              <div>
+                <label htmlFor="applicationNote" className="text-sm font-medium text-gray-700">Application Note</label>
+                <textarea id="applicationNote" name="applicationNote" rows={4} className="input w-full mt-1" defaultValue={lead.applicationNote || ''} />
+              </div>
+              <button type="submit" className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700">Save Notes</button>
+            </form>
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">History</h2>
+            {history.length === 0 ? (
+              <p className="text-sm text-gray-500">No history events recorded.</p>
+            ) : (
+              <ul className="space-y-3">
+                {history.map(evt => (
+                  <li key={evt.id} className="text-sm border border-gray-200 rounded-lg p-3 bg-gray-50">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="font-medium text-gray-900">{evt.eventType}</span>
+                      <span className="text-xs text-gray-500">{new Date(evt.createdAt).toLocaleString()}</span>
+                    </div>
+                    <pre className="text-xs text-gray-700 whitespace-pre-wrap">{JSON.stringify(evt.eventData, null, 2)}</pre>
+                  </li>
+                ))}
+              </ul>
             )}
-          </dl>
-
-          {/* Quick Actions */}
-          <div className="mt-6 pt-6 border-t border-gray-200">
-            <h3 className="text-sm font-medium text-gray-900 mb-3">Quick Actions</h3>
-            <div className="flex flex-col gap-2">
-              <button className="w-full px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700">
-                Approve Application
-              </button>
-              <button className="w-full px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700">
-                Reject Application
-              </button>
-              <button className="w-full px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200">
-                Request Documents
-              </button>
-            </div>
           </div>
         </div>
       </div>

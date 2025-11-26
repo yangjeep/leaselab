@@ -2,7 +2,6 @@ import type { LoaderFunctionArgs, MetaFunction } from '@remix-run/cloudflare';
 import { json } from '@remix-run/cloudflare';
 import { useLoaderData, Link, useSearchParams } from '@remix-run/react';
 import { getLeads } from '~/lib/db.server';
-import { formatCurrency } from '~/shared/utils';
 import { getSiteId } from '~/lib/site.server';
 
 export const meta: MetaFunction = () => {
@@ -83,7 +82,7 @@ export default function LeadsIndex() {
               <tr className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 <th className="px-6 py-3">Applicant</th>
                 <th className="px-6 py-3">Contact</th>
-                <th className="px-6 py-3">Income</th>
+                <th className="px-6 py-3">Notes</th>
                 <th className="px-6 py-3">Status</th>
                 <th className="px-6 py-3">AI Score</th>
                 <th className="px-6 py-3">Date</th>
@@ -105,8 +104,8 @@ export default function LeadsIndex() {
                     <p className="text-sm text-gray-900">{lead.email}</p>
                     <p className="text-sm text-gray-500">{lead.phone}</p>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-900">
-                    {formatCurrency(lead.monthlyIncome)}/mo
+                  <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
+                    {lead.landlordNote ? lead.landlordNote : '—'}
                   </td>
                   <td className="px-6 py-4">
                     <StatusBadge status={lead.status} />

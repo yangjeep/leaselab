@@ -143,7 +143,6 @@ export async function submitApplication(
         email: string;
         phone: string;
         employmentStatus: string;
-        monthlyIncome: number;
         moveInDate: string;
         message?: string;
     },

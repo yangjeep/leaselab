@@ -15,7 +15,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
   const phone = formData.get("phone") as string;
   const moveInDate = formData.get("moveInDate") as string;
   const employmentStatus = formData.get("employmentStatus") as string;
-  const monthlyIncome = formData.get("monthlyIncome") as string;
+  // monthlyIncome removed from public submission
   const message = formData.get("message") as string;
 
   // Validate required fields
@@ -55,7 +55,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
         email,
         phone,
         employmentStatus: employmentStatus || "employed",
-        monthlyIncome: monthlyIncome ? parseInt(monthlyIncome, 10) : 5000,
+        // landlord/internal notes now handled in Ops; no monthlyIncome captured
         moveInDate: moveInDate || new Date().toISOString().split("T")[0],
         message,
       }),

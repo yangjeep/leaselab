@@ -150,19 +150,7 @@ export default function ContactForm({ listings = [], selectedProperty }: Contact
           </select>
         </div>
 
-        {/* Monthly Income */}
-        <div>
-          <label htmlFor="monthlyIncome" className="label block mb-1">
-            Monthly Income
-          </label>
-          <input
-            type="number"
-            id="monthlyIncome"
-            name="monthlyIncome"
-            placeholder="5000"
-            className="input w-full"
-          />
-        </div>
+        {/* Monthly Income removed (internal-only now) */}
 
         {/* Message */}
         <div>

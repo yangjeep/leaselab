@@ -145,8 +145,7 @@ export const LeadSubmissionSchema = z.object({
   phone: z.string().min(10).max(20),
   currentAddress: z.string().optional(),
   employmentStatus: EmploymentStatusEnum,
-  monthlyIncome: z.number().positive(),
-  moveInDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  moveInDate: z.string().regex(/\d{4}-\d{2}-\d{2}/),
   message: z.string().max(1000).optional(),
 });
 
@@ -368,12 +367,13 @@ export const SQL_SCHEMAS = {
       phone TEXT NOT NULL,
       current_address TEXT,
       employment_status TEXT NOT NULL,
-      monthly_income REAL NOT NULL,
       move_in_date TEXT NOT NULL,
       message TEXT,
       status TEXT NOT NULL DEFAULT 'new',
       ai_score INTEGER,
       ai_label TEXT,
+      landlord_note TEXT,
+      application_note TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now')),
       FOREIGN KEY (property_id) REFERENCES properties(id)

@@ -1,5 +1,5 @@
 import type {
-  Lead, LeadFile, LeadAIResult, Property, Tenant, Lease, WorkOrder, User,
+  Lead, LeadFile, LeadAIResult, LeadHistory, Property, Tenant, Lease, WorkOrder, User,
   Unit, UnitHistory, PropertyImage, UnitStatus, UnitEventType
 } from '~/shared/types';
 import { generateId } from '~/shared/utils';
@@ -105,8 +105,8 @@ export async function createLead(dbInput: DatabaseInput, siteId: string, data: O
   const now = new Date().toISOString();
 
   await db.execute(`
-    INSERT INTO leads (id, site_id, property_id, first_name, last_name, email, phone, current_address, employment_status, monthly_income, move_in_date, message, status, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'new', ?, ?)
+    INSERT INTO leads (id, site_id, property_id, first_name, last_name, email, phone, current_address, employment_status, move_in_date, message, status, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'new', ?, ?)
   `, [
     id,
     siteId,
@@ -117,12 +117,19 @@ export async function createLead(dbInput: DatabaseInput, siteId: string, data: O
     data.phone,
     data.currentAddress || null,
     data.employmentStatus,
-    data.monthlyIncome,
     data.moveInDate,
     data.message || null,
     now,
     now
   ]);
+
+  // Record history
+  await recordLeadHistory(db, siteId, id, 'lead_created', {
+    propertyId: data.propertyId,
+    employmentStatus: data.employmentStatus,
+    moveInDate: data.moveInDate,
+    message: data.message || null
+  });
 
   return (await getLeadById(db, siteId, id))!;
 }
@@ -144,6 +151,14 @@ export async function updateLead(dbInput: DatabaseInput, siteId: string, id: str
     updates.push('ai_label = ?');
     params.push(data.aiLabel);
   }
+  if (data.landlordNote !== undefined) {
+    updates.push('landlord_note = ?');
+    params.push(data.landlordNote || null);
+  }
+  if (data.applicationNote !== undefined) {
+    updates.push('application_note = ?');
+    params.push(data.applicationNote || null);
+  }
 
   if (updates.length === 0) return;
 
@@ -152,6 +167,14 @@ export async function updateLead(dbInput: DatabaseInput, siteId: string, id: str
   params.push(id);
 
   await db.execute(`UPDATE leads SET ${updates.join(', ')} WHERE id = ? AND site_id = ?`, [...params, siteId]);
+
+  // History event capturing changed fields
+  const changed: Record<string, unknown> = {};
+  for (let i = 0; i < updates.length - 1; i++) {
+    const col = updates[i].split(' = ')[0];
+    changed[col] = params[i];
+  }
+  await recordLeadHistory(db, siteId, id, 'lead_updated', changed);
 }
 
 // Lead Files
@@ -965,15 +988,39 @@ function mapLeadFromDb(row: unknown): Lead {
     phone: r.phone as string,
     currentAddress: r.current_address as string | undefined,
     employmentStatus: r.employment_status as Lead['employmentStatus'],
-    monthlyIncome: r.monthly_income as number,
     moveInDate: r.move_in_date as string,
     message: r.message as string | undefined,
     status: r.status as Lead['status'],
     aiScore: r.ai_score as number | undefined,
     aiLabel: r.ai_label as Lead['aiLabel'] | undefined,
+    landlordNote: r.landlord_note as string | undefined,
+    applicationNote: r.application_note as string | undefined,
     createdAt: r.created_at as string,
     updatedAt: r.updated_at as string,
   };
+}
+
+// Lead history helpers
+export async function getLeadHistory(dbInput: DatabaseInput, siteId: string, leadId: string): Promise<LeadHistory[]> {
+  const db = normalizeDb(dbInput);
+  const rows = await db.query('SELECT * FROM lead_history WHERE lead_id = ? AND site_id = ? ORDER BY created_at DESC', [leadId, siteId]);
+  return rows.map(r => ({
+    id: (r as any).id as string,
+    leadId: (r as any).lead_id as string,
+    siteId: (r as any).site_id as string,
+    eventType: (r as any).event_type as string,
+    eventData: JSON.parse(((r as any).event_data as string) || '{}'),
+    createdAt: (r as any).created_at as string,
+  }));
+}
+
+export async function recordLeadHistory(dbInput: DatabaseInput, siteId: string, leadId: string, eventType: string, eventData: Record<string, unknown>): Promise<void> {
+  const db = normalizeDb(dbInput);
+  const id = 'lh_' + crypto.randomUUID().replace(/-/g, '').slice(0, 16);
+  await db.execute(`
+    INSERT INTO lead_history (id, lead_id, site_id, event_type, event_data)
+    VALUES (?, ?, ?, ?, ?)
+  `, [id, leadId, siteId, eventType, JSON.stringify(eventData)]);
 }
 
 function mapLeadFileFromDb(row: unknown): LeadFile {

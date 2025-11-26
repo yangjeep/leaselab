@@ -112,17 +112,28 @@ export interface Lead {
   phone: string;
   currentAddress?: string;
   employmentStatus: EmploymentStatus;
-  monthlyIncome: number;
   moveInDate: string;
   message?: string;
   status: LeadStatus;
   aiScore?: number;
   aiLabel?: AILabel;
+  landlordNote?: string; // Internal-only notes (includes legacy income info)
+  applicationNote?: string; // Additional application processing notes
   createdAt: string;
   updatedAt: string;
   // Computed fields (from joins)
   property?: Property;
   unit?: Unit;
+}
+
+// Lead History (audit trail)
+export interface LeadHistory {
+  id: string;
+  leadId: string;
+  siteId: string;
+  eventType: string;
+  eventData: Record<string, unknown>;
+  createdAt: string;
 }
 
 export type LeadStatus =
