@@ -42,12 +42,19 @@ export async function requireAuth(
   }
 
   const session = await verifySessionCookie(cookie, sessionSecret);
-  if (!session || session.siteId !== siteId) {
+  if (!session) {
     throw redirect('/login');
   }
 
-  const user = await getUserById(dbInput, siteId, session.userId);
+  // Fetch user using session's siteId by default
+  const user = await getUserById(dbInput, session.siteId, session.userId);
   if (!user) {
+    throw redirect('/login');
+  }
+
+  // Enforce site context for non-super-admins
+  // Super admins can access any site context (and switch via UI)
+  if (!user.isSuperAdmin && session.siteId !== siteId) {
     throw redirect('/login');
   }
 

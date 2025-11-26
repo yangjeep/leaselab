@@ -1,27 +1,26 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from '@remix-run/cloudflare';
 import { json } from '@remix-run/cloudflare';
 import { useLoaderData, useActionData, Form } from '@remix-run/react';
-import { requireAuth, hashPassword, verifyPassword } from '~/lib/auth.server';
+import { requireAuth, getOptionalUser, hashPassword, verifyPassword } from '~/lib/auth.server';
 import { getUserByEmail, updateUserPassword, updateUserProfile } from '~/lib/db.server';
 import { useState } from 'react';
 import { getSiteId } from '~/lib/site.server';
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
     const db = context.cloudflare.env.DB;
-    const kv = context.cloudflare.env.SESSION_KV;
-    const siteId = getSiteId(request);
-
-    const user = await requireAuth(request, db, kv, siteId);
-
+    const secret = context.cloudflare.env.SESSION_SECRET as string;
+    // Settings should be accessible to any logged-in user regardless of hostname site context
+    const user = await getOptionalUser(request, db, secret, getSiteId(request));
+    if (!user) {
+        return json({ error: 'Unauthorized' }, { status: 401 });
+    }
     return json({ user });
 }
 
 export async function action({ request, context }: ActionFunctionArgs) {
     const db = context.cloudflare.env.DB;
-    const kv = context.cloudflare.env.SESSION_KV;
-    const siteId = getSiteId(request);
-
-    const user = await requireAuth(request, db, kv, siteId);
+    const secret = context.cloudflare.env.SESSION_SECRET as string;
+    const user = await requireAuth(request, db, secret, getSiteId(request));
     const formData = await request.formData();
     const formAction = formData.get('_action') as string;
 
