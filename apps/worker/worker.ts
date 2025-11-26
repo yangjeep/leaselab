@@ -15,15 +15,11 @@ import { cors } from 'hono/cors';
 import { publicRoutes } from './routes/public';
 import { opsRoutes } from './routes/ops';
 
-// Environment bindings interface
-export interface Env {
-  DB: D1Database;
-  PUBLIC_BUCKET: R2Bucket;
-  PRIVATE_BUCKET: R2Bucket;
-  OPENAI_API_KEY: string;
-  WORKER_INTERNAL_KEY?: string;
-  R2_PUBLIC_URL?: string;
-}
+// Import shared environment types from centralized config
+import type { CloudflareEnv } from '../../shared/config';
+
+// Re-export for backward compatibility and convenience
+export type Env = CloudflareEnv;
 
 // Create Hono app with typed bindings
 const app = new Hono<{ Bindings: Env }>();

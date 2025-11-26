@@ -493,3 +493,6 @@ export const SQL_SCHEMAS = {
     CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
   `,
 } as const;
+
+// Export environment bindings configuration
+export * from './env';

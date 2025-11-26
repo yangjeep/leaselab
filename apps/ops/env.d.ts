@@ -2,18 +2,13 @@
 /// <reference types="vite/client" />
 /// <reference types="@cloudflare/workers-types" />
 
+// Import shared environment types from centralized config
+import type { CloudflareEnv } from '~/shared/config';
+
 declare module "@remix-run/cloudflare" {
   interface AppLoadContext {
     cloudflare: {
-      env: {
-        DB: D1Database;
-        PUBLIC_BUCKET: R2Bucket;
-        PRIVATE_BUCKET: R2Bucket;
-        OPENAI_API_KEY: string;
-        SESSION_SECRET: string;
-        ENVIRONMENT: string;
-        R2_PUBLIC_URL?: string;
-      };
+      env: CloudflareEnv;
       cf: CfProperties;
       ctx: ExecutionContext;
     };

@@ -16,13 +16,11 @@ import {
   getUnitWithDetails,
 } from '../../ops/app/lib/db.server';
 
-// Define environment bindings type
-type Bindings = {
-  DB: D1Database;
-  PUBLIC_BUCKET: R2Bucket;
-  PRIVATE_BUCKET: R2Bucket;
-  R2_PUBLIC_URL?: string;
-};
+// Import shared environment types
+import type { CloudflareEnv } from '../../../shared/config';
+
+// Use shared bindings type
+type Bindings = CloudflareEnv;
 
 const publicRoutes = new Hono<{ Bindings: Bindings }>();
 

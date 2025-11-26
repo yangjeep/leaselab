@@ -26,14 +26,11 @@ import {
   updateWorkOrder,
 } from '../../ops/app/lib/db.server';
 
-// Define environment bindings type
-type Bindings = {
-  DB: D1Database;
-  PUBLIC_BUCKET: R2Bucket;
-  PRIVATE_BUCKET: R2Bucket;
-  OPENAI_API_KEY: string;
-  WORKER_INTERNAL_KEY?: string;
-};
+// Import shared environment types
+import type { CloudflareEnv } from '../../../shared/config';
+
+// Use shared bindings type
+type Bindings = CloudflareEnv;
 
 const opsRoutes = new Hono<{ Bindings: Bindings }>();
 
