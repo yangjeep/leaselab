@@ -1,7 +1,7 @@
 import type { ActionFunctionArgs } from '@remix-run/cloudflare';
 import { json } from '@remix-run/cloudflare';
 import { LeadSubmissionSchema } from '~/shared/config';
-import { createLead, getPropertyById } from '~/lib/db.server';
+import { fetchPropertyFromWorker, createLeadToWorker } from '~/lib/worker-client';
 import { getSiteId } from '~/lib/site.server';
 
 export async function action({ request, context }: ActionFunctionArgs) {
@@ -9,8 +9,11 @@ export async function action({ request, context }: ActionFunctionArgs) {
     return json({ success: false, error: 'Method not allowed' }, { status: 405 });
   }
 
-  const db = context.cloudflare.env.DB;
   const siteId = getSiteId(request);
+  const workerEnv = {
+    WORKER_URL: context.cloudflare.env.WORKER_URL,
+    WORKER_INTERNAL_KEY: context.cloudflare.env.WORKER_INTERNAL_KEY,
+  };
 
   try {
     const body = await request.json();
@@ -26,7 +29,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
     const data = validationResult.data;
 
     // Verify property exists
-    const property = await getPropertyById(db, siteId, data.propertyId);
+    const property = await fetchPropertyFromWorker(workerEnv, siteId, data.propertyId);
     if (!property) {
       return json(
         { success: false, error: 'Property not found' },
@@ -35,7 +38,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
     }
 
     // Create the lead
-    const lead = await createLead(db, siteId, {
+    const lead = await createLeadToWorker(workerEnv, siteId, {
       propertyId: data.propertyId,
       firstName: data.firstName,
       lastName: data.lastName,

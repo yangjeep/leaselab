@@ -1,7 +1,7 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs, MetaFunction } from '@remix-run/cloudflare';
 import { json } from '@remix-run/cloudflare';
 import { useLoaderData, Link, useSubmit } from '@remix-run/react';
-import { getTenants, getWorkOrders } from '~/lib/db.server';
+import { fetchTenantsFromWorker, fetchWorkOrdersFromWorker, updateTenantToWorker } from '~/lib/worker-client';
 import { formatCurrency } from '~/shared/utils';
 import { getSiteId } from '~/lib/site.server';
 
@@ -11,8 +11,11 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 };
 
 export async function loader({ params, request, context }: LoaderFunctionArgs) {
-  const db = context.cloudflare.env.DB;
   const siteId = getSiteId(request);
+  const workerEnv = {
+    WORKER_URL: context.cloudflare.env.WORKER_URL,
+    WORKER_INTERNAL_KEY: context.cloudflare.env.WORKER_INTERNAL_KEY,
+  };
   const tenantId = params.id;
 
   if (!tenantId) {
@@ -20,7 +23,7 @@ export async function loader({ params, request, context }: LoaderFunctionArgs) {
   }
 
   // Use getTenants with full joins - it already includes lease, property, unit, and work order count
-  const tenants = await getTenants(db, siteId);
+  const tenants = await fetchTenantsFromWorker(workerEnv, siteId);
   const tenant = tenants.find(t => t.id === tenantId);
 
   if (!tenant) {
@@ -28,15 +31,18 @@ export async function loader({ params, request, context }: LoaderFunctionArgs) {
   }
 
   // Fetch work orders for this tenant
-  const allWorkOrders = await getWorkOrders(db, siteId);
+  const allWorkOrders = await fetchWorkOrdersFromWorker(workerEnv, siteId);
   const workOrders = allWorkOrders.filter(wo => wo.tenantId === tenantId);
 
   return json({ tenant, workOrders });
 }
 
 export async function action({ params, request, context }: ActionFunctionArgs) {
-  const db = context.cloudflare.env.DB;
   const siteId = getSiteId(request);
+  const workerEnv = {
+    WORKER_URL: context.cloudflare.env.WORKER_URL,
+    WORKER_INTERNAL_KEY: context.cloudflare.env.WORKER_INTERNAL_KEY,
+  };
   const tenantId = params.id;
 
   if (!tenantId) {
@@ -48,12 +54,7 @@ export async function action({ params, request, context }: ActionFunctionArgs) {
 
   if (action === 'updateStatus') {
     const status = formData.get('status') as string;
-    const now = new Date().toISOString();
-
-    // Use D1 prepare directly since context.cloudflare.env.DB is D1Database
-    const stmt = db.prepare('UPDATE tenants SET status = ?, updated_at = ? WHERE id = ? AND site_id = ?');
-    await stmt.bind(status, now, tenantId, siteId).run();
-
+    await updateTenantToWorker(workerEnv, siteId, tenantId, { status });
     return json({ success: true });
   }
 

@@ -151,6 +151,19 @@ export async function fetchLeadFromWorker(
   return parseResponse(response);
 }
 
+export async function createLeadToWorker(
+  env: WorkerEnv,
+  siteId: string,
+  data: any
+): Promise<any> {
+  const url = `${env.WORKER_URL}/api/ops/leads`;
+  const response = await workerFetch(url, env, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }, siteId);
+  return parseResponse(response);
+}
+
 // ==================== WORK ORDERS ====================
 
 export async function fetchWorkOrdersFromWorker(
@@ -177,16 +190,10 @@ export async function saveWorkOrderToWorker(
 
 // ==================== HELPER ====================
 
-/**
- * Check if worker is configured
- */
 export function isWorkerConfigured(env: Partial<WorkerEnv>): boolean {
   return Boolean(env.WORKER_URL);
 }
 
-/**
- * Get worker URL or throw error
- */
 export function getWorkerUrl(env: Partial<WorkerEnv>): string {
   if (!env.WORKER_URL) {
     throw new Error('WORKER_URL environment variable is not configured');
@@ -279,6 +286,21 @@ export async function updateUserProfileToWorker(
 }
 
 /**
+ * Toggle super admin status
+ */
+export async function setSuperAdminStatusToWorker(
+  env: WorkerEnv,
+  userId: string,
+  isSuperAdmin: boolean
+): Promise<void> {
+  const url = `${env.WORKER_URL}/api/ops/users/${userId}/super-admin`;
+  await workerFetch(url, env, {
+    method: 'PUT',
+    body: JSON.stringify({ isSuperAdmin }),
+  });
+}
+
+/**
  * Get user's accessible sites
  */
 export async function fetchUserSitesFromWorker(
@@ -351,6 +373,22 @@ export async function fetchTenantFromWorker(
   const url = `${env.WORKER_URL}/api/ops/tenants/${tenantId}`;
   const response = await workerFetch(url, env, {}, siteId);
   return parseResponse(response);
+}
+
+/**
+ * Update tenant (e.g., status)
+ */
+export async function updateTenantToWorker(
+  env: WorkerEnv,
+  siteId: string,
+  tenantId: string,
+  data: any
+): Promise<void> {
+  const url = `${env.WORKER_URL}/api/ops/tenants/${tenantId}`;
+  await workerFetch(url, env, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  }, siteId);
 }
 
 // ==================== IMAGES ====================

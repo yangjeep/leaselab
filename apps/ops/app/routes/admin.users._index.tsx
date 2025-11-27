@@ -2,15 +2,18 @@ import type { LoaderFunctionArgs } from '@remix-run/cloudflare';
 import { json } from '@remix-run/cloudflare';
 import { useLoaderData, Link } from '@remix-run/react';
 import { requireAuth } from '~/lib/auth.server';
-import { getUsers } from '~/lib/db.server';
+import { fetchUsersFromWorker } from '~/lib/worker-client';
 import { getSiteId } from '~/lib/site.server';
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
-    const db = context.cloudflare.env.DB;
     const siteId = getSiteId(request);
     const secret = context.cloudflare.env.SESSION_SECRET as string;
+    const workerEnv = {
+        WORKER_URL: context.cloudflare.env.WORKER_URL,
+        WORKER_INTERNAL_KEY: context.cloudflare.env.WORKER_INTERNAL_KEY,
+    };
 
-    const currentUser = await requireAuth(request, db, secret, siteId);
+    const currentUser = await requireAuth(request, workerEnv, secret, siteId);
 
 
 
@@ -20,7 +23,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
     }
 
     try {
-        const users = await getUsers(db);
+        const users = await fetchUsersFromWorker(workerEnv);
         return json({ users });
     } catch (error) {
         console.error('Admin Users Loader - Error fetching users:', error);

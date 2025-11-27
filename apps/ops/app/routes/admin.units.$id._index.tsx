@@ -1,7 +1,7 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs, MetaFunction } from '@remix-run/cloudflare';
 import { json, redirect } from '@remix-run/cloudflare';
 import { useLoaderData, Link, Form, useNavigation } from '@remix-run/react';
-import { getUnitWithDetails, updateUnit, deleteUnit, getUnitHistory, getImagesByEntity, createUnitHistory } from '~/lib/db.server';
+import { fetchUnitWithDetailsFromWorker, saveUnitToWorker, deleteUnitToWorker, fetchUnitHistoryFromWorker, fetchImagesFromWorker, createUnitHistoryToWorker } from '~/lib/worker-client';
 import { formatCurrency } from '~/shared/utils';
 import { getSiteId } from '~/lib/site.server';
 
@@ -10,29 +10,35 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 };
 
 export async function loader({ params, context, request }: LoaderFunctionArgs) {
-  const db = context.cloudflare.env.DB;
   const siteId = getSiteId(request);
+  const workerEnv = {
+    WORKER_URL: context.cloudflare.env.WORKER_URL,
+    WORKER_INTERNAL_KEY: context.cloudflare.env.WORKER_INTERNAL_KEY,
+  };
   const { id } = params;
 
   if (!id) {
     throw new Response('Unit ID required', { status: 400 });
   }
 
-  const unit = await getUnitWithDetails(db, siteId, id);
+  const unit = await fetchUnitWithDetailsFromWorker(workerEnv, siteId, id);
 
   if (!unit) {
     throw new Response('Unit not found', { status: 404 });
   }
 
-  const history = await getUnitHistory(db, siteId, id);
-  const images = await getImagesByEntity(db, siteId, 'unit', id);
+  const history = await fetchUnitHistoryFromWorker(workerEnv, siteId, id);
+  const images = await fetchImagesFromWorker(workerEnv, siteId, 'unit', id);
 
   return json({ unit, history, images });
 }
 
 export async function action({ request, params, context }: ActionFunctionArgs) {
-  const db = context.cloudflare.env.DB;
   const siteId = getSiteId(request);
+  const workerEnv = {
+    WORKER_URL: context.cloudflare.env.WORKER_URL,
+    WORKER_INTERNAL_KEY: context.cloudflare.env.WORKER_INTERNAL_KEY,
+  };
   const { id } = params;
 
   if (!id) {
@@ -43,8 +49,8 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
   const intent = formData.get('intent');
 
   if (intent === 'delete') {
-    const unit = await getUnitWithDetails(db, siteId, id);
-    await deleteUnit(db, siteId, id);
+    const unit = await fetchUnitWithDetailsFromWorker(workerEnv, siteId, id);
+    await deleteUnitToWorker(workerEnv, siteId, id);
     return redirect(`/admin/properties/${unit?.propertyId}`);
   }
 
@@ -58,8 +64,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 
     // Track status change
     if (currentUnit && newStatus && newStatus !== currentUnit.status) {
-      await createUnitHistory(db, siteId, {
-        unitId: id,
+      await createUnitHistoryToWorker(workerEnv, siteId, id, {
         eventType: 'status_change',
         eventData: {
           previousStatus: currentUnit.status,
@@ -70,8 +75,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 
     // Track rent change
     if (currentUnit && newRentAmount && newRentAmount !== currentUnit.rentAmount) {
-      await createUnitHistory(db, siteId, {
-        unitId: id,
+      await createUnitHistoryToWorker(workerEnv, siteId, id, {
         eventType: 'rent_change',
         eventData: {
           previousRent: currentUnit.rentAmount,
@@ -80,7 +84,8 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
       });
     }
 
-    await updateUnit(db, siteId, id, {
+    await saveUnitToWorker(workerEnv, siteId, {
+      id,
       unitNumber: formData.get('unitNumber') as string,
       name: formData.get('name') as string || undefined,
       bedrooms: parseInt(formData.get('bedrooms') as string),

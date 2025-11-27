@@ -1,7 +1,7 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs } from '@remix-run/cloudflare';
 import { json } from '@remix-run/cloudflare';
 import { extractBearerToken, validateApiToken } from '~/lib/api-auth.server';
-import { getPropertyById } from '~/lib/db.server';
+import { fetchPropertyFromWorker } from '~/lib/worker-client';
 
 /**
  * Public API endpoint for fetching a single property by ID
@@ -9,6 +9,10 @@ import { getPropertyById } from '~/lib/db.server';
  */
 export async function loader({ params, request, context }: LoaderFunctionArgs) {
   const db = context.cloudflare.env.DB;
+  const workerEnv = {
+    WORKER_URL: context.cloudflare.env.WORKER_URL,
+    WORKER_INTERNAL_KEY: context.cloudflare.env.WORKER_INTERNAL_KEY,
+  };
   const { id } = params;
 
   if (!id) {
@@ -51,7 +55,7 @@ export async function loader({ params, request, context }: LoaderFunctionArgs) {
 
   try {
     // Fetch property
-    const property = await getPropertyById(db, siteId, id);
+    const property = await fetchPropertyFromWorker(workerEnv, siteId, id);
 
     if (!property) {
       return json(

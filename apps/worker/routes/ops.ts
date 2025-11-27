@@ -275,6 +275,30 @@ opsRoutes.get('/leads', async (c: Context) => {
 });
 
 /**
+ * POST /api/ops/leads
+ * Create a new lead
+ */
+opsRoutes.post('/leads', async (c: Context) => {
+  try {
+    const siteId = c.req.header('X-Site-Id') || 'default';
+    const body = await c.req.json();
+
+    const lead = await createLead(c.env.DB, siteId, body);
+
+    return c.json({
+      success: true,
+      data: lead,
+    }, 201);
+  } catch (error) {
+    console.error('Error creating lead:', error);
+    return c.json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    }, 500);
+  }
+});
+
+/**
  * GET /api/ops/leads/:id
  * Get a single lead by ID
  */
@@ -549,21 +573,45 @@ opsRoutes.put('/users/:id/password', async (c: Context) => {
 
 /**
  * PUT /api/ops/users/:id/profile
- * Update user profile
+ * Update user profile (name, email)
  */
 opsRoutes.put('/users/:id/profile', async (c: Context) => {
   try {
     const siteId = c.req.header('X-Site-Id') || 'default';
-    const userId = c.req.param('id');
+    const id = c.req.param('id');
     const body = await c.req.json();
 
-    await updateUserProfile(c.env.DB, siteId, userId, body);
+    await updateUserProfile(c.env.DB, siteId, id, body);
 
     return c.json({
       success: true,
     });
   } catch (error) {
-    console.error('Error updating profile:', error);
+    console.error('Error updating user profile:', error);
+    return c.json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    }, 500);
+  }
+});
+
+/**
+ * PUT /api/ops/users/:id/super-admin
+ * Toggle super admin status
+ */
+opsRoutes.put('/users/:id/super-admin', async (c: Context) => {
+  try {
+    const id = c.req.param('id');
+    const body = await c.req.json();
+    const isSuperAdmin = body.isSuperAdmin === true;
+
+    await setSuperAdminStatus(c.env.DB, id, isSuperAdmin);
+
+    return c.json({
+      success: true,
+    });
+  } catch (error) {
+    console.error('Error updating super admin status:', error);
     return c.json({
       error: 'Internal server error',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -690,6 +738,34 @@ opsRoutes.get('/tenants/:id', async (c: Context) => {
     });
   } catch (error) {
     console.error('Error fetching tenant:', error);
+    return c.json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    }, 500);
+  }
+});
+
+/**
+ * PUT /api/ops/tenants/:id
+ * Update tenant status
+ */
+opsRoutes.put('/tenants/:id', async (c: Context) => {
+  try {
+    const siteId = c.req.header('X-Site-Id') || 'default';
+    const id = c.req.param('id');
+    const body = await c.req.json();
+
+    if (body.status) {
+      const now = new Date().toISOString();
+      const stmt = c.env.DB.prepare('UPDATE tenants SET status = ?, updated_at = ? WHERE id = ? AND site_id = ?');
+      await stmt.bind(body.status, now, id, siteId).run();
+    }
+
+    return c.json({
+      success: true,
+    });
+  } catch (error) {
+    console.error('Error updating tenant:', error);
     return c.json({
       error: 'Internal server error',
       message: error instanceof Error ? error.message : 'Unknown error',

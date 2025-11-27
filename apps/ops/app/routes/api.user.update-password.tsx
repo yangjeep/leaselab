@@ -1,18 +1,22 @@
 import type { ActionFunctionArgs } from '@remix-run/cloudflare';
 import { json } from '@remix-run/cloudflare';
 import { requireAuth, hashPassword, verifyPassword } from '~/lib/auth.server';
-import { getUserByEmail, updateUserPassword } from '~/lib/db.server';
+import { fetchUserByEmailFromWorker, updateUserPasswordToWorker } from '~/lib/worker-client';
 
 export async function action({ request, context }: ActionFunctionArgs) {
     if (request.method !== 'POST') {
         return json({ error: 'Method not allowed' }, { status: 405 });
     }
 
-        const db = context.env.DB as unknown;
-        const secret = context.env.SESSION_SECRET as string;
+        const secret = context.cloudflare.env.SESSION_SECRET as string;
+        const workerEnv = {
+            WORKER_URL: context.cloudflare.env.WORKER_URL,
+            WORKER_INTERNAL_KEY: context.cloudflare.env.WORKER_INTERNAL_KEY,
+        };
+        const siteId = (new URL(request.url)).hostname || 'default';
 
     // Ensure user is authenticated
-        const user = await requireAuth(request, db, secret);
+        const user = await requireAuth(request, workerEnv, secret, siteId);
 
     const body = await request.json();
     const { currentPassword, newPassword } = body;
@@ -26,7 +30,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
     }
 
     // Get user with password hash
-    const userWithPassword = await getUserByEmail(db, user.email);
+    const userWithPassword = await fetchUserByEmailFromWorker(workerEnv, siteId, user.email);
     if (!userWithPassword) {
         return json({ error: 'User not found' }, { status: 404 });
     }
@@ -41,7 +45,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
     const newPasswordHash = await hashPassword(newPassword);
 
     // Update password in database
-    await updateUserPassword(db, user.id, newPasswordHash);
+    await updateUserPasswordToWorker(workerEnv, siteId, user.id, newPasswordHash);
 
     return json({ success: true, message: 'Password updated successfully' });
 }

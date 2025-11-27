@@ -28,7 +28,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
   const siteId = getSiteId(request);
 
   try {
-    const body = await request.json();
+    const body = await request.json() as any;
 
     // Extract propertyId from body since it's required
     const { propertyId, ...unitData } = body;

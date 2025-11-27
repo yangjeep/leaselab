@@ -1,7 +1,7 @@
 import type { LoaderFunctionArgs } from '@remix-run/cloudflare';
 import { json } from '@remix-run/cloudflare';
 import { extractBearerToken, validateApiToken } from '~/lib/api-auth.server';
-import { getProperties } from '~/lib/db.server';
+import { fetchPropertiesFromWorker } from '~/lib/worker-client';
 
 /**
  * Public API endpoint for fetching properties
@@ -9,6 +9,10 @@ import { getProperties } from '~/lib/db.server';
  */
 export async function loader({ request, context }: LoaderFunctionArgs) {
     const db = context.cloudflare.env.DB;
+    const workerEnv = {
+        WORKER_URL: context.cloudflare.env.WORKER_URL,
+        WORKER_INTERNAL_KEY: context.cloudflare.env.WORKER_INTERNAL_KEY,
+    };
 
     // Extract and validate token
     const token = extractBearerToken(request);
@@ -48,7 +52,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
         const status = url.searchParams.get('status') || undefined;
 
         // Fetch properties for this site
-        const properties = await getProperties(db, siteId, {
+        const properties = await fetchPropertiesFromWorker(workerEnv, siteId, {
             isActive: true,
             city,
         });

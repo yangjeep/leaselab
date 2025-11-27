@@ -1,7 +1,7 @@
 import type { LoaderFunctionArgs, MetaFunction } from '@remix-run/cloudflare';
 import { json } from '@remix-run/cloudflare';
 import { useLoaderData, Link } from '@remix-run/react';
-import { getProperties, getUnitsByPropertyId, getTenants } from '~/lib/db.server';
+import { fetchPropertiesFromWorker, fetchUnitsFromWorker, fetchTenantsFromWorker } from '~/lib/worker-client';
 import { formatCurrency } from '~/shared/utils';
 import { getSiteId } from '~/lib/site.server';
 
@@ -10,12 +10,15 @@ export const meta: MetaFunction = () => {
 };
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
-  const db = context.cloudflare.env.DB;
   const siteId = getSiteId(request);
+  const workerEnv = {
+    WORKER_URL: context.cloudflare.env.WORKER_URL,
+    WORKER_INTERNAL_KEY: context.cloudflare.env.WORKER_INTERNAL_KEY,
+  };
 
   const [properties, tenants] = await Promise.all([
-    getProperties(db, siteId),
-    getTenants(db, siteId),
+    fetchPropertiesFromWorker(workerEnv, siteId),
+    fetchTenantsFromWorker(workerEnv, siteId),
   ]);
 
   // Calculate financial metrics
@@ -24,7 +27,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   let totalUnits = 0;
 
   for (const property of properties) {
-    const units = await getUnitsByPropertyId(db, siteId, property.id);
+    const units = await fetchUnitsFromWorker(workerEnv, siteId, property.id);
     totalUnits += units.length;
     for (const unit of units) {
       if (unit.status === 'occupied') {

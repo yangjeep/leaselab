@@ -2,15 +2,18 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from '@remix-run/cloudfla
 import { json } from '@remix-run/cloudflare';
 import { useLoaderData, useActionData, Form } from '@remix-run/react';
 import { requireAuth, getOptionalUser, hashPassword, verifyPassword } from '~/lib/auth.server';
-import { getUserByEmail, updateUserPassword, updateUserProfile } from '~/lib/db.server';
+import { fetchUserByEmailFromWorker, updateUserPasswordToWorker, updateUserProfileToWorker } from '~/lib/worker-client';
 import { useState } from 'react';
 import { getSiteId } from '~/lib/site.server';
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
-    const db = context.cloudflare.env.DB;
     const secret = context.cloudflare.env.SESSION_SECRET as string;
+    const workerEnv = {
+        WORKER_URL: context.cloudflare.env.WORKER_URL,
+        WORKER_INTERNAL_KEY: context.cloudflare.env.WORKER_INTERNAL_KEY,
+    };
     // Settings should be accessible to any logged-in user regardless of hostname site context
-    const user = await getOptionalUser(request, db, secret, getSiteId(request));
+    const user = await getOptionalUser(request, workerEnv, secret, getSiteId(request));
     if (!user) {
         return json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -18,9 +21,13 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
 }
 
 export async function action({ request, context }: ActionFunctionArgs) {
-    const db = context.cloudflare.env.DB;
     const secret = context.cloudflare.env.SESSION_SECRET as string;
-    const user = await requireAuth(request, db, secret, getSiteId(request));
+    const workerEnv = {
+        WORKER_URL: context.cloudflare.env.WORKER_URL,
+        WORKER_INTERNAL_KEY: context.cloudflare.env.WORKER_INTERNAL_KEY,
+    };
+    const siteId = getSiteId(request);
+    const user = await requireAuth(request, workerEnv, secret, siteId);
     const formData = await request.formData();
     const formAction = formData.get('_action') as string;
 
@@ -39,7 +46,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
         }
 
         try {
-            await updateUserProfile(db, siteId, user.id, { name: name.trim(), email: email.trim() });
+            await updateUserProfileToWorker(workerEnv, siteId, user.id, { name: name.trim(), email: email.trim() });
             return json({ success: 'Profile updated successfully' });
         } catch (error) {
             return json({ error: (error as Error).message || 'Failed to update profile' }, { status: 400 });
@@ -66,7 +73,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
         }
 
         // Get user with password hash
-        const userWithPassword = await getUserByEmail(db, siteId, user.email);
+        const userWithPassword = await fetchUserByEmailFromWorker(workerEnv, siteId, user.email);
         if (!userWithPassword) {
             return json({ error: 'User not found' }, { status: 404 });
         }
@@ -81,7 +88,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
         const newPasswordHash = await hashPassword(newPassword);
 
         // Update password in database
-        await updateUserPassword(db, siteId, user.id, newPasswordHash);
+        await updateUserPasswordToWorker(workerEnv, siteId, user.id, newPasswordHash);
 
         return json({ success: 'Password updated successfully' });
     }

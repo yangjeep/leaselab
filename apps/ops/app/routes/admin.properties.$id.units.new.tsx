@@ -1,7 +1,7 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs, MetaFunction } from '@remix-run/cloudflare';
 import { json, redirect } from '@remix-run/cloudflare';
 import { Form, Link, useLoaderData, useNavigation, useActionData } from '@remix-run/react';
-import { getPropertyById, createUnit } from '~/lib/db.server';
+import { fetchPropertyFromWorker, saveUnitToWorker } from '~/lib/worker-client';
 import { CreateUnitSchema } from '~/shared/config';
 import { getSiteId } from '~/lib/site.server';
 
@@ -10,15 +10,18 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 };
 
 export async function loader({ params, context, request }: LoaderFunctionArgs) {
-  const db = context.cloudflare.env.DB;
   const siteId = getSiteId(request);
+  const workerEnv = {
+    WORKER_URL: context.cloudflare.env.WORKER_URL,
+    WORKER_INTERNAL_KEY: context.cloudflare.env.WORKER_INTERNAL_KEY,
+  };
   const { id } = params;
 
   if (!id) {
     throw new Response('Property ID required', { status: 400 });
   }
 
-  const property = await getPropertyById(db, siteId, id);
+  const property = await fetchPropertyFromWorker(workerEnv, siteId, id);
 
   if (!property) {
     throw new Response('Property not found', { status: 404 });
@@ -28,8 +31,11 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
 }
 
 export async function action({ request, params, context }: ActionFunctionArgs) {
-  const db = context.cloudflare.env.DB;
   const siteId = getSiteId(request);
+  const workerEnv = {
+    WORKER_URL: context.cloudflare.env.WORKER_URL,
+    WORKER_INTERNAL_KEY: context.cloudflare.env.WORKER_INTERNAL_KEY,
+  };
   const { id: propertyId } = params;
 
   if (!propertyId) {
@@ -60,7 +66,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
     return json({ error: 'Validation failed', details: parsed.error.flatten() }, { status: 400 });
   }
 
-  await createUnit(db, siteId, { propertyId, ...parsed.data });
+  await saveUnitToWorker(workerEnv, siteId, { propertyId, ...parsed.data });
   return redirect(`/admin/properties/${propertyId}`);
 }
 
