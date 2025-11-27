@@ -430,7 +430,9 @@ export const SQL_SCHEMAS = {
   leases: `
     CREATE TABLE IF NOT EXISTS leases (
       id TEXT PRIMARY KEY,
+      site_id TEXT NOT NULL,
       property_id TEXT NOT NULL,
+      unit_id TEXT,
       tenant_id TEXT NOT NULL,
       start_date TEXT NOT NULL,
       end_date TEXT NOT NULL,
@@ -442,11 +444,14 @@ export const SQL_SCHEMAS = {
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now')),
       FOREIGN KEY (property_id) REFERENCES properties(id),
+      FOREIGN KEY (unit_id) REFERENCES units(id),
       FOREIGN KEY (tenant_id) REFERENCES tenants(id)
     );
     CREATE INDEX IF NOT EXISTS idx_leases_status ON leases(status);
     CREATE INDEX IF NOT EXISTS idx_leases_property ON leases(property_id);
     CREATE INDEX IF NOT EXISTS idx_leases_tenant ON leases(tenant_id);
+    CREATE INDEX IF NOT EXISTS idx_leases_unit ON leases(unit_id);
+    CREATE INDEX IF NOT EXISTS idx_leases_site ON leases(site_id);
   `,
   work_orders: `
     CREATE TABLE IF NOT EXISTS work_orders (

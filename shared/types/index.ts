@@ -216,9 +216,23 @@ export interface Tenant {
   status: TenantStatus;
   createdAt: string;
   updatedAt: string;
+  // Computed fields (from joins)
+  currentLease?: Lease;
+  property?: Property;
+  unit?: Unit;
+  activeWorkOrderCount?: number;
 }
 
-export type TenantStatus = 'active' | 'inactive' | 'evicted';
+export type TenantStatus =
+  | 'moving_in'      // Tenant is in the process of moving in
+  | 'active'         // Tenant is currently residing (staying)
+  | 'lease_up'       // Lease is coming up for renewal
+  | 'renewing'       // In the process of renewing lease
+  | 'moving_out'     // Tenant is in the process of moving out
+  | 'pending_n11'    // Pending N11 notice (Ontario termination notice)
+  | 'terminated'     // Lease has been terminated
+  | 'inactive'       // Tenant is no longer active
+  | 'evicted';       // Tenant was evicted
 
 // Lease Types
 export interface Lease {
