@@ -72,31 +72,50 @@ export async function getLeads(dbInput: DatabaseInput, siteId: string, options?:
   const db = normalizeDb(dbInput);
   const { status, propertyId, sortBy = 'created_at', sortOrder = 'desc', limit = 50, offset = 0 } = options || {};
 
-  let query = 'SELECT * FROM leads WHERE site_id = ?';
+  // Join with units to check if the unit is occupied
+  let query = `
+    SELECT
+      l.*,
+      u.status as unit_status,
+      CASE WHEN u.status = 'occupied' THEN 1 ELSE 0 END as is_unit_occupied
+    FROM leads l
+    LEFT JOIN units u ON l.unit_id = u.id OR (l.property_id = u.property_id AND u.unit_number = 'Main')
+    WHERE l.site_id = ?
+  `;
   const params: (string | number)[] = [siteId];
 
   if (status) {
-    query += ' AND status = ?';
+    query += ' AND l.status = ?';
     params.push(status);
   }
 
   if (propertyId) {
-    query += ' AND property_id = ?';
+    query += ' AND l.property_id = ?';
     params.push(propertyId);
   }
 
-  const orderColumn = sortBy === 'aiScore' ? 'ai_score' : sortBy.replace(/([A-Z])/g, '_$1').toLowerCase();
+  const orderColumn = sortBy === 'aiScore' ? 'l.ai_score' : `l.${sortBy.replace(/([A-Z])/g, '_$1').toLowerCase()}`;
   query += ` ORDER BY ${orderColumn} ${sortOrder.toUpperCase()} LIMIT ? OFFSET ?`;
   params.push(limit, offset);
 
   const results = await db.query(query, params);
-  return results.map(mapLeadFromDb);
+  return results.map(mapLeadWithOccupancyFromDb);
 }
 
 export async function getLeadById(dbInput: DatabaseInput, siteId: string, id: string): Promise<Lead | null> {
   const db = normalizeDb(dbInput);
-  const result = await db.queryOne('SELECT * FROM leads WHERE id = ? AND site_id = ?', [id, siteId]);
-  return result ? mapLeadFromDb(result) : null;
+  const query = `
+    SELECT
+      l.*,
+      u.status as unit_status,
+      CASE WHEN u.status = 'occupied' THEN 1 ELSE 0 END as is_unit_occupied
+    FROM leads l
+    LEFT JOIN units u ON l.unit_id = u.id OR (l.property_id = u.property_id AND u.unit_number = 'Main')
+    WHERE l.id = ? AND l.site_id = ?
+    LIMIT 1
+  `;
+  const result = await db.queryOne(query, [id, siteId]);
+  return result ? mapLeadWithOccupancyFromDb(result) : null;
 }
 
 export async function createLead(dbInput: DatabaseInput, siteId: string, data: Omit<Lead, 'id' | 'createdAt' | 'updatedAt' | 'aiScore' | 'aiLabel' | 'status'>): Promise<Lead> {
@@ -1044,6 +1063,13 @@ function mapLeadFromDb(row: unknown): Lead {
     createdAt: r.created_at as string,
     updatedAt: r.updated_at as string,
   };
+}
+
+function mapLeadWithOccupancyFromDb(row: unknown): Lead {
+  const lead = mapLeadFromDb(row);
+  const r = row as Record<string, unknown>;
+  lead.isUnitOccupied = Boolean(r.is_unit_occupied);
+  return lead;
 }
 
 // Lead history helpers

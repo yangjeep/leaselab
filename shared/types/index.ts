@@ -123,6 +123,7 @@ export interface Lead {
   // Computed fields (from joins)
   property?: Property;
   unit?: Unit;
+  isUnitOccupied?: boolean; // Whether the unit/property is currently occupied
 }
 
 // Lead History (audit trail)

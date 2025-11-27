@@ -139,8 +139,12 @@ export default function LeadsIndex() {
             <tbody className="divide-y divide-gray-100">
               {leads.map((lead) => {
                 const property = propertyMap.get(lead.propertyId);
+                const isOccupied = lead.isUnitOccupied;
                 return (
-                  <tr key={lead.id} className="hover:bg-gray-50">
+                  <tr
+                    key={lead.id}
+                    className={`hover:bg-gray-50 ${isOccupied ? 'bg-orange-50' : ''}`}
+                  >
                     <td className="px-6 py-4">
                       <div>
                         <p className="font-medium text-gray-900">
@@ -150,7 +154,14 @@ export default function LeadsIndex() {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <p className="text-sm text-gray-900">{property?.name || '—'}</p>
+                      <div>
+                        <p className="text-sm text-gray-900">{property?.name || '—'}</p>
+                        {isOccupied && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800 mt-1">
+                            Currently Occupied
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4">
                       <p className="text-sm text-gray-900">{lead.email}</p>
