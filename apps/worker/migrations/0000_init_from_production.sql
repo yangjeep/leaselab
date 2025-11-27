@@ -313,7 +313,6 @@ INSERT OR IGNORE INTO sites (
 
 -- Super Admin User for Preview Environment
 -- Email: admin@leaselab.io
--- Password: 4*X9j3DUizzAB_j8
 INSERT OR IGNORE INTO users (
   id,
   email,
