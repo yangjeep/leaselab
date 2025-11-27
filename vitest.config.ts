@@ -4,7 +4,7 @@ import path from 'path';
 export default defineConfig({
   test: {
     globals: true,
-    environment: 'node',
+    environment: 'edge-runtime',
     include: ['**/*.test.ts'],
     coverage: {
       provider: 'v8',
