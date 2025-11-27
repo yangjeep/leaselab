@@ -952,7 +952,7 @@ opsRoutes.put('/images/:id', async (c: Context) => {
 
 /**
  * DELETE /api/ops/images/:id
- * Delete an image record
+ * Delete an image record and R2 file
  */
 opsRoutes.delete('/images/:id', async (c: Context) => {
   try {
@@ -960,6 +960,26 @@ opsRoutes.delete('/images/:id', async (c: Context) => {
     if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
     const id = c.req.param('id');
 
+    // First, fetch the image to get the R2 key
+    const image = await getImageById(c.env.DB, siteId, id);
+
+    if (!image) {
+      return c.json({
+        error: 'Not found',
+        message: 'Image not found',
+      }, 404);
+    }
+
+    // Delete from R2 first (fail fast if storage deletion fails)
+    try {
+      await c.env.PUBLIC_BUCKET.delete(image.r2Key);
+    } catch (r2Error) {
+      console.error('Error deleting from R2:', r2Error);
+      // Continue anyway - the file might already be deleted
+      // We don't want to block DB cleanup if R2 file is missing
+    }
+
+    // Then delete from database
     await deleteImage(c.env.DB, siteId, id);
 
     return c.json({
