@@ -89,10 +89,26 @@ export async function requireUser(
  */
 export async function setActiveSite(
   request: Request,
-  _unused: unknown,
+  sessionSecret: string,
   activeSiteId: string
-): Promise<void> {
-  // With signed cookies, this would require re-issuing the cookie.
+): Promise<string> {
+  const existing = getSessionCookie(request);
+  if (!existing) {
+    throw redirect('/login');
+  }
+  const session = await verifySessionCookie(existing, sessionSecret);
+  if (!session) {
+    throw redirect('/login');
+  }
+  // Preserve original expiry
+  const newSessionValue = await createSessionCookie({
+    userId: session.userId,
+    siteId: activeSiteId,
+    expiresAt: session.expiresAt,
+  }, sessionSecret);
+  // Compute remaining seconds for Max-Age
+  const remaining = Math.max(0, Math.floor((session.expiresAt - Date.now()) / 1000));
+  return createSessionCookieHeader(newSessionValue, remaining || 60); // fallback 60s if already expired soon
 }
 
 /**

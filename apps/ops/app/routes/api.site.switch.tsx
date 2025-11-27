@@ -41,8 +41,8 @@ export async function action({ request, context }: ActionFunctionArgs) {
             }, { status: 403 });
         }
 
-        // Set active site in session
-        await setActiveSite(request, undefined, siteId);
+        // Set active site in session (reissues cookie)
+        const setCookieHeader = await setActiveSite(request, secret, siteId);
 
         // Return available sites for UI update
         const accessibleSites = await fetchUserAccessibleSitesFromWorker(workerEnv, user.id);
@@ -51,7 +51,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
             success: true,
             activeSite: siteId,
             availableSites: accessibleSites
-        });
+        }, { headers: { 'Set-Cookie': setCookieHeader } });
     } catch (error) {
         console.error('Error switching site:', error);
         return json({ success: false, error: 'Failed to switch site' }, { status: 500 });

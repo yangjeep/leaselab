@@ -82,7 +82,10 @@ opsRoutes.use('*', internalAuthMiddleware);
  */
 opsRoutes.get('/properties', async (c: Context) => {
   try {
-    const siteId = c.req.header('X-Site-Id') || 'default';
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) {
+      return c.json({ error: 'Missing X-Site-Id header' }, 400);
+    }
     const properties = await getProperties(c.env.DB, siteId);
 
     return c.json({
@@ -104,7 +107,10 @@ opsRoutes.get('/properties', async (c: Context) => {
  */
 opsRoutes.get('/properties/:id', async (c: Context) => {
   try {
-    const siteId = c.req.header('X-Site-Id') || 'default';
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) {
+      return c.json({ error: 'Missing X-Site-Id header' }, 400);
+    }
     const id = c.req.param('id');
 
     const property = await getPropertyById(c.env.DB, siteId, id);
@@ -137,7 +143,10 @@ opsRoutes.get('/properties/:id', async (c: Context) => {
  */
 opsRoutes.post('/properties', async (c: Context) => {
   try {
-    const siteId = c.req.header('X-Site-Id') || 'default';
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) {
+      return c.json({ error: 'Missing X-Site-Id header' }, 400);
+    }
     const body = await c.req.json();
 
     let result;
@@ -171,7 +180,10 @@ opsRoutes.post('/properties', async (c: Context) => {
  */
 opsRoutes.get('/units', async (c: Context) => {
   try {
-    const siteId = c.req.header('X-Site-Id') || 'default';
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) {
+      return c.json({ error: 'Missing X-Site-Id header' }, 400);
+    }
     const propertyId = c.req.query('propertyId');
 
     const units = await getUnits(c.env.DB, siteId, propertyId ? { propertyId } : undefined);
@@ -195,7 +207,10 @@ opsRoutes.get('/units', async (c: Context) => {
  */
 opsRoutes.get('/units/:id', async (c: Context) => {
   try {
-    const siteId = c.req.header('X-Site-Id') || 'default';
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) {
+      return c.json({ error: 'Missing X-Site-Id header' }, 400);
+    }
     const id = c.req.param('id');
 
     const unit = await getUnitById(c.env.DB, siteId, id);
@@ -226,7 +241,10 @@ opsRoutes.get('/units/:id', async (c: Context) => {
  */
 opsRoutes.post('/units', async (c: Context) => {
   try {
-    const siteId = c.req.header('X-Site-Id') || 'default';
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) {
+      return c.json({ error: 'Missing X-Site-Id header' }, 400);
+    }
     const body = await c.req.json();
 
     let result;
@@ -258,7 +276,10 @@ opsRoutes.post('/units', async (c: Context) => {
  */
 opsRoutes.get('/leads', async (c: Context) => {
   try {
-    const siteId = c.req.header('X-Site-Id') || 'default';
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) {
+      return c.json({ error: 'Missing X-Site-Id header' }, 400);
+    }
     const leads = await getLeads(c.env.DB, siteId);
 
     return c.json({
@@ -280,7 +301,10 @@ opsRoutes.get('/leads', async (c: Context) => {
  */
 opsRoutes.post('/leads', async (c: Context) => {
   try {
-    const siteId = c.req.header('X-Site-Id') || 'default';
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) {
+      return c.json({ error: 'Missing X-Site-Id header' }, 400);
+    }
     const body = await c.req.json();
 
     const lead = await createLead(c.env.DB, siteId, body);
@@ -304,7 +328,10 @@ opsRoutes.post('/leads', async (c: Context) => {
  */
 opsRoutes.get('/leads/:id', async (c: Context) => {
   try {
-    const siteId = c.req.header('X-Site-Id') || 'default';
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) {
+      return c.json({ error: 'Missing X-Site-Id header' }, 400);
+    }
     const id = c.req.param('id');
 
     const lead = await getLeadById(c.env.DB, siteId, id);
@@ -335,7 +362,10 @@ opsRoutes.get('/leads/:id', async (c: Context) => {
  */
 opsRoutes.get('/leads/:id/history', async (c: Context) => {
   try {
-    const siteId = c.req.header('X-Site-Id') || 'default';
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) {
+      return c.json({ error: 'Missing X-Site-Id header' }, 400);
+    }
     const id = c.req.param('id');
 
     const history = await getLeadHistory(c.env.DB, siteId, id);
@@ -359,7 +389,10 @@ opsRoutes.get('/leads/:id/history', async (c: Context) => {
  */
 opsRoutes.post('/leads/:id/notes', async (c: Context) => {
   try {
-    const siteId = c.req.header('X-Site-Id') || 'default';
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) {
+      return c.json({ error: 'Missing X-Site-Id header' }, 400);
+    }
     const id = c.req.param('id');
     const body = await c.req.json();
 
@@ -392,7 +425,8 @@ opsRoutes.post('/leads/:id/notes', async (c: Context) => {
  */
 opsRoutes.get('/work-orders', async (c: Context) => {
   try {
-    const siteId = c.req.header('X-Site-Id') || 'default';
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
     const workOrders = await getWorkOrders(c.env.DB, siteId);
 
     return c.json({
@@ -414,7 +448,8 @@ opsRoutes.get('/work-orders', async (c: Context) => {
  */
 opsRoutes.post('/work-orders', async (c: Context) => {
   try {
-    const siteId = c.req.header('X-Site-Id') || 'default';
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
     const body = await c.req.json();
 
     let result;
@@ -467,7 +502,8 @@ opsRoutes.get('/users', async (c: Context) => {
  */
 opsRoutes.get('/users/:id', async (c: Context) => {
   try {
-    const siteId = c.req.header('X-Site-Id') || 'default';
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
     const id = c.req.param('id');
 
     const user = await getUserById(c.env.DB, siteId, id);
@@ -498,7 +534,8 @@ opsRoutes.get('/users/:id', async (c: Context) => {
  */
 opsRoutes.get('/users/email/:email', async (c: Context) => {
   try {
-    const siteId = c.req.header('X-Site-Id') || 'default';
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
     const email = c.req.param('email');
 
     const user = await getUserByEmail(c.env.DB, siteId, email);
@@ -553,7 +590,8 @@ opsRoutes.post('/users/:id/update-login', async (c: Context) => {
  */
 opsRoutes.put('/users/:id/password', async (c: Context) => {
   try {
-    const siteId = c.req.header('X-Site-Id') || 'default';
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
     const userId = c.req.param('id');
     const body = await c.req.json();
 
@@ -577,7 +615,8 @@ opsRoutes.put('/users/:id/password', async (c: Context) => {
  */
 opsRoutes.put('/users/:id/profile', async (c: Context) => {
   try {
-    const siteId = c.req.header('X-Site-Id') || 'default';
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
     const id = c.req.param('id');
     const body = await c.req.json();
 
@@ -627,17 +666,23 @@ opsRoutes.get('/users/:id/sites', async (c: Context) => {
   try {
     const userId = c.req.param('id');
     const sites = await getUserAccessibleSites(c.env.DB, userId);
-
-    return c.json({
-      success: true,
-      data: sites,
-    });
+    return c.json({ success: true, data: sites });
   } catch (error) {
     console.error('Error fetching user sites:', error);
-    return c.json({
-      error: 'Internal server error',
-      message: error instanceof Error ? error.message : 'Unknown error',
-    }, 500);
+    return c.json({ error: 'Internal server error', message: error instanceof Error ? error.message : 'Unknown error' }, 500);
+  }
+});
+
+// Single-site access check endpoint
+opsRoutes.get('/users/:id/sites/:siteId', async (c: Context) => {
+  try {
+    const userId = c.req.param('id');
+    const siteId = c.req.param('siteId');
+    const hasAccess = await userHasAccessToSite(c.env.DB, userId, siteId);
+    return c.json({ success: true, data: { hasAccess } });
+  } catch (error) {
+    console.error('Error checking user site access:', error);
+    return c.json({ error: 'Internal server error', message: error instanceof Error ? error.message : 'Unknown error' }, 500);
   }
 });
 
@@ -695,7 +740,8 @@ opsRoutes.delete('/users/:id/site-access/:siteId', async (c: Context) => {
  */
 opsRoutes.get('/tenants', async (c: Context) => {
   try {
-    const siteId = c.req.header('X-Site-Id') || 'default';
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
     const status = c.req.query('status');
     const propertyId = c.req.query('propertyId');
 
@@ -720,7 +766,8 @@ opsRoutes.get('/tenants', async (c: Context) => {
  */
 opsRoutes.get('/tenants/:id', async (c: Context) => {
   try {
-    const siteId = c.req.header('X-Site-Id') || 'default';
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
     const id = c.req.param('id');
 
     const tenant = await getTenantById(c.env.DB, siteId, id);
@@ -751,7 +798,8 @@ opsRoutes.get('/tenants/:id', async (c: Context) => {
  */
 opsRoutes.put('/tenants/:id', async (c: Context) => {
   try {
-    const siteId = c.req.header('X-Site-Id') || 'default';
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
     const id = c.req.param('id');
     const body = await c.req.json();
 
@@ -781,7 +829,8 @@ opsRoutes.put('/tenants/:id', async (c: Context) => {
  */
 opsRoutes.get('/images', async (c: Context) => {
   try {
-    const siteId = c.req.header('X-Site-Id') || 'default';
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
     const entityType = c.req.query('entityType') as 'property' | 'unit';
     const entityId = c.req.query('entityId');
 
@@ -813,7 +862,8 @@ opsRoutes.get('/images', async (c: Context) => {
  */
 opsRoutes.get('/images/:id', async (c: Context) => {
   try {
-    const siteId = c.req.header('X-Site-Id') || 'default';
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
     const id = c.req.param('id');
 
     const image = await getImageById(c.env.DB, siteId, id);
@@ -844,7 +894,8 @@ opsRoutes.get('/images/:id', async (c: Context) => {
  */
 opsRoutes.post('/images', async (c: Context) => {
   try {
-    const siteId = c.req.header('X-Site-Id') || 'default';
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
     const body = await c.req.json();
 
     const image = await createImage(c.env.DB, siteId, body);
@@ -868,7 +919,8 @@ opsRoutes.post('/images', async (c: Context) => {
  */
 opsRoutes.put('/images/:id', async (c: Context) => {
   try {
-    const siteId = c.req.header('X-Site-Id') || 'default';
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
     const id = c.req.param('id');
     const body = await c.req.json();
 
@@ -892,7 +944,8 @@ opsRoutes.put('/images/:id', async (c: Context) => {
  */
 opsRoutes.delete('/images/:id', async (c: Context) => {
   try {
-    const siteId = c.req.header('X-Site-Id') || 'default';
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
     const id = c.req.param('id');
 
     await deleteImage(c.env.DB, siteId, id);
@@ -915,7 +968,8 @@ opsRoutes.delete('/images/:id', async (c: Context) => {
  */
 opsRoutes.post('/images/:id/set-cover', async (c: Context) => {
   try {
-    const siteId = c.req.header('X-Site-Id') || 'default';
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
     const id = c.req.param('id');
     const body = await c.req.json();
 
@@ -939,7 +993,8 @@ opsRoutes.post('/images/:id/set-cover', async (c: Context) => {
  */
 opsRoutes.get('/images/:id/serve', async (c: Context) => {
   try {
-    const siteId = c.req.header('X-Site-Id') || 'default';
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
     const id = c.req.param('id');
 
     const image = await getImageById(c.env.DB, siteId, id);
@@ -1055,7 +1110,8 @@ opsRoutes.post('/images/upload', async (c: Context) => {
  */
 opsRoutes.put('/images/reorder', async (c: Context) => {
   try {
-    const siteId = c.req.header('X-Site-Id') || 'default';
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
     const body = await c.req.json();
     const { imageIds } = body;
 
@@ -1091,7 +1147,8 @@ opsRoutes.put('/images/reorder', async (c: Context) => {
  */
 opsRoutes.get('/leads/:id/files', async (c: Context) => {
   try {
-    const siteId = c.req.header('X-Site-Id') || 'default';
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
     const leadId = c.req.param('id');
 
     const files = await getLeadFiles(c.env.DB, siteId, leadId);
@@ -1115,7 +1172,8 @@ opsRoutes.get('/leads/:id/files', async (c: Context) => {
  */
 opsRoutes.post('/leads/:id/files', async (c: Context) => {
   try {
-    const siteId = c.req.header('X-Site-Id') || 'default';
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
     const leadId = c.req.param('id');
     const formData = await c.req.formData();
     const file = formData.get('file') as File;
@@ -1170,7 +1228,8 @@ opsRoutes.post('/leads/:id/files', async (c: Context) => {
  */
 opsRoutes.post('/leads/:id/ai-evaluate', async (c: Context) => {
   try {
-    const siteId = c.req.header('X-Site-Id') || 'default';
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
     const leadId = c.req.param('id');
     const body = await c.req.json();
 
@@ -1211,7 +1270,8 @@ opsRoutes.post('/leads/:id/ai-evaluate', async (c: Context) => {
  */
 opsRoutes.get('/leads/:id/ai-evaluation', async (c: Context) => {
   try {
-    const siteId = c.req.header('X-Site-Id') || 'default';
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
     const leadId = c.req.param('id');
 
     const evaluation = await getAIEvaluation(c.env.DB, siteId, leadId);
@@ -1237,7 +1297,8 @@ opsRoutes.get('/leads/:id/ai-evaluation', async (c: Context) => {
  */
 opsRoutes.delete('/properties/:id', async (c: Context) => {
   try {
-    const siteId = c.req.header('X-Site-Id') || 'default';
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
     const id = c.req.param('id');
 
     await deleteProperty(c.env.DB, siteId, id);
@@ -1260,7 +1321,8 @@ opsRoutes.delete('/properties/:id', async (c: Context) => {
  */
 opsRoutes.delete('/units/:id', async (c: Context) => {
   try {
-    const siteId = c.req.header('X-Site-Id') || 'default';
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
     const id = c.req.param('id');
 
     await deleteUnit(c.env.DB, siteId, id);
@@ -1283,7 +1345,8 @@ opsRoutes.delete('/units/:id', async (c: Context) => {
  */
 opsRoutes.get('/units/:id/with-details', async (c: Context) => {
   try {
-    const siteId = c.req.header('X-Site-Id') || 'default';
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
     const id = c.req.param('id');
 
     const unit = await getUnitWithDetails(c.env.DB, siteId, id);
@@ -1314,7 +1377,8 @@ opsRoutes.get('/units/:id/with-details', async (c: Context) => {
  */
 opsRoutes.get('/units/:id/history', async (c: Context) => {
   try {
-    const siteId = c.req.header('X-Site-Id') || 'default';
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
     const unitId = c.req.param('id');
 
     const history = await getUnitHistory(c.env.DB, siteId, unitId);
@@ -1338,7 +1402,8 @@ opsRoutes.get('/units/:id/history', async (c: Context) => {
  */
 opsRoutes.post('/units/:id/history', async (c: Context) => {
   try {
-    const siteId = c.req.header('X-Site-Id') || 'default';
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
     const unitId = c.req.param('id');
     const body = await c.req.json();
 
@@ -1370,7 +1435,8 @@ opsRoutes.post('/units/:id/history', async (c: Context) => {
  */
 opsRoutes.get('/work-orders/:id', async (c: Context) => {
   try {
-    const siteId = c.req.header('X-Site-Id') || 'default';
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
     const id = c.req.param('id');
 
     const workOrder = await getWorkOrderById(c.env.DB, siteId, id);
@@ -1401,7 +1467,8 @@ opsRoutes.get('/work-orders/:id', async (c: Context) => {
  */
 opsRoutes.delete('/work-orders/:id', async (c: Context) => {
   try {
-    const siteId = c.req.header('X-Site-Id') || 'default';
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
     const id = c.req.param('id');
 
     await deleteWorkOrder(c.env.DB, siteId, id);
@@ -1424,7 +1491,8 @@ opsRoutes.delete('/work-orders/:id', async (c: Context) => {
  */
 opsRoutes.get('/properties/:id/with-units', async (c: Context) => {
   try {
-    const siteId = c.req.header('X-Site-Id') || 'default';
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
     const id = c.req.param('id');
 
     const property = await getPropertyWithUnits(c.env.DB, siteId, id);
@@ -1455,7 +1523,8 @@ opsRoutes.get('/properties/:id/with-units', async (c: Context) => {
  */
 opsRoutes.get('/properties/slug/:slug', async (c: Context) => {
   try {
-    const siteId = c.req.header('X-Site-Id') || 'default';
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
     const slug = c.req.param('slug');
 
     const property = await getPropertyBySlug(c.env.DB, siteId, slug);
@@ -1486,7 +1555,8 @@ opsRoutes.get('/properties/slug/:slug', async (c: Context) => {
  */
 opsRoutes.post('/leads/:id', async (c: Context) => {
   try {
-    const siteId = c.req.header('X-Site-Id') || 'default';
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
     const id = c.req.param('id');
     const body = await c.req.json();
 
@@ -1513,7 +1583,8 @@ opsRoutes.post('/leads/:id', async (c: Context) => {
  */
 opsRoutes.post('/leads/:id/history', async (c: Context) => {
   try {
-    const siteId = c.req.header('X-Site-Id') || 'default';
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
     const leadId = c.req.param('id');
     const body = await c.req.json();
 
@@ -1537,7 +1608,8 @@ opsRoutes.post('/leads/:id/history', async (c: Context) => {
  */
 opsRoutes.post('/leads/:id/files', async (c: Context) => {
   try {
-    const siteId = c.req.header('X-Site-Id') || 'default';
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
     const leadId = c.req.param('id');
     const body = await c.req.json();
 

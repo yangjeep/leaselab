@@ -330,8 +330,10 @@ export async function fetchUserHasAccessToSiteFromWorker(
   userId: string,
   siteId: string
 ): Promise<boolean> {
-  const sites = await fetchUserSitesFromWorker(env, userId);
-  return sites.some((s: any) => s.siteId === siteId);
+  const url = `${env.WORKER_URL}/api/ops/users/${userId}/sites/${siteId}`;
+  const response = await workerFetch(url, env, {});
+  const data: any = await parseResponse(response);
+  return Boolean(data?.hasAccess || data?.data?.hasAccess);
 }
 
 /**
