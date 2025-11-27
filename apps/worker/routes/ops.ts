@@ -66,7 +66,8 @@ import {
   createSiteApiToken,
   updateSiteApiToken,
   deleteSiteApiToken,
-} from '../../ops/app/lib/db.server';
+} from '../lib/db';
+
 
 // Import shared environment types
 import type { CloudflareEnv } from '../../../shared/config';
@@ -584,7 +585,7 @@ opsRoutes.get('/users/email/:email', async (c: Context) => {
 opsRoutes.post('/users/:id/update-login', async (c: Context) => {
   try {
     const userId = c.req.param('id');
-    
+
     await c.env.DB.prepare('UPDATE users SET last_login_at = ? WHERE id = ?')
       .bind(new Date().toISOString(), userId)
       .run();

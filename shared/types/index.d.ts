@@ -4,8 +4,8 @@ export interface Property {
     slug: string;
     address: string;
     city: string;
-    state: string;
-    zipCode: string;
+    province: string;
+    postalCode: string;
     propertyType: PropertyType;
     description?: string;
     yearBuilt?: number;
@@ -82,16 +82,25 @@ export interface Lead {
     phone: string;
     currentAddress?: string;
     employmentStatus: EmploymentStatus;
-    monthlyIncome: number;
     moveInDate: string;
     message?: string;
     status: LeadStatus;
     aiScore?: number;
     aiLabel?: AILabel;
+    landlordNote?: string;
     createdAt: string;
     updatedAt: string;
     property?: Property;
     unit?: Unit;
+    isUnitOccupied?: boolean;
+}
+export interface LeadHistory {
+    id: string;
+    leadId: string;
+    siteId: string;
+    eventType: string;
+    eventData: Record<string, unknown>;
+    createdAt: string;
 }
 export type LeadStatus = 'new' | 'documents_pending' | 'documents_received' | 'ai_evaluating' | 'ai_evaluated' | 'screening' | 'approved' | 'rejected' | 'lease_sent' | 'lease_signed';
 export type EmploymentStatus = 'employed' | 'self_employed' | 'unemployed' | 'retired' | 'student';
@@ -147,8 +156,12 @@ export interface Tenant {
     status: TenantStatus;
     createdAt: string;
     updatedAt: string;
+    currentLease?: Lease;
+    property?: Property;
+    unit?: Unit;
+    activeWorkOrderCount?: number;
 }
-export type TenantStatus = 'active' | 'inactive' | 'evicted';
+export type TenantStatus = 'moving_in' | 'active' | 'lease_up' | 'renewing' | 'moving_out' | 'pending_n11' | 'terminated' | 'inactive' | 'evicted';
 export interface Lease {
     id: string;
     propertyId: string;

@@ -14,7 +14,8 @@ import {
   createLead,
   getPublicListings,
   getUnitWithDetails,
-} from '../../ops/app/lib/db.server';
+} from '../lib/db';
+
 
 // Import shared environment types
 import type { CloudflareEnv } from '../../../shared/config';
