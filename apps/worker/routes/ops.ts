@@ -61,6 +61,11 @@ import {
   updateImage,
   deleteImage,
   setCoverImage,
+  getSiteApiTokens,
+  getSiteApiTokenById,
+  createSiteApiToken,
+  updateSiteApiToken,
+  deleteSiteApiToken,
 } from '../../ops/app/lib/db.server';
 
 // Import shared environment types
@@ -1660,6 +1665,158 @@ opsRoutes.post('/leads/:id/files', async (c: Context) => {
     }, 201);
   } catch (error) {
     console.error('Error creating lead file:', error);
+    return c.json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    }, 500);
+  }
+});
+
+// ==================== SITE API TOKENS ====================
+
+/**
+ * GET /api/ops/site-api-tokens
+ * List all API tokens for a site
+ */
+opsRoutes.get('/site-api-tokens', async (c: Context) => {
+  try {
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
+
+    const tokens = await getSiteApiTokens(c.env.DB, siteId);
+
+    return c.json({
+      success: true,
+      data: tokens,
+    });
+  } catch (error) {
+    console.error('Error fetching site API tokens:', error);
+    return c.json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    }, 500);
+  }
+});
+
+/**
+ * GET /api/ops/site-api-tokens/:id
+ * Get a single API token by ID
+ */
+opsRoutes.get('/site-api-tokens/:id', async (c: Context) => {
+  try {
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
+    const id = c.req.param('id');
+
+    const token = await getSiteApiTokenById(c.env.DB, siteId, id);
+
+    if (!token) {
+      return c.json({
+        error: 'Not found',
+        message: 'API token not found',
+      }, 404);
+    }
+
+    return c.json({
+      success: true,
+      data: token,
+    });
+  } catch (error) {
+    console.error('Error fetching site API token:', error);
+    return c.json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    }, 500);
+  }
+});
+
+/**
+ * POST /api/ops/site-api-tokens
+ * Create a new API token
+ */
+opsRoutes.post('/site-api-tokens', async (c: Context) => {
+  try {
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
+
+    const body = await c.req.json();
+    const { description, expiresAt } = body;
+
+    if (!description) {
+      return c.json({
+        error: 'Bad request',
+        message: 'description is required',
+      }, 400);
+    }
+
+    const result = await createSiteApiToken(c.env.DB, siteId, {
+      description,
+      expiresAt: expiresAt || null,
+    });
+
+    return c.json({
+      success: true,
+      data: {
+        token: result.token,  // Plain-text token (only shown once!)
+        record: result.record,
+      },
+    }, 201);
+  } catch (error) {
+    console.error('Error creating site API token:', error);
+    return c.json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    }, 500);
+  }
+});
+
+/**
+ * PATCH /api/ops/site-api-tokens/:id
+ * Update an API token (activate/deactivate or change description)
+ */
+opsRoutes.patch('/site-api-tokens/:id', async (c: Context) => {
+  try {
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
+    const id = c.req.param('id');
+
+    const body = await c.req.json();
+    const { description, isActive } = body;
+
+    await updateSiteApiToken(c.env.DB, siteId, id, {
+      description,
+      isActive,
+    });
+
+    return c.json({
+      success: true,
+    });
+  } catch (error) {
+    console.error('Error updating site API token:', error);
+    return c.json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    }, 500);
+  }
+});
+
+/**
+ * DELETE /api/ops/site-api-tokens/:id
+ * Delete (revoke) an API token
+ */
+opsRoutes.delete('/site-api-tokens/:id', async (c: Context) => {
+  try {
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
+    const id = c.req.param('id');
+
+    await deleteSiteApiToken(c.env.DB, siteId, id);
+
+    return c.json({
+      success: true,
+    });
+  } catch (error) {
+    console.error('Error deleting site API token:', error);
     return c.json({
       error: 'Internal server error',
       message: error instanceof Error ? error.message : 'Unknown error',

@@ -877,3 +877,85 @@ export async function createLeadFileToWorker(
   }, siteId);
   return parseResponse(response);
 }
+
+// ==================== SITE API TOKENS ====================
+
+/**
+ * Fetch all site API tokens
+ */
+export async function fetchSiteApiTokensFromWorker(
+  env: WorkerEnv,
+  siteId: string
+): Promise<any[]> {
+  const url = `${env.WORKER_URL}/api/ops/site-api-tokens`;
+  const response = await workerFetch(url, env, {}, siteId);
+  return parseResponse(response);
+}
+
+/**
+ * Fetch a single site API token by ID
+ */
+export async function fetchSiteApiTokenByIdFromWorker(
+  env: WorkerEnv,
+  siteId: string,
+  tokenId: string
+): Promise<any> {
+  const url = `${env.WORKER_URL}/api/ops/site-api-tokens/${tokenId}`;
+  const response = await workerFetch(url, env, {}, siteId);
+  return parseResponse(response);
+}
+
+/**
+ * Create a new site API token
+ * Returns the full token (only time it's visible!)
+ */
+export async function createSiteApiTokenToWorker(
+  env: WorkerEnv,
+  siteId: string,
+  data: {
+    description: string;
+    expiresAt?: string | null;
+  }
+): Promise<{ token: string; record: any }> {
+  const url = `${env.WORKER_URL}/api/ops/site-api-tokens`;
+  const response = await workerFetch(url, env, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }, siteId);
+  return parseResponse(response);
+}
+
+/**
+ * Update a site API token
+ */
+export async function updateSiteApiTokenToWorker(
+  env: WorkerEnv,
+  siteId: string,
+  tokenId: string,
+  data: {
+    description?: string;
+    isActive?: boolean;
+  }
+): Promise<void> {
+  const url = `${env.WORKER_URL}/api/ops/site-api-tokens/${tokenId}`;
+  const response = await workerFetch(url, env, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  }, siteId);
+  await parseResponse(response);
+}
+
+/**
+ * Delete (revoke) a site API token
+ */
+export async function deleteSiteApiTokenToWorker(
+  env: WorkerEnv,
+  siteId: string,
+  tokenId: string
+): Promise<void> {
+  const url = `${env.WORKER_URL}/api/ops/site-api-tokens/${tokenId}`;
+  const response = await workerFetch(url, env, {
+    method: 'DELETE',
+  }, siteId);
+  await parseResponse(response);
+}

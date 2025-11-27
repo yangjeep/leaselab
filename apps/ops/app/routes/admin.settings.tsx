@@ -2,7 +2,15 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from '@remix-run/cloudfla
 import { json } from '@remix-run/cloudflare';
 import { useLoaderData, useActionData, Form } from '@remix-run/react';
 import { requireAuth, getOptionalUser, hashPassword, verifyPassword } from '~/lib/auth.server';
-import { fetchUserByEmailFromWorker, updateUserPasswordToWorker, updateUserProfileToWorker } from '~/lib/worker-client';
+import {
+  fetchUserByEmailFromWorker,
+  updateUserPasswordToWorker,
+  updateUserProfileToWorker,
+  fetchSiteApiTokensFromWorker,
+  createSiteApiTokenToWorker,
+  updateSiteApiTokenToWorker,
+  deleteSiteApiTokenToWorker,
+} from '~/lib/worker-client';
 import { useState } from 'react';
 import { getSiteId } from '~/lib/site.server';
 
@@ -12,12 +20,17 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
         WORKER_URL: context.cloudflare.env.WORKER_URL,
         WORKER_INTERNAL_KEY: context.cloudflare.env.WORKER_INTERNAL_KEY,
     };
+    const siteId = getSiteId(request);
     // Settings should be accessible to any logged-in user regardless of hostname site context
-    const user = await getOptionalUser(request, workerEnv, secret, getSiteId(request));
+    const user = await getOptionalUser(request, workerEnv, secret, siteId);
     if (!user) {
         return json({ error: 'Unauthorized' }, { status: 401 });
     }
-    return json({ user });
+
+    // Fetch site API tokens
+    const tokens = await fetchSiteApiTokensFromWorker(workerEnv, siteId);
+
+    return json({ user, tokens });
 }
 
 export async function action({ request, context }: ActionFunctionArgs) {
@@ -93,13 +106,81 @@ export async function action({ request, context }: ActionFunctionArgs) {
         return json({ success: 'Password updated successfully' });
     }
 
+    // Handle API token creation
+    if (formAction === 'createToken') {
+        const description = formData.get('description') as string;
+
+        if (!description || description.trim().length === 0) {
+            return json({ error: 'Token description is required' }, { status: 400 });
+        }
+
+        try {
+            const result = await createSiteApiTokenToWorker(workerEnv, siteId, {
+                description: description.trim(),
+            });
+
+            return json({
+                success: 'API token created successfully',
+                newToken: result.token,
+                tokenRecord: result.record,
+            });
+        } catch (error) {
+            return json({ error: (error as Error).message || 'Failed to create token' }, { status: 400 });
+        }
+    }
+
+    // Handle API token toggle (activate/deactivate)
+    if (formAction === 'toggleToken') {
+        const tokenId = formData.get('tokenId') as string;
+        const isActive = formData.get('isActive') === 'true';
+
+        try {
+            await updateSiteApiTokenToWorker(workerEnv, siteId, tokenId, {
+                isActive: !isActive,
+            });
+
+            return json({ success: `Token ${isActive ? 'deactivated' : 'activated'} successfully` });
+        } catch (error) {
+            return json({ error: (error as Error).message || 'Failed to update token' }, { status: 400 });
+        }
+    }
+
+    // Handle API token deletion
+    if (formAction === 'deleteToken') {
+        const tokenId = formData.get('tokenId') as string;
+
+        try {
+            await deleteSiteApiTokenToWorker(workerEnv, siteId, tokenId);
+
+            return json({ success: 'Token revoked successfully' });
+        } catch (error) {
+            return json({ error: (error as Error).message || 'Failed to revoke token' }, { status: 400 });
+        }
+    }
+
     return json({ error: 'Invalid action' }, { status: 400 });
 }
 
 export default function SettingsPage() {
-    const { user } = useLoaderData<typeof loader>();
+    const { user, tokens } = useLoaderData<typeof loader>();
     const actionData = useActionData<typeof action>();
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [showNewTokenModal, setShowNewTokenModal] = useState(false);
+    const [newTokenDescription, setNewTokenDescription] = useState('');
+
+    // Extract new token from action data
+    const newToken = actionData && 'newToken' in actionData ? actionData.newToken : null;
+
+    const formatDate = (dateStr: string | null) => {
+        if (!dateStr) return 'Never';
+        return new Date(dateStr).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+        });
+    };
 
     return (
         <div className="p-8">
@@ -230,6 +311,174 @@ export default function SettingsPage() {
                         </div>
                     </Form>
                 </div>
+
+                {/* Site API Tokens Section */}
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mt-6">
+                    <div className="flex items-center justify-between mb-4">
+                        <div>
+                            <h2 className="text-xl font-semibold text-gray-900">Site API Tokens</h2>
+                            <p className="text-sm text-gray-600 mt-1">Manage API tokens for your storefront</p>
+                        </div>
+                        <button
+                            onClick={() => setShowNewTokenModal(true)}
+                            className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700"
+                        >
+                            + New Token
+                        </button>
+                    </div>
+
+                    {tokens.length === 0 ? (
+                        <div className="text-center py-8 text-gray-500">
+                            No API tokens yet. Create one to enable your storefront.
+                        </div>
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <table className="w-full">
+                                <thead>
+                                    <tr className="text-left text-xs font-medium text-gray-500 uppercase border-b">
+                                        <th className="pb-2">Description</th>
+                                        <th className="pb-2">Status</th>
+                                        <th className="pb-2">Created</th>
+                                        <th className="pb-2">Last Used</th>
+                                        <th className="pb-2 text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y">
+                                    {tokens.map((token: any) => (
+                                        <tr key={token.id} className="text-sm">
+                                            <td className="py-3">
+                                                <div className="font-medium">{token.description}</div>
+                                                <div className="text-xs text-gray-500 font-mono">{token.id}</div>
+                                            </td>
+                                            <td className="py-3">
+                                                {token.isActive ? (
+                                                    <span className="inline-flex px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">
+                                                        Active
+                                                    </span>
+                                                ) : (
+                                                    <span className="inline-flex px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800">
+                                                        Inactive
+                                                    </span>
+                                                )}
+                                            </td>
+                                            <td className="py-3 text-gray-600">{formatDate(token.createdAt)}</td>
+                                            <td className="py-3 text-gray-600">{formatDate(token.lastUsedAt)}</td>
+                                            <td className="py-3 text-right space-x-2">
+                                                <Form method="post" className="inline">
+                                                    <input type="hidden" name="_action" value="toggleToken" />
+                                                    <input type="hidden" name="tokenId" value={token.id} />
+                                                    <input type="hidden" name="isActive" value={token.isActive ? 'true' : 'false'} />
+                                                    <button type="submit" className="text-indigo-600 hover:text-indigo-700">
+                                                        {token.isActive ? 'Deactivate' : 'Activate'}
+                                                    </button>
+                                                </Form>
+                                                <Form
+                                                    method="post"
+                                                    className="inline"
+                                                    onSubmit={(e) => {
+                                                        if (!confirm('Revoke this token? This cannot be undone.')) {
+                                                            e.preventDefault();
+                                                        }
+                                                    }}
+                                                >
+                                                    <input type="hidden" name="_action" value="deleteToken" />
+                                                    <input type="hidden" name="tokenId" value={token.id} />
+                                                    <button type="submit" className="text-red-600 hover:text-red-700">
+                                                        Revoke
+                                                    </button>
+                                                </Form>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
+
+                {/* New Token Modal */}
+                {showNewTokenModal && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                        <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
+                            <h3 className="text-lg font-semibold mb-4">Create New API Token</h3>
+                            <Form method="post" onSubmit={() => setShowNewTokenModal(false)}>
+                                <input type="hidden" name="_action" value="createToken" />
+                                <div className="mb-4">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Description
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="description"
+                                        value={newTokenDescription}
+                                        onChange={(e) => setNewTokenDescription(e.target.value)}
+                                        placeholder="e.g., Production Site"
+                                        className="w-full px-3 py-2 border rounded-lg"
+                                        required
+                                    />
+                                </div>
+                                <div className="flex justify-end gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setShowNewTokenModal(false);
+                                            setNewTokenDescription('');
+                                        }}
+                                        className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                                    >
+                                        Create Token
+                                    </button>
+                                </div>
+                            </Form>
+                        </div>
+                    </div>
+                )}
+
+                {/* New Token Display Modal */}
+                {newToken && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                        <div className="bg-white rounded-lg shadow-xl p-6 max-w-2xl w-full mx-4">
+                            <h3 className="text-lg font-semibold mb-4">Token Created Successfully!</h3>
+                            <div className="bg-yellow-50 border border-yellow-200 rounded p-4 mb-4">
+                                <p className="text-sm text-yellow-800 font-medium mb-2">
+                                    ⚠️ Save this token now - you won't see it again!
+                                </p>
+                                <div className="bg-white p-3 rounded border font-mono text-sm break-all">
+                                    {newToken}
+                                </div>
+                            </div>
+                            <div className="bg-gray-50 rounded p-4 mb-4">
+                                <p className="text-sm font-medium mb-2">Set this as an environment variable:</p>
+                                <code className="block text-xs bg-white p-2 rounded border">
+                                    SITE_API_TOKEN={newToken}
+                                </code>
+                            </div>
+                            <div className="flex justify-end gap-2">
+                                <button
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(newToken);
+                                        alert('Token copied!');
+                                    }}
+                                    className="px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200"
+                                >
+                                    Copy Token
+                                </button>
+                                <button
+                                    onClick={() => window.location.reload()}
+                                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                                >
+                                    Done
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );
