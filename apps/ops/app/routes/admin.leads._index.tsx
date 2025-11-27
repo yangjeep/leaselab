@@ -19,7 +19,12 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   const sortOrder = (url.searchParams.get('sortOrder') || 'desc') as 'asc' | 'desc';
 
   const [leads, properties] = await Promise.all([
-    fetchLeadsFromWorker(env, siteId),
+    fetchLeadsFromWorker(env, siteId, {
+      status,
+      propertyId,
+      sortBy,
+      sortOrder,
+    }),
     fetchPropertiesFromWorker(env, siteId),
   ]);
 

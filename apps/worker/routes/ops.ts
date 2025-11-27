@@ -280,7 +280,19 @@ opsRoutes.get('/leads', async (c: Context) => {
     if (!siteId) {
       return c.json({ error: 'Missing X-Site-Id header' }, 400);
     }
-    const leads = await getLeads(c.env.DB, siteId);
+
+    // Extract query parameters for filtering
+    const status = c.req.query('status');
+    const propertyId = c.req.query('propertyId');
+    const sortBy = c.req.query('sortBy');
+    const sortOrder = c.req.query('sortOrder') as 'asc' | 'desc' | undefined;
+
+    const leads = await getLeads(c.env.DB, siteId, {
+      status,
+      propertyId,
+      sortBy,
+      sortOrder,
+    });
 
     return c.json({
       success: true,
