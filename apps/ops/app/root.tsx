@@ -77,12 +77,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Links />
       </head>
       <body className="bg-gray-50 text-gray-900 antialiased">
-        <div className="border-b bg-white shadow-sm">
-          <div className="mx-auto max-w-7xl px-4 py-2 flex items-center justify-between">
-            <h1 className="text-lg font-semibold">LeaseLab Ops Dashboard</h1>
-            <SiteSwitcher currentSite={siteId || ''} availableSites={accessibleSites || []} />
-          </div>
-        </div>
         {children}
         <ScrollRestoration />
         <Scripts />
@@ -93,7 +87,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   const { siteId, accessibleSites } = useLoaderData<typeof loader>();
-  return <Outlet context={{ siteId, accessibleSites }} />;
+  return (
+    <>
+      <div className="border-b bg-white shadow-sm">
+        <div className="mx-auto max-w-7xl px-4 py-2 flex items-center justify-between">
+          <h1 className="text-lg font-semibold">LeaseLab Ops Dashboard</h1>
+          <SiteSwitcher currentSite={siteId || ''} availableSites={accessibleSites || []} />
+        </div>
+      </div>
+      <Outlet context={{ siteId, accessibleSites }} />
+    </>
+  );
 }
 
 export function ErrorBoundary() {
