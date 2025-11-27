@@ -119,7 +119,11 @@ Before your first preview deployment, create the preview resources:
 wrangler d1 create leaselab-db-preview
 ```
 
-Update the `database_id` in `wrangler.toml` files if needed.
+This will output a `database_id`. **Important:** Update this ID in both wrangler.toml files:
+- `apps/worker/wrangler.toml` - Look for `REPLACE_WITH_PREVIEW_DB_ID` in `[env.preview.d1_databases]`
+- `apps/ops/wrangler.toml` - Look for `REPLACE_WITH_PREVIEW_DB_ID` in `[env.preview.d1_databases]`
+
+Replace `REPLACE_WITH_PREVIEW_DB_ID` with the actual database ID from the command output.
 
 ### 2. Create Preview R2 Buckets
 ```bash
