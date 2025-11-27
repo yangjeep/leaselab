@@ -1,11 +1,13 @@
 import { json, type ActionFunctionArgs, type LoaderFunctionArgs } from '@remix-run/cloudflare';
-import { createImage, getImagesByEntity, updateImage, deleteImage } from '~/lib/db.server';
-import { RegisterImageSchema, ReorderImagesSchema } from '~/shared/config';
+import { createImageToWorker, fetchImagesFromWorker, getImageServeUrl } from '~/lib/worker-client';
+import { RegisterImageSchema } from '~/shared/config';
 import { getSiteId } from '~/lib/site.server';
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
-  const db = context.cloudflare.env.DB;
-  const bucket = context.cloudflare.env.PUBLIC_BUCKET; // Use public bucket for property images
+  const workerEnv = {
+    WORKER_URL: context.cloudflare.env.WORKER_URL,
+    WORKER_INTERNAL_KEY: context.cloudflare.env.WORKER_INTERNAL_KEY,
+  };
   const siteId = getSiteId(request);
   const url = new URL(request.url);
   const entityType = url.searchParams.get('entityType') as 'property' | 'unit';
@@ -16,20 +18,16 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   }
 
   try {
-    const images = await getImagesByEntity(db, siteId, entityType, entityId);
+    const images = await fetchImagesFromWorker(workerEnv, siteId, entityType, entityId);
 
     // Generate URLs for images
-    const imagesWithUrls = await Promise.all(
-      images.map(async (img) => {
-        // For R2, we can generate a public URL or use a signed URL
-        // This assumes you have a public bucket or custom domain configured
-        const baseUrl = context.cloudflare.env.R2_PUBLIC_URL || '';
-        return {
-          ...img,
-          url: baseUrl ? `${baseUrl}/${img.r2Key}` : `/api/images/${img.id}/file`,
-        };
-      })
-    );
+    const imagesWithUrls = images.map((img: any) => {
+      const baseUrl = context.cloudflare.env.R2_PUBLIC_URL || '';
+      return {
+        ...img,
+        url: baseUrl ? `${baseUrl}/${img.r2Key}` : getImageServeUrl(workerEnv, img.id),
+      };
+    });
 
     return json({ success: true, data: imagesWithUrls });
   } catch (error) {
@@ -39,7 +37,10 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
 }
 
 export async function action({ request, context }: ActionFunctionArgs) {
-  const db = context.cloudflare.env.DB;
+  const workerEnv = {
+    WORKER_URL: context.cloudflare.env.WORKER_URL,
+    WORKER_INTERNAL_KEY: context.cloudflare.env.WORKER_INTERNAL_KEY,
+  };
   const siteId = getSiteId(request);
 
   if (request.method === 'POST') {
@@ -55,13 +56,13 @@ export async function action({ request, context }: ActionFunctionArgs) {
         }, { status: 400 });
       }
 
-      const image = await createImage(db, siteId, parsed.data);
+      const image = await createImageToWorker(workerEnv, siteId, parsed.data);
 
       // Generate URL for the new image
       const baseUrl = context.cloudflare.env.R2_PUBLIC_URL || '';
       const imageWithUrl = {
         ...image,
-        url: baseUrl ? `${baseUrl}/${image.r2Key}` : `/api/images/${image.id}/file`,
+        url: baseUrl ? `${baseUrl}/${image.r2Key}` : getImageServeUrl(workerEnv, image.id),
       };
 
       return json({ success: true, data: imageWithUrl }, { status: 201 });

@@ -1,7 +1,7 @@
 import type { ActionFunctionArgs } from '@remix-run/cloudflare';
 import { json } from '@remix-run/cloudflare';
 import { setActiveSite, getOptionalUser } from '~/lib/auth.server';
-import { userHasAccessToSite, getUserAccessibleSites } from '~/lib/db.server';
+import { fetchUserHasAccessToSiteFromWorker, fetchUserAccessibleSitesFromWorker } from '~/lib/worker-client';
 
 /**
  * API route for super admins to switch their active site
@@ -11,13 +11,16 @@ export async function action({ request, context }: ActionFunctionArgs) {
         return json({ success: false, error: 'Method not allowed' }, { status: 405 });
     }
 
-    const db = context.cloudflare.env.DB;
+    const workerEnv = {
+        WORKER_URL: context.cloudflare.env.WORKER_URL,
+        WORKER_INTERNAL_KEY: context.cloudflare.env.WORKER_INTERNAL_KEY,
+    };
     const secret = context.cloudflare.env.SESSION_SECRET as string;
 
     try {
         // Get current user from session
         const siteIdFromReq = (await request.json()).siteId as string | undefined;
-        const user = await getOptionalUser(request, db, secret, siteIdFromReq || '');
+        const user = await getOptionalUser(request, workerEnv, secret, siteIdFromReq || '');
         if (!user) {
             return json({ success: false, error: 'Unauthorized' }, { status: 401 });
         }
@@ -30,7 +33,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
         }
 
         // Verify user has access to this site
-        const hasAccess = await userHasAccessToSite(db, user.id, siteId);
+        const hasAccess = await fetchUserHasAccessToSiteFromWorker(workerEnv, user.id, siteId);
         if (!hasAccess) {
             return json({
                 success: false,
@@ -42,7 +45,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
         await setActiveSite(request, undefined, siteId);
 
         // Return available sites for UI update
-        const accessibleSites = await getUserAccessibleSites(db, user.id);
+        const accessibleSites = await fetchUserAccessibleSitesFromWorker(workerEnv, user.id);
 
         return json({
             success: true,

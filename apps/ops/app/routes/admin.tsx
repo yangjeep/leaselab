@@ -3,20 +3,23 @@ import { json } from '@remix-run/cloudflare';
 import { Outlet, Link, useLocation, useLoaderData, Form } from '@remix-run/react';
 import { requireAuth } from '~/lib/auth.server';
 import { getSiteId } from '~/lib/site.server';
-import { getUserAccessibleSites, type AccessibleSite } from '~/lib/db.server';
+import { fetchUserSitesFromWorker } from '~/lib/worker-client';
 import { SiteSwitcher } from '~/components/SiteSwitcher';
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
-  const db = context.cloudflare.env.DB;
+  const workerEnv = {
+    WORKER_URL: context.cloudflare.env.WORKER_URL,
+    WORKER_INTERNAL_KEY: context.cloudflare.env.WORKER_INTERNAL_KEY,
+  };
   const secret = context.cloudflare.env.SESSION_SECRET as string;
   const siteId = getSiteId(request);
 
-  const user = await requireAuth(request, db, secret, siteId);
+  const user = await requireAuth(request, workerEnv, secret, siteId);
 
   // Get available sites for super admins
-  let availableSites: AccessibleSite[] = [];
+  let availableSites: any[] = [];
   if (user.isSuperAdmin) {
-    availableSites = await getUserAccessibleSites(db, user.id);
+    availableSites = await fetchUserSitesFromWorker(workerEnv, user.id);
   }
 
   return json({ user, currentSite: siteId, availableSites });

@@ -1,10 +1,10 @@
 import { json, type ActionFunctionArgs, type LoaderFunctionArgs } from '@remix-run/cloudflare';
-import { getPropertyWithUnits, updateProperty, deleteProperty } from '~/lib/db.server';
+import { fetchPropertyWithUnitsFromWorker, savePropertyToWorker, deletePropertyToWorker } from '~/lib/worker-client';
 import { UpdatePropertySchema } from '~/shared/config';
 import { getSiteId } from '~/lib/site.server';
 
 export async function loader({ params, context, request }: LoaderFunctionArgs) {
-  const db = context.cloudflare.env.DB;
+  const env = context.cloudflare.env;
   const siteId = getSiteId(request);
   const { id } = params;
 
@@ -13,7 +13,7 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
   }
 
   try {
-    const property = await getPropertyWithUnits(db, siteId, id);
+    const property = await fetchPropertyWithUnitsFromWorker(env, siteId, id);
 
     if (!property) {
       return json({ success: false, error: 'Property not found' }, { status: 404 });
@@ -27,7 +27,7 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
 }
 
 export async function action({ request, params, context }: ActionFunctionArgs) {
-  const db = context.cloudflare.env.DB;
+  const env = context.cloudflare.env;
   const siteId = getSiteId(request);
   const { id } = params;
 
@@ -48,8 +48,8 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
         }, { status: 400 });
       }
 
-      await updateProperty(db, siteId, id, parsed.data);
-      const updated = await getPropertyWithUnits(db, siteId, id);
+      await savePropertyToWorker(env, siteId, { id, ...parsed.data });
+      const updated = await fetchPropertyWithUnitsFromWorker(env, siteId, id);
 
       return json({ success: true, data: updated });
     } catch (error) {
@@ -60,7 +60,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 
   if (request.method === 'DELETE') {
     try {
-      await deleteProperty(db, siteId, id);
+      await deletePropertyToWorker(env, siteId, id);
       return json({ success: true, message: 'Property deleted' });
     } catch (error) {
       console.error('Error deleting property:', error);

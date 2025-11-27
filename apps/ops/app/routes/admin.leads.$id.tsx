@@ -1,7 +1,7 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs, MetaFunction } from '@remix-run/cloudflare';
 import { json } from '@remix-run/cloudflare';
 import { useLoaderData, useSubmit } from '@remix-run/react';
-import { getLeadById, getPropertyById, updateLead, getLeadHistory } from '~/lib/db.server';
+import { fetchLeadFromWorker, fetchPropertyFromWorker, updateLeadToWorker, fetchLeadHistoryFromWorker } from '~/lib/worker-client';
 import { formatCurrency } from '~/shared/utils';
 import { getSiteId } from '~/lib/site.server';
 import { StageWorkflow, RENTAL_APPLICATION_STAGES } from '~/components/StageWorkflow';
@@ -12,7 +12,10 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 };
 
 export async function loader({ params, request, context }: LoaderFunctionArgs) {
-  const db = context.cloudflare.env.DB;
+  const workerEnv = {
+    WORKER_URL: context.cloudflare.env.WORKER_URL,
+    WORKER_INTERNAL_KEY: context.cloudflare.env.WORKER_INTERNAL_KEY,
+  };
   const siteId = getSiteId(request);
   const leadId = params.id;
 
@@ -20,22 +23,25 @@ export async function loader({ params, request, context }: LoaderFunctionArgs) {
     throw new Response('Lead ID is required', { status: 400 });
   }
 
-  const lead = await getLeadById(db, siteId, leadId);
+  const lead = await fetchLeadFromWorker(workerEnv, siteId, leadId);
   if (!lead) {
     throw new Response('Application not found', { status: 404 });
   }
 
   let property = null;
   if (lead.propertyId) {
-    property = await getPropertyById(db, siteId, lead.propertyId);
+    property = await fetchPropertyFromWorker(workerEnv, siteId, lead.propertyId);
   }
 
-  const history = await getLeadHistory(db, siteId, lead.id);
+  const history = await fetchLeadHistoryFromWorker(workerEnv, siteId, lead.id);
   return json({ lead, property, history });
 }
 
 export async function action({ params, request, context }: ActionFunctionArgs) {
-  const db = context.cloudflare.env.DB;
+  const workerEnv = {
+    WORKER_URL: context.cloudflare.env.WORKER_URL,
+    WORKER_INTERNAL_KEY: context.cloudflare.env.WORKER_INTERNAL_KEY,
+  };
   const siteId = getSiteId(request);
   const leadId = params.id;
 
@@ -48,13 +54,13 @@ export async function action({ params, request, context }: ActionFunctionArgs) {
 
   if (action === 'updateStage') {
     const newStatus = formData.get('status') as string;
-    await updateLead(db, siteId, leadId, { status: newStatus as any });
+    await updateLeadToWorker(workerEnv, siteId, leadId, { status: newStatus as any });
     return json({ success: true });
   }
 
   if (action === 'updateNotes') {
     const landlordNote = formData.get('landlordNote') as string | null;
-    await updateLead(db, siteId, leadId, {
+    await updateLeadToWorker(workerEnv, siteId, leadId, {
       landlordNote: landlordNote || undefined,
     });
     return json({ success: true });

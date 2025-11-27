@@ -1,7 +1,7 @@
 import type { LoaderFunctionArgs, MetaFunction } from '@remix-run/cloudflare';
 import { json } from '@remix-run/cloudflare';
 import { useLoaderData, Link, useSearchParams } from '@remix-run/react';
-import { getTenants, getProperties, getUnits } from '~/lib/db.server';
+import { fetchTenantsFromWorker, fetchPropertiesFromWorker, fetchUnitsFromWorker } from '~/lib/worker-client';
 import { formatPhoneNumber } from '~/shared/utils';
 import { getSiteId } from '~/lib/site.server';
 
@@ -10,7 +10,7 @@ export const meta: MetaFunction = () => {
 };
 
 export async function loader({ context, request }: LoaderFunctionArgs) {
-  const db = context.cloudflare.env.DB;
+  const env = context.cloudflare.env;
   const siteId = getSiteId(request);
   const url = new URL(request.url);
 
@@ -21,9 +21,9 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
   const sortOrder = (url.searchParams.get('sortOrder') || 'desc') as 'asc' | 'desc';
 
   const [tenants, properties, units] = await Promise.all([
-    getTenants(db, siteId, { status, propertyId, unitId, sortBy, sortOrder }),
-    getProperties(db, siteId, { isActive: true }),
-    getUnits(db, siteId, { propertyId, isActive: true }),
+    fetchTenantsFromWorker(env, siteId, { status, propertyId }),
+    fetchPropertiesFromWorker(env, siteId),
+    fetchUnitsFromWorker(env, siteId, propertyId),
   ]);
 
   return json({ tenants, properties, units });

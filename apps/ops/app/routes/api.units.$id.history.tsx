@@ -1,9 +1,12 @@
 import { json, type LoaderFunctionArgs } from '@remix-run/cloudflare';
-import { getUnitHistory } from '~/lib/db.server';
+import { fetchUnitHistoryFromWorker } from '~/lib/worker-client';
 import { getSiteId } from '~/lib/site.server';
 
 export async function loader({ params, context, request }: LoaderFunctionArgs) {
-  const db = context.cloudflare.env.DB;
+  const workerEnv = {
+    WORKER_URL: context.cloudflare.env.WORKER_URL,
+    WORKER_INTERNAL_KEY: context.cloudflare.env.WORKER_INTERNAL_KEY,
+  };
   const siteId = getSiteId(request);
   const { id } = params;
 
@@ -12,7 +15,7 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
   }
 
   try {
-    const history = await getUnitHistory(db, siteId, id);
+    const history = await fetchUnitHistoryFromWorker(workerEnv, siteId, id);
     return json({ success: true, data: history });
   } catch (error) {
     console.error('Error fetching unit history:', error);

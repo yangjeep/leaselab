@@ -1,5 +1,5 @@
 import { json, type ActionFunctionArgs } from '@remix-run/cloudflare';
-import { getUnitById, updateUnit, createUnitHistory, getTenantById } from '~/lib/db.server';
+import { fetchUnitFromWorker, saveUnitToWorker, createUnitHistoryToWorker, fetchTenantFromWorker } from '~/lib/worker-client';
 import { getSiteId } from '~/lib/site.server';
 
 export async function action({ request, params, context }: ActionFunctionArgs) {
@@ -7,7 +7,10 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
     return json({ success: false, error: 'Method not allowed' }, { status: 405 });
   }
 
-  const db = context.cloudflare.env.DB;
+  const workerEnv = {
+    WORKER_URL: context.cloudflare.env.WORKER_URL,
+    WORKER_INTERNAL_KEY: context.cloudflare.env.WORKER_INTERNAL_KEY,
+  };
   const siteId = getSiteId(request);
   const { id } = params;
 
@@ -17,7 +20,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 
   try {
     // Verify unit exists
-    const unit = await getUnitById(db, siteId, id);
+    const unit = await fetchUnitFromWorker(workerEnv, siteId, id);
     if (!unit) {
       return json({ success: false, error: 'Unit not found' }, { status: 404 });
     }
@@ -27,18 +30,18 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
     }
 
     // Get tenant info for history
-    const tenant = await getTenantById(db, siteId, unit.currentTenantId);
+    const tenant = await fetchTenantFromWorker(workerEnv, siteId, unit.currentTenantId);
     const tenantName = tenant ? `${tenant.firstName} ${tenant.lastName}` : 'Unknown';
 
     // Update unit to remove tenant
-    await updateUnit(db, siteId, id, {
+    await saveUnitToWorker(workerEnv, siteId, {
+      id,
       currentTenantId: null,
       status: 'available',
     });
 
     // Create history record
-    await createUnitHistory(db, siteId, {
-      unitId: id,
+    await createUnitHistoryToWorker(workerEnv, siteId, id, {
       eventType: 'tenant_move_out',
       eventData: {
         tenantId: unit.currentTenantId,

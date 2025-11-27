@@ -11,7 +11,6 @@ export const meta: MetaFunction = () => {
 };
 
 export async function action({ request, context }: ActionFunctionArgs) {
-  const db = context.cloudflare.env.DB;
   const secret = context.cloudflare.env.SESSION_SECRET as string;
   const siteId = getSiteId(request);
   const workerEnv = {
@@ -31,7 +30,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
     );
   }
 
-  const result = await login(db, secret, siteId, email, password, workerEnv);
+  const result = await login(workerEnv, secret, siteId, email, password);
   if (!result) {
     return json(
       { error: 'Invalid email or password' },

@@ -70,6 +70,11 @@ export interface EnvVars {
    * Site API token for site-to-worker authentication
    */
   SITE_API_TOKEN?: string;
+
+  /**
+   * Worker URL for API calls from ops
+   */
+  WORKER_URL: string;
 }
 
 /**
