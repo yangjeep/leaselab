@@ -313,6 +313,7 @@ INSERT OR IGNORE INTO sites (
 
 -- Super Admin User for Preview Environment
 -- Email: admin@leaselab.io
+-- Password: (same as production)
 INSERT OR IGNORE INTO users (
   id,
   email,
@@ -324,10 +325,10 @@ INSERT OR IGNORE INTO users (
   created_at,
   updated_at
 ) VALUES (
-  'super-admin-preview',
+  'user_admin',
   'admin@leaselab.io',
-  'Super Admin',
-  '3466333435383266336433353466343536616461643632656666626263666161383032353134333865666437656136663937653264656232653964336238636165',
+  'Admin User',
+  'fc678c353cb774ba554562fdaa4e9afe66ca6c28430c469e6f7bb68b013eff4f',
   'admin',
   'default',
   1,
@@ -343,8 +344,8 @@ INSERT OR IGNORE INTO user_access (
   granted_at,
   granted_by
 ) VALUES (
-  'access-super-admin-default',
-  'super-admin-preview',
+  'access-admin-default',
+  'user_admin',
   'default',
   datetime('now'),
   'system'
