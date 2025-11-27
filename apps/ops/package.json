@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "remix vite:dev",
-    "build": "remix vite:build",
+    "build": "remix vite:build && esbuild worker-entry.ts --bundle --outfile=build/client/_worker.js --format=esm --platform=neutral --target=esnext --loader:.js=jsx --main-fields=module,main --external:node:* --external:crypto --external:stream --external:events --external:util --external:buffer --external:path --external:url --external:http --external:https --external:zlib --external:net --external:tls --external:fs",
     "start": "wrangler pages dev ./build/client",
     "deploy": "npm run build && wrangler pages deploy ./build/client",
     "typecheck": "tsc --noEmit",
