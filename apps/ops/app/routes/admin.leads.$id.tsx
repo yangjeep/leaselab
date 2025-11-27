@@ -105,6 +105,16 @@ export default function LeadDetail() {
               <dt className="text-sm font-medium text-gray-500">Property</dt>
               <dd className="text-sm text-gray-900 mt-1">
                 {property ? property.name : 'Not specified'}
+                {lead.isUnitOccupied && (
+                  <div className="mt-2">
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-md text-sm font-medium bg-orange-100 text-orange-800 border border-orange-200">
+                      ⚠️ Property/Unit Currently Occupied
+                    </span>
+                    <p className="text-xs text-gray-500 mt-1">
+                      This application is for a property or unit that is currently occupied by another tenant.
+                    </p>
+                  </div>
+                )}
               </dd>
             </div>
 

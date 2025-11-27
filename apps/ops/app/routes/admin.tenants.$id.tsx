@@ -1,10 +1,9 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs, MetaFunction } from '@remix-run/cloudflare';
 import { json } from '@remix-run/cloudflare';
 import { useLoaderData, Link, useSubmit } from '@remix-run/react';
-import { getTenantById, getWorkOrders } from '~/lib/db.server';
+import { getTenants, getWorkOrders } from '~/lib/db.server';
 import { formatCurrency } from '~/shared/utils';
 import { getSiteId } from '~/lib/site.server';
-import type { Tenant, WorkOrder, Lease, Property, Unit } from '~/shared/types';
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
   if (!data) return [{ title: 'Tenant Not Found' }];
@@ -20,114 +19,19 @@ export async function loader({ params, request, context }: LoaderFunctionArgs) {
     throw new Response('Tenant ID is required', { status: 400 });
   }
 
-  // Fetch tenant with full details (using the getTenants query for complete data)
-  const query = `
-    SELECT
-      t.*,
-      l.id as lease_id,
-      l.property_id,
-      l.unit_id,
-      l.start_date as lease_start_date,
-      l.end_date as lease_end_date,
-      l.monthly_rent,
-      l.security_deposit,
-      l.status as lease_status,
-      p.name as property_name,
-      p.address as property_address,
-      p.city as property_city,
-      p.province as property_province,
-      p.postal_code as property_postal_code,
-      u.unit_number,
-      u.name as unit_name,
-      u.bedrooms,
-      u.bathrooms,
-      u.sqft
-    FROM tenants t
-    LEFT JOIN leases l ON t.id = l.tenant_id AND l.status IN ('active', 'signed')
-    LEFT JOIN properties p ON l.property_id = p.id
-    LEFT JOIN units u ON l.unit_id = u.id
-    WHERE t.id = ? AND t.site_id = ?
-    LIMIT 1
-  `;
+  // Use getTenants with full joins - it already includes lease, property, unit, and work order count
+  const tenants = await getTenants(db, siteId);
+  const tenant = tenants.find(t => t.id === tenantId);
 
-  const result = await db.prepare(query).bind(tenantId, siteId).first();
-
-  if (!result) {
+  if (!tenant) {
     throw new Response('Tenant not found', { status: 404 });
   }
 
-  // Map the result to tenant with related data
-  const tenant: Tenant & { currentLease?: Lease; property?: Property; unit?: Unit } = {
-    id: result.id as string,
-    leadId: result.lead_id as string | undefined,
-    firstName: result.first_name as string,
-    lastName: result.last_name as string,
-    email: result.email as string,
-    phone: result.phone as string,
-    emergencyContact: result.emergency_contact as string | undefined,
-    emergencyPhone: result.emergency_phone as string | undefined,
-    status: result.status as Tenant['status'],
-    createdAt: result.created_at as string,
-    updatedAt: result.updated_at as string,
-  };
-
-  if (result.lease_id) {
-    tenant.currentLease = {
-      id: result.lease_id as string,
-      propertyId: result.property_id as string,
-      unitId: result.unit_id as string | undefined,
-      tenantId: tenant.id,
-      startDate: result.lease_start_date as string,
-      endDate: result.lease_end_date as string,
-      monthlyRent: result.monthly_rent as number,
-      securityDeposit: result.security_deposit as number,
-      status: result.lease_status as Lease['status'],
-      createdAt: '',
-      updatedAt: '',
-    };
-
-    if (result.property_name) {
-      tenant.property = {
-        id: result.property_id as string,
-        name: result.property_name as string,
-        address: result.property_address as string,
-        city: result.property_city as string,
-        province: result.property_province as string,
-        postalCode: result.property_postal_code as string,
-        slug: '',
-        propertyType: 'single_family',
-        amenities: [],
-        isActive: true,
-        createdAt: '',
-        updatedAt: '',
-      };
-    }
-
-    if (result.unit_number) {
-      tenant.unit = {
-        id: result.unit_id as string,
-        propertyId: result.property_id as string,
-        unitNumber: result.unit_number as string,
-        name: result.unit_name as string | undefined,
-        bedrooms: result.bedrooms as number,
-        bathrooms: result.bathrooms as number,
-        sqft: result.sqft as number | undefined,
-        rentAmount: result.monthly_rent as number,
-        status: 'occupied',
-        floor: undefined,
-        features: [],
-        isActive: true,
-        createdAt: '',
-        updatedAt: '',
-      };
-    }
-  }
-
   // Fetch work orders for this tenant
-  const workOrders = await getWorkOrders(db, siteId, { propertyId: tenant.property?.id });
-  const tenantWorkOrders = workOrders.filter(wo => wo.tenantId === tenantId);
+  const allWorkOrders = await getWorkOrders(db, siteId);
+  const workOrders = allWorkOrders.filter(wo => wo.tenantId === tenantId);
 
-  return json({ tenant, workOrders: tenantWorkOrders });
+  return json({ tenant, workOrders });
 }
 
 export async function action({ params, request, context }: ActionFunctionArgs) {
@@ -144,9 +48,12 @@ export async function action({ params, request, context }: ActionFunctionArgs) {
 
   if (action === 'updateStatus') {
     const status = formData.get('status') as string;
-    await db.prepare('UPDATE tenants SET status = ?, updated_at = ? WHERE id = ? AND site_id = ?')
-      .bind(status, new Date().toISOString(), tenantId, siteId)
-      .run();
+    const now = new Date().toISOString();
+
+    // Use D1 prepare directly since context.cloudflare.env.DB is D1Database
+    const stmt = db.prepare('UPDATE tenants SET status = ?, updated_at = ? WHERE id = ? AND site_id = ?');
+    await stmt.bind(status, now, tenantId, siteId).run();
+
     return json({ success: true });
   }
 

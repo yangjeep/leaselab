@@ -1,9 +1,8 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs, MetaFunction } from '@remix-run/cloudflare';
 import { json } from '@remix-run/cloudflare';
 import { useLoaderData, Link, useSubmit, Form } from '@remix-run/react';
-import { getWorkOrderById, getTenantById, getPropertyById, updateWorkOrder } from '~/lib/db.server';
+import { getWorkOrderById, getTenants, getPropertyById, updateWorkOrder } from '~/lib/db.server';
 import { getSiteId } from '~/lib/site.server';
-import type { WorkOrder, Tenant, Property } from '~/shared/types';
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
   if (!data) return [{ title: 'Work Order Not Found' }];
@@ -25,12 +24,13 @@ export async function loader({ params, request, context }: LoaderFunctionArgs) {
     throw new Response('Work Order not found', { status: 404 });
   }
 
-  let tenant: Tenant | null = null;
+  let tenant = null;
   if (workOrder.tenantId) {
-    tenant = await getTenantById(db, siteId, workOrder.tenantId);
+    const tenants = await getTenants(db, siteId);
+    tenant = tenants.find(t => t.id === workOrder.tenantId) || null;
   }
 
-  let property: Property | null = null;
+  let property = null;
   if (workOrder.propertyId) {
     property = await getPropertyById(db, siteId, workOrder.propertyId);
   }
