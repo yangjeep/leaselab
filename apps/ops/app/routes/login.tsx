@@ -12,6 +12,13 @@ export const meta: MetaFunction = () => {
 
 export async function action({ request, context }: ActionFunctionArgs) {
   const secret = context.cloudflare.env.SESSION_SECRET as string;
+  if (!secret) {
+    console.error('SESSION_SECRET is not configured');
+    return json(
+      { error: 'Server configuration error: SESSION_SECRET missing' },
+      { status: 500 }
+    );
+  }
   const siteId = getSiteId(request);
   const workerEnv = {
     WORKER_URL: context.cloudflare.env.WORKER_URL,

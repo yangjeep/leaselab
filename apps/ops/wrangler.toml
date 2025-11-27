@@ -19,6 +19,7 @@ bucket_name = "leaselab-pri"
 ENVIRONMENT = "development"
 WORKER_URL = "http://localhost:8788"
 WORKER_INTERNAL_KEY = "dev-internal-key-change-in-production"
+SESSION_SECRET = "dev-session-secret"
 
 # Preview environment
 [env.preview]
@@ -36,6 +37,7 @@ bucket_name = "leaselab-pri-preview"
 ENVIRONMENT = "preview"
 WORKER_URL = "https://leaselab-worker-preview.yangjeep.workers.dev"
 WORKER_INTERNAL_KEY = "preview-internal-key-change-in-production"
+SESSION_SECRET = "preview-session-secret"
 
 # Production environment
 [env.production]
