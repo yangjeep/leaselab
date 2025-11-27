@@ -7,12 +7,21 @@ pages_build_output_dir = "./build/client"
 # All data access goes through leaselab-worker API
 
 [vars]
-ENVIRONMENT = "production"
+ENVIRONMENT = "development"
 # Worker for CRUD operations (token-based authentication)
 WORKER_URL = "https://leaselab-worker.yangjeep.workers.dev"
 # SITE_API_TOKEN is set via 'wrangler pages secret put SITE_API_TOKEN'
 OPS_API_URL = "https://leaselab-ops.pages.dev"
 # GOOGLE_MAPS_API_KEY is set via 'wrangler pages secret put GOOGLE_MAPS_API_KEY'
+
+# Preview environment
+[env.preview]
+name = "leaselab-site-preview"
+
+[env.preview.vars]
+ENVIRONMENT = "preview"
+WORKER_URL = "https://leaselab-worker-preview.yangjeep.workers.dev"
+OPS_API_URL = "https://leaselab-ops-preview.pages.dev"
 
 # Production environment
 [env.production]

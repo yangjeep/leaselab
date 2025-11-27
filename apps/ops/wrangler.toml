@@ -27,9 +27,22 @@ bucket_name = "leaselab-pri"
 [vars]
 ENVIRONMENT = "development"
 
-# For preview/staging environment
+# Preview environment
 [env.preview]
 name = "leaselab-ops-preview"
+
+[[env.preview.d1_databases]]
+binding = "DB"
+database_name = "leaselab-db-preview"
+database_id = "850dc940-1021-4c48-8d40-0f18992424ac"
+
+[[env.preview.r2_buckets]]
+binding = "PUBLIC_BUCKET"
+bucket_name = "leaselab-pub-preview"
+
+[[env.preview.r2_buckets]]
+binding = "PRIVATE_BUCKET"
+bucket_name = "leaselab-pri-preview"
 
 [env.preview.vars]
 ENVIRONMENT = "preview"
