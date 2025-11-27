@@ -1,7 +1,7 @@
 import type { ActionFunctionArgs, MetaFunction } from '@remix-run/cloudflare';
 import { json, redirect } from '@remix-run/cloudflare';
 import { Form, Link, useNavigation, useActionData } from '@remix-run/react';
-import { createProperty } from '~/lib/db.server';
+import { savePropertyToWorker } from '~/lib/worker-client';
 import { CreatePropertySchema } from '~/shared/config';
 import { getSiteId } from '~/lib/site.server';
 
@@ -10,7 +10,7 @@ export const meta: MetaFunction = () => {
 };
 
 export async function action({ request, context }: ActionFunctionArgs) {
-  const db = context.cloudflare.env.DB;
+  const env = context.cloudflare.env;
   const siteId = getSiteId(request);
   const formData = await request.formData();
 
@@ -36,7 +36,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
     return json({ error: 'Validation failed', details: parsed.error.flatten() }, { status: 400 });
   }
 
-  const property = await createProperty(db, siteId, parsed.data);
+  const property = await savePropertyToWorker(env, siteId, parsed.data);
   return redirect(`/admin/properties/${property.id}`);
 }
 

@@ -1,14 +1,14 @@
 import { json, type ActionFunctionArgs, type LoaderFunctionArgs } from '@remix-run/cloudflare';
-import { getProperties, createProperty } from '~/lib/db.server';
+import { fetchPropertiesFromWorker, savePropertyToWorker } from '~/lib/worker-client';
 import { CreatePropertySchema } from '~/shared/config';
 import { getSiteId } from '~/lib/site.server';
 
 export async function loader({ context, request }: LoaderFunctionArgs) {
-  const db = context.cloudflare.env.DB;
+  const env = context.cloudflare.env;
   const siteId = getSiteId(request);
 
   try {
-    const properties = await getProperties(db, siteId, { isActive: true });
+    const properties = await fetchPropertiesFromWorker(env, siteId);
     return json({ success: true, data: properties });
   } catch (error) {
     console.error('Error fetching properties:', error);
@@ -21,7 +21,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
     return json({ success: false, error: 'Method not allowed' }, { status: 405 });
   }
 
-  const db = context.cloudflare.env.DB;
+  const env = context.cloudflare.env;
   const siteId = getSiteId(request);
 
   try {
@@ -36,7 +36,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
       }, { status: 400 });
     }
 
-    const property = await createProperty(db, siteId, parsed.data);
+    const property = await savePropertyToWorker(env, siteId, parsed.data);
     return json({ success: true, data: property }, { status: 201 });
   } catch (error) {
     console.error('Error creating property:', error);

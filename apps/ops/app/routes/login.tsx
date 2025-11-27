@@ -11,8 +11,14 @@ export const meta: MetaFunction = () => {
 };
 
 export async function action({ request, context }: ActionFunctionArgs) {
-  const db = context.cloudflare.env.DB;
   const secret = context.cloudflare.env.SESSION_SECRET as string;
+  if (!secret) {
+    console.error('SESSION_SECRET is not configured');
+    return json(
+      { error: 'Server configuration error: SESSION_SECRET missing' },
+      { status: 500 }
+    );
+  }
   const siteId = getSiteId(request);
   const workerEnv = {
     WORKER_URL: context.cloudflare.env.WORKER_URL,
@@ -31,7 +37,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
     );
   }
 
-  const result = await login(db, secret, siteId, email, password, workerEnv);
+  const result = await login(workerEnv, secret, siteId, email, password);
   if (!result) {
     return json(
       { error: 'Invalid email or password' },

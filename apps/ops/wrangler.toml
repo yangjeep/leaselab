@@ -5,55 +5,55 @@ compatibility_flags = ["nodejs_compat"]
 # Pages configuration
 pages_build_output_dir = "./build/client"
 
-# D1 Database
-[[d1_databases]]
-binding = "DB"
-database_name = "leaselab-db"
-database_id = "850dc940-1021-4c48-8d40-0f18992424ac"
-
-# KV binding removed — using signed cookies
-
-# R2 Buckets for file storage
-# Public bucket for property images, etc.
+# R2 Buckets for file uploads
+# Ops app handles file uploads directly, all other data comes from Worker API
 [[r2_buckets]]
 binding = "PUBLIC_BUCKET"
 bucket_name = "leaselab-pub"
 
-# Private bucket for applications, leases, N11s, etc.
 [[r2_buckets]]
 binding = "PRIVATE_BUCKET"
 bucket_name = "leaselab-pri"
 
 [vars]
 ENVIRONMENT = "development"
+WORKER_URL = "http://localhost:8788"
+WORKER_INTERNAL_KEY = "dev-internal-key-change-in-production"
+SESSION_SECRET = "dev-session-secret"
 
-# For preview/staging environment
+# Preview environment
 [env.preview]
 name = "leaselab-ops-preview"
 
+[[env.preview.r2_buckets]]
+binding = "PUBLIC_BUCKET"
+bucket_name = "leaselab-pub-preview"
+
+[[env.preview.r2_buckets]]
+binding = "PRIVATE_BUCKET"
+bucket_name = "leaselab-pri-preview"
+
 [env.preview.vars]
 ENVIRONMENT = "preview"
+WORKER_URL = "https://leaselab-worker-preview.yangjeep.workers.dev"
+WORKER_INTERNAL_KEY = "preview-internal-key-change-in-production"
+SESSION_SECRET = "preview-session-secret"
+R2_PUBLIC_URL="https://pub-3e517223e87b41968fff44a1b232ae24.r2.dev"
 
 # Production environment
 [env.production]
 name = "leaselab-ops"
 
-[[env.production.d1_databases]]
-binding = "DB"
-database_name = "leaselab-db"
-database_id = "850dc940-1021-4c48-8d40-0f18992424ac"
-
-# No KV namespaces in production either
-
-# Public bucket for property images, etc.
 [[env.production.r2_buckets]]
 binding = "PUBLIC_BUCKET"
 bucket_name = "leaselab-pub"
 
-# Private bucket for applications, leases, N11s, etc.
 [[env.production.r2_buckets]]
 binding = "PRIVATE_BUCKET"
 bucket_name = "leaselab-pri"
 
 [env.production.vars]
 ENVIRONMENT = "production"
+WORKER_URL = "https://leaselab-worker.yangjeep.workers.dev"
+WORKER_INTERNAL_KEY = "production-internal-key-change-in-production"
+R2_PUBLIC_URL="https://pub.leaselab.io"

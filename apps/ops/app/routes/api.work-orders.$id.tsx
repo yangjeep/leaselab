@@ -1,7 +1,7 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs } from '@remix-run/cloudflare';
 import { json } from '@remix-run/cloudflare';
 import { UpdateWorkOrderSchema } from '~/shared/config';
-import { getWorkOrderById, updateWorkOrder, deleteWorkOrder } from '~/lib/db.server';
+import { fetchWorkOrderFromWorker, saveWorkOrderToWorker, deleteWorkOrderToWorker } from '~/lib/worker-client';
 import { getSiteId } from '~/lib/site.server';
 
 // GET /api/work-orders/:id
@@ -11,11 +11,14 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
     return json({ success: false, error: 'Work order ID required' }, { status: 400 });
   }
 
-  const db = context.cloudflare.env.DB;
+  const workerEnv = {
+    WORKER_URL: context.cloudflare.env.WORKER_URL,
+    WORKER_INTERNAL_KEY: context.cloudflare.env.WORKER_INTERNAL_KEY,
+  };
   const siteId = getSiteId(request);
 
   try {
-    const workOrder = await getWorkOrderById(db, siteId, id);
+    const workOrder = await fetchWorkOrderFromWorker(workerEnv, siteId, id);
     if (!workOrder) {
       return json({ success: false, error: 'Work order not found' }, { status: 404 });
     }
@@ -36,19 +39,22 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
     return json({ success: false, error: 'Work order ID required' }, { status: 400 });
   }
 
-  const db = context.cloudflare.env.DB;
+  const workerEnv = {
+    WORKER_URL: context.cloudflare.env.WORKER_URL,
+    WORKER_INTERNAL_KEY: context.cloudflare.env.WORKER_INTERNAL_KEY,
+  };
   const siteId = getSiteId(request);
 
   try {
     // Check if work order exists
-    const existing = await getWorkOrderById(db, siteId, id);
+    const existing = await fetchWorkOrderFromWorker(workerEnv, siteId, id);
     if (!existing) {
       return json({ success: false, error: 'Work order not found' }, { status: 404 });
     }
 
     // DELETE
     if (request.method === 'DELETE') {
-      await deleteWorkOrder(db, siteId, id);
+      await deleteWorkOrderToWorker(workerEnv, siteId, id);
       return json({ success: true, message: 'Work order deleted' });
     }
 
@@ -64,8 +70,8 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
         );
       }
 
-      await updateWorkOrder(db, siteId, id, validationResult.data);
-      const updated = await getWorkOrderById(db, siteId, id);
+      await saveWorkOrderToWorker(workerEnv, siteId, { id, ...validationResult.data });
+      const updated = await fetchWorkOrderFromWorker(workerEnv, siteId, id);
       return json({ success: true, data: updated });
     }
 

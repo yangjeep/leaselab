@@ -1,7 +1,7 @@
 import type { LoaderFunctionArgs, MetaFunction } from '@remix-run/cloudflare';
 import { json } from '@remix-run/cloudflare';
 import { useLoaderData, Link, useSearchParams } from '@remix-run/react';
-import { getWorkOrders } from '~/lib/db.server';
+import { fetchWorkOrdersFromWorker } from '~/lib/worker-client';
 import { getSiteId } from '~/lib/site.server';
 
 export const meta: MetaFunction = () => {
@@ -9,12 +9,15 @@ export const meta: MetaFunction = () => {
 };
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
-  const db = context.cloudflare.env.DB;
   const siteId = getSiteId(request);
+  const workerEnv = {
+    WORKER_URL: context.cloudflare.env.WORKER_URL,
+    WORKER_INTERNAL_KEY: context.cloudflare.env.WORKER_INTERNAL_KEY,
+  };
   const url = new URL(request.url);
   const status = url.searchParams.get('status') || undefined;
-
-  const workOrders = await getWorkOrders(db, siteId, { status });
+  const all = await fetchWorkOrdersFromWorker(workerEnv, siteId);
+  const workOrders = status && status !== 'all' ? all.filter((wo) => wo.status === status) : all;
   return json({ workOrders });
 }
 

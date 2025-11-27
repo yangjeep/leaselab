@@ -40,3 +40,43 @@ invocation_logs = true
 enabled = false
 persist = true
 head_sampling_rate = 1
+
+# Preview environment
+[env.preview]
+name = "leaselab-worker-preview"
+
+[env.preview.vars]
+R2_PUBLIC_URL = "https://pub-08cf33d3a3ab49bda744210087b16bae.r2.dev"
+
+[[env.preview.d1_databases]]
+binding = "DB"
+database_name = "leaselab-db-preview"
+database_id = "33898744-c94f-4233-b22f-2fc29b78bb43"
+
+[[env.preview.r2_buckets]]
+binding = "PUBLIC_BUCKET"
+bucket_name = "leaselab-pub-preview"
+
+[[env.preview.r2_buckets]]
+binding = "PRIVATE_BUCKET"
+bucket_name = "leaselab-pri-preview"
+
+# Production environment
+[env.production]
+name = "leaselab-worker"
+
+[env.production.vars]
+R2_PUBLIC_URL = "https://pub-08cf33d3a3ab49bda744210087b16bae.r2.dev"
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "leaselab-db"
+database_id = "850dc940-1021-4c48-8d40-0f18992424ac"
+
+[[env.production.r2_buckets]]
+binding = "PUBLIC_BUCKET"
+bucket_name = "leaselab-pub"
+
+[[env.production.r2_buckets]]
+binding = "PRIVATE_BUCKET"
+bucket_name = "leaselab-pri"

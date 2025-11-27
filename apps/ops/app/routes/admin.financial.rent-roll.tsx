@@ -1,7 +1,7 @@
 import type { LoaderFunctionArgs, MetaFunction } from '@remix-run/cloudflare';
 import { json } from '@remix-run/cloudflare';
 import { useLoaderData, Link } from '@remix-run/react';
-import { getProperties, getUnitsByPropertyId, getTenants } from '~/lib/db.server';
+import { fetchPropertiesFromWorker, fetchUnitsFromWorker, fetchTenantsFromWorker } from '~/lib/worker-client';
 import { formatCurrency } from '~/shared/utils';
 import { getSiteId } from '~/lib/site.server';
 
@@ -25,19 +25,22 @@ interface RentRollUnit {
 }
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
-  const db = context.cloudflare.env.DB;
   const siteId = getSiteId(request);
+  const workerEnv = {
+    WORKER_URL: context.cloudflare.env.WORKER_URL,
+    WORKER_INTERNAL_KEY: context.cloudflare.env.WORKER_INTERNAL_KEY,
+  };
 
   const [properties, tenants] = await Promise.all([
-    getProperties(db, siteId),
-    getTenants(db, siteId),
+    fetchPropertiesFromWorker(workerEnv, siteId),
+    fetchTenantsFromWorker(workerEnv, siteId),
   ]);
 
   // Build comprehensive rent roll data
   const rentRoll: RentRollUnit[] = [];
 
   for (const property of properties) {
-    const units = await getUnitsByPropertyId(db, siteId, property.id);
+    const units = await fetchUnitsFromWorker(workerEnv, siteId, property.id);
 
     for (const unit of units) {
       const tenant = tenants.find(t => t.unitId === unit.id);

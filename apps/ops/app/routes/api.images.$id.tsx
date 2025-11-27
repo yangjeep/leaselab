@@ -1,9 +1,12 @@
 import { json, type ActionFunctionArgs, type LoaderFunctionArgs } from '@remix-run/cloudflare';
-import { getImageById, updateImage, deleteImage } from '~/lib/db.server';
+import { fetchImageFromWorker, updateImageToWorker, deleteImageToWorker, getImageServeUrl } from '~/lib/worker-client';
 import { getSiteId } from '~/lib/site.server';
 
 export async function loader({ params, context, request }: LoaderFunctionArgs) {
-  const db = context.cloudflare.env.DB;
+  const workerEnv = {
+    WORKER_URL: context.cloudflare.env.WORKER_URL,
+    WORKER_INTERNAL_KEY: context.cloudflare.env.WORKER_INTERNAL_KEY,
+  };
   const siteId = getSiteId(request);
   const { id } = params;
 
@@ -12,7 +15,7 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
   }
 
   try {
-    const image = await getImageById(db, siteId, id);
+    const image = await fetchImageFromWorker(workerEnv, siteId, id);
 
     if (!image) {
       return json({ success: false, error: 'Image not found' }, { status: 404 });
@@ -21,7 +24,7 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
     const baseUrl = context.cloudflare.env.R2_PUBLIC_URL || '';
     const imageWithUrl = {
       ...image,
-      url: baseUrl ? `${baseUrl}/${image.r2Key}` : `/api/images/${image.id}/file`,
+      url: baseUrl ? `${baseUrl}/${image.r2Key}` : getImageServeUrl(workerEnv, image.id),
     };
 
     return json({ success: true, data: imageWithUrl });
@@ -32,8 +35,10 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
 }
 
 export async function action({ request, params, context }: ActionFunctionArgs) {
-  const db = context.cloudflare.env.DB;
-  const bucket = context.cloudflare.env.PUBLIC_BUCKET; // Use public bucket for property images
+  const workerEnv = {
+    WORKER_URL: context.cloudflare.env.WORKER_URL,
+    WORKER_INTERNAL_KEY: context.cloudflare.env.WORKER_INTERNAL_KEY,
+  };
   const siteId = getSiteId(request);
   const { id } = params;
 
@@ -44,13 +49,13 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
   if (request.method === 'PUT' || request.method === 'PATCH') {
     try {
       const body = await request.json();
-      await updateImage(db, siteId, id, body);
-      const updated = await getImageById(db, siteId, id);
+      await updateImageToWorker(workerEnv, siteId, id, body);
+      const updated = await fetchImageFromWorker(workerEnv, siteId, id);
 
       const baseUrl = context.cloudflare.env.R2_PUBLIC_URL || '';
       const imageWithUrl = updated ? {
         ...updated,
-        url: baseUrl ? `${baseUrl}/${updated.r2Key}` : `/api/images/${updated.id}/file`,
+        url: baseUrl ? `${baseUrl}/${updated.r2Key}` : getImageServeUrl(workerEnv, updated.id),
       } : null;
 
       return json({ success: true, data: imageWithUrl });
@@ -62,16 +67,8 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 
   if (request.method === 'DELETE') {
     try {
-      // Get image to find R2 key
-      const image = await getImageById(db, siteId, id);
-
-      if (image && bucket) {
-        // Delete from R2
-        await bucket.delete(image.r2Key);
-      }
-
-      // Delete from database
-      await deleteImage(db, siteId, id);
+      // Delete via worker (handles both R2 and database)
+      await deleteImageToWorker(workerEnv, siteId, id);
 
       return json({ success: true, message: 'Image deleted' });
     } catch (error) {

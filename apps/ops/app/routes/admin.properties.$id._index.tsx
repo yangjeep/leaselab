@@ -1,7 +1,7 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs, MetaFunction } from '@remix-run/cloudflare';
 import { json, redirect } from '@remix-run/cloudflare';
 import { useLoaderData, Link, Form, useNavigation } from '@remix-run/react';
-import { getPropertyWithUnits, updateProperty, deleteProperty, getImagesByEntity } from '~/lib/db.server';
+import { fetchPropertyWithUnitsFromWorker, savePropertyToWorker, deletePropertyToWorker, fetchImagesFromWorker, getImageServeUrl } from '~/lib/worker-client';
 import { formatCurrency } from '~/shared/utils';
 import type { Property, Unit, PropertyImage } from '~/shared/types';
 import { getSiteId } from '~/lib/site.server';
@@ -11,7 +11,10 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 };
 
 export async function loader({ params, context, request }: LoaderFunctionArgs) {
-  const db = context.cloudflare.env.DB;
+  const workerEnv = {
+    WORKER_URL: context.cloudflare.env.WORKER_URL,
+    WORKER_INTERNAL_KEY: context.cloudflare.env.WORKER_INTERNAL_KEY,
+  };
   const siteId = getSiteId(request);
   const { id } = params;
 
@@ -19,27 +22,30 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
     throw new Response('Property ID required', { status: 400 });
   }
 
-  const property = await getPropertyWithUnits(db, siteId, id);
+  const property = await fetchPropertyWithUnitsFromWorker(workerEnv, siteId, id);
 
   if (!property) {
     throw new Response('Property not found', { status: 404 });
   }
 
   // Fetch images for the property
-  const images = await getImagesByEntity(db, siteId, 'property', id);
+  const images = await fetchImagesFromWorker(workerEnv, siteId, 'property', id);
 
   // Generate URLs for images
   const baseUrl = context.cloudflare.env.R2_PUBLIC_URL || '';
   const imagesWithUrls = images.map(img => ({
     ...img,
-    url: baseUrl ? `${baseUrl}/${img.r2Key}` : `/api/images/${img.id}/file`,
+    url: baseUrl ? `${baseUrl}/${img.r2Key}` : getImageServeUrl(workerEnv, img.id),
   }));
 
   return json({ property: { ...property, images: imagesWithUrls } });
 }
 
 export async function action({ request, params, context }: ActionFunctionArgs) {
-  const db = context.cloudflare.env.DB;
+  const workerEnv = {
+    WORKER_URL: context.cloudflare.env.WORKER_URL,
+    WORKER_INTERNAL_KEY: context.cloudflare.env.WORKER_INTERNAL_KEY,
+  };
   const siteId = getSiteId(request);
   const { id } = params;
 
@@ -51,7 +57,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
   const intent = formData.get('intent');
 
   if (intent === 'delete') {
-    await deleteProperty(db, siteId, id);
+    await deletePropertyToWorker(workerEnv, siteId, id);
     return redirect('/admin/properties');
   }
 
@@ -59,7 +65,8 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
     const amenitiesStr = formData.get('amenities') as string;
     const amenities = amenitiesStr ? amenitiesStr.split(',').map(a => a.trim()).filter(Boolean) : [];
 
-    await updateProperty(db, siteId, id, {
+    await savePropertyToWorker(workerEnv, siteId, {
+      id,
       name: formData.get('name') as string,
       address: formData.get('address') as string,
       city: formData.get('city') as string,

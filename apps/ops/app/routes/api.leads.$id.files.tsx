@@ -1,7 +1,7 @@
 import type { ActionFunctionArgs } from '@remix-run/cloudflare';
 import { json } from '@remix-run/cloudflare';
 import { FileUploadSchema } from '~/shared/config';
-import { getLeadById, createLeadFile, updateLead } from '~/lib/db.server';
+import { fetchLeadFromWorker, updateLeadToWorker, createLeadFileToWorker } from '~/lib/worker-client';
 import { generateId } from '~/shared/utils';
 import { getSiteId } from '~/lib/site.server';
 
@@ -15,13 +15,16 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
     return json({ success: false, error: 'Lead ID required' }, { status: 400 });
   }
 
-  const db = context.cloudflare.env.DB;
-  const bucket = context.cloudflare.env.PRIVATE_BUCKET; // Use private bucket for application files
   const siteId = getSiteId(request);
+  const workerEnv = {
+    WORKER_URL: context.cloudflare.env.WORKER_URL,
+    WORKER_INTERNAL_KEY: context.cloudflare.env.WORKER_INTERNAL_KEY,
+  };
+  const bucket = context.cloudflare.env.PRIVATE_BUCKET; // Use private bucket for application files
 
   try {
     // Verify lead exists
-    const lead = await getLeadById(db, siteId, leadId);
+    const lead = await fetchLeadFromWorker(workerEnv, siteId, leadId);
     if (!lead) {
       return json({ success: false, error: 'Lead not found' }, { status: 404 });
     }
@@ -41,9 +44,8 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
     // Generate R2 key
     const r2Key = `leads/${leadId}/${generateId()}/${data.fileName}`;
 
-    // Create file record
-    const file = await createLeadFile(db, siteId, {
-      leadId,
+    // Create file record via worker
+    const file = await createLeadFileToWorker(workerEnv, siteId, leadId, {
       fileType: data.fileType,
       fileName: data.fileName,
       fileSize: data.fileSize,
@@ -53,7 +55,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 
     // Update lead status if this is the first file
     if (lead.status === 'new') {
-      await updateLead(db, siteId, leadId, { status: 'documents_pending' });
+      await updateLeadToWorker(workerEnv, siteId, leadId, { status: 'documents_pending' });
     }
 
     // Generate presigned upload URL

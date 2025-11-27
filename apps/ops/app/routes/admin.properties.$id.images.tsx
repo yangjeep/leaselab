@@ -1,7 +1,7 @@
 import type { LoaderFunctionArgs, MetaFunction } from '@remix-run/cloudflare';
 import { json } from '@remix-run/cloudflare';
 import { useLoaderData, Link, useRevalidator } from '@remix-run/react';
-import { getPropertyById, getImagesByEntity } from '~/lib/db.server';
+import { fetchPropertyFromWorker, fetchImagesFromWorker } from '~/lib/worker-client';
 import { getSiteId } from '~/lib/site.server';
 import { ImageUploader } from '~/components/ImageUploader';
 import type { PropertyImage } from '~/shared/types';
@@ -11,22 +11,25 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 };
 
 export async function loader({ params, context, request }: LoaderFunctionArgs) {
-  const db = context.cloudflare.env.DB;
   const siteId = getSiteId(request);
+  const workerEnv = {
+    WORKER_URL: context.cloudflare.env.WORKER_URL,
+    WORKER_INTERNAL_KEY: context.cloudflare.env.WORKER_INTERNAL_KEY,
+  };
   const { id } = params;
 
   if (!id) {
     throw new Response('Property ID required', { status: 400 });
   }
 
-  const property = await getPropertyById(db, siteId, id);
+  const property = await fetchPropertyFromWorker(workerEnv, siteId, id);
 
   if (!property) {
     throw new Response('Property not found', { status: 404 });
   }
 
   // Fetch images for the property
-  const images = await getImagesByEntity(db, siteId, 'property', id);
+  const images = await fetchImagesFromWorker(workerEnv, siteId, 'property', id);
 
   // Generate URLs for images
   const baseUrl = context.cloudflare.env.R2_PUBLIC_URL || '';

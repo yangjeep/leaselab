@@ -1,5 +1,4 @@
 import { redirect } from '@remix-run/cloudflare';
-import { getUserById, getUserByEmail, type DatabaseInput } from './db.server';
 import type { User } from '~/shared/types';
 import {
   createSessionCookie,
@@ -8,7 +7,18 @@ import {
   clearSessionCookieHeader,
   getSessionCookie,
 } from './session-cookie.server';
-import { updateUserLastLoginToWorker, isWorkerConfigured } from './worker-client';
+import { 
+  updateUserLastLoginToWorker, 
+  isWorkerConfigured,
+  fetchUserFromWorker,
+  fetchUserByEmailFromWorker,
+} from './worker-client';
+
+// WorkerEnv interface for worker API calls
+interface WorkerEnv {
+  WORKER_URL: string;
+  WORKER_INTERNAL_KEY?: string;
+}
 
 // Simple password hashing (in production, use bcrypt or argon2)
 export async function hashPassword(password: string): Promise<string> {
@@ -33,7 +43,7 @@ export function createLogoutCookie(): string {
 // Auth helpers
 export async function requireAuth(
   request: Request,
-  dbInput: DatabaseInput,
+  workerEnv: WorkerEnv,
   sessionSecret: string,
   siteId: string
 ): Promise<User> {
@@ -47,8 +57,8 @@ export async function requireAuth(
     throw redirect('/login');
   }
 
-  // Fetch user by ID (site_id filtering is not needed for authentication)
-  const user = await getUserById(dbInput, session.siteId, session.userId);
+  // Fetch user by ID via Worker API
+  const user = await fetchUserFromWorker(workerEnv, session.siteId, session.userId);
   if (!user) {
     throw redirect('/login');
   }
@@ -63,11 +73,11 @@ export async function requireAuth(
 // Convenience wrapper matching previous API used by some routes
 export async function requireUser(
   request: Request,
-  dbInput: DatabaseInput,
+  workerEnv: WorkerEnv,
   sessionSecret: string,
   siteId: string
 ): Promise<User> {
-  return requireAuth(request, dbInput, sessionSecret, siteId);
+  return requireAuth(request, workerEnv, sessionSecret, siteId);
 }
 
 // ============================================================================
@@ -79,10 +89,26 @@ export async function requireUser(
  */
 export async function setActiveSite(
   request: Request,
-  _unused: unknown,
+  sessionSecret: string,
   activeSiteId: string
-): Promise<void> {
-  // With signed cookies, this would require re-issuing the cookie.
+): Promise<string> {
+  const existing = getSessionCookie(request);
+  if (!existing) {
+    throw redirect('/login');
+  }
+  const session = await verifySessionCookie(existing, sessionSecret);
+  if (!session) {
+    throw redirect('/login');
+  }
+  // Preserve original expiry
+  const newSessionValue = await createSessionCookie({
+    userId: session.userId,
+    siteId: activeSiteId,
+    expiresAt: session.expiresAt,
+  }, sessionSecret);
+  // Compute remaining seconds for Max-Age
+  const remaining = Math.max(0, Math.floor((session.expiresAt - Date.now()) / 1000));
+  return createSessionCookieHeader(newSessionValue, remaining || 60); // fallback 60s if already expired soon
 }
 
 /**
@@ -109,7 +135,7 @@ export async function clearActiveSite(
 
 export async function getOptionalUser(
   request: Request,
-  dbInput: DatabaseInput,
+  workerEnv: WorkerEnv,
   sessionSecret: string,
   siteId: string
 ): Promise<User | null> {
@@ -119,18 +145,17 @@ export async function getOptionalUser(
   const session = await verifySessionCookie(cookie, sessionSecret);
   if (!session) return null;
 
-  return getUserById(dbInput, session.siteId, session.userId);
+  return fetchUserFromWorker(workerEnv, session.siteId, session.userId);
 }
 
 export async function login(
-  dbInput: DatabaseInput,
+  workerEnv: WorkerEnv,
   sessionSecret: string,
   siteId: string,
   email: string,
-  password: string,
-  workerEnv?: { WORKER_URL?: string; WORKER_INTERNAL_KEY?: string }
+  password: string
 ): Promise<{ sessionId: string; user: Omit<User, 'passwordHash'> } | null> {
-  const userWithPassword = await getUserByEmail(dbInput, siteId, email);
+  const userWithPassword = await fetchUserByEmailFromWorker(workerEnv, siteId, email);
   if (!userWithPassword) return null;
 
   const isValid = await verifyPassword(password, userWithPassword.passwordHash);
@@ -141,9 +166,7 @@ export async function login(
   const sessionValue = await createSessionCookie({ userId: userWithPassword.id, siteId: userWithPassword.siteId, expiresAt }, sessionSecret);
 
   // Update last_login_at via worker API
-  if (workerEnv && isWorkerConfigured(workerEnv)) {
-    await updateUserLastLoginToWorker(workerEnv as any, userWithPassword.id);
-  }
+  await updateUserLastLoginToWorker(workerEnv, userWithPassword.id);
 
   const { passwordHash: _, ...user } = userWithPassword;
   return { sessionId: sessionValue, user };

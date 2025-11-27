@@ -1,7 +1,7 @@
 import type { LoaderFunctionArgs, MetaFunction } from '@remix-run/cloudflare';
 import { json } from '@remix-run/cloudflare';
 import { useLoaderData, Link, useSearchParams } from '@remix-run/react';
-import { getLeads, getProperties } from '~/lib/db.server';
+import { fetchLeadsFromWorker, fetchPropertiesFromWorker } from '~/lib/worker-client';
 import { getSiteId } from '~/lib/site.server';
 
 export const meta: MetaFunction = () => {
@@ -9,7 +9,7 @@ export const meta: MetaFunction = () => {
 };
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
-  const db = context.cloudflare.env.DB;
+  const env = context.cloudflare.env;
   const siteId = getSiteId(request);
   const url = new URL(request.url);
 
@@ -19,8 +19,13 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   const sortOrder = (url.searchParams.get('sortOrder') || 'desc') as 'asc' | 'desc';
 
   const [leads, properties] = await Promise.all([
-    getLeads(db, siteId, { status, propertyId, sortBy, sortOrder }),
-    getProperties(db, siteId, { isActive: true }),
+    fetchLeadsFromWorker(env, siteId, {
+      status,
+      propertyId,
+      sortBy,
+      sortOrder,
+    }),
+    fetchPropertiesFromWorker(env, siteId),
   ]);
 
   return json({ leads, properties });

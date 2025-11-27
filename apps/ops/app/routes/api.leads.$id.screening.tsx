@@ -1,7 +1,8 @@
 import type { ActionFunctionArgs } from '@remix-run/cloudflare';
 import { json } from '@remix-run/cloudflare';
-import { getLeadById, updateLead } from '~/lib/db.server';
+import { fetchLeadFromWorker, updateLeadToWorker } from '~/lib/worker-client';
 import { generateId } from '~/shared/utils';
+import { getSiteId } from '~/lib/site.server';
 
 // Placeholder for Certn/SingleKey screening integration
 export async function action({ request, params, context }: ActionFunctionArgs) {
@@ -14,17 +15,21 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
     return json({ success: false, error: 'Lead ID required' }, { status: 400 });
   }
 
-  const db = context.cloudflare.env.DB;
+  const siteId = getSiteId(request);
+  const workerEnv = {
+    WORKER_URL: context.cloudflare.env.WORKER_URL,
+    WORKER_INTERNAL_KEY: context.cloudflare.env.WORKER_INTERNAL_KEY,
+  };
 
   try {
     // Verify lead exists
-    const lead = await getLeadById(db, leadId);
+    const lead = await fetchLeadFromWorker(workerEnv, siteId, leadId);
     if (!lead) {
       return json({ success: false, error: 'Lead not found' }, { status: 404 });
     }
 
     // Update status
-    await updateLead(db, leadId, { status: 'screening' });
+    await updateLeadToWorker(workerEnv, siteId, leadId, { status: 'screening' });
 
     // Placeholder response - in production, this would integrate with Certn/SingleKey
     const screeningId = generateId('scr');

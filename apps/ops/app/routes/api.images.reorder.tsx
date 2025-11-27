@@ -1,5 +1,5 @@
 import { json, type ActionFunctionArgs } from '@remix-run/cloudflare';
-import { updateImage } from '~/lib/db.server';
+import { reorderImagesToWorker } from '~/lib/worker-client';
 import { ReorderImagesSchema } from '~/shared/config';
 import { getSiteId } from '~/lib/site.server';
 
@@ -8,7 +8,10 @@ export async function action({ request, context }: ActionFunctionArgs) {
     return json({ success: false, error: 'Method not allowed' }, { status: 405 });
   }
 
-  const db = context.cloudflare.env.DB;
+  const workerEnv = {
+    WORKER_URL: context.cloudflare.env.WORKER_URL,
+    WORKER_INTERNAL_KEY: context.cloudflare.env.WORKER_INTERNAL_KEY,
+  };
   const siteId = getSiteId(request);
 
   try {
@@ -25,12 +28,8 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
     const { imageIds } = parsed.data;
 
-    // Update sort order for each image
-    await Promise.all(
-      imageIds.map((imageId, index) =>
-        updateImage(db, siteId, imageId, { sortOrder: index })
-      )
-    );
+    // Reorder via worker API
+    await reorderImagesToWorker(workerEnv, siteId, imageIds);
 
     return json({ success: true, message: 'Images reordered' });
   } catch (error) {

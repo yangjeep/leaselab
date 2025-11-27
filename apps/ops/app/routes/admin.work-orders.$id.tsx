@@ -1,7 +1,7 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs, MetaFunction } from '@remix-run/cloudflare';
 import { json } from '@remix-run/cloudflare';
 import { useLoaderData, Link, useSubmit, Form } from '@remix-run/react';
-import { getWorkOrderById, getTenants, getPropertyById, updateWorkOrder } from '~/lib/db.server';
+import { fetchWorkOrderFromWorker, fetchTenantsFromWorker, fetchPropertyFromWorker, saveWorkOrderToWorker } from '~/lib/worker-client';
 import { getSiteId } from '~/lib/site.server';
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
@@ -10,15 +10,18 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 };
 
 export async function loader({ params, request, context }: LoaderFunctionArgs) {
-  const db = context.cloudflare.env.DB;
   const siteId = getSiteId(request);
+  const workerEnv = {
+    WORKER_URL: context.cloudflare.env.WORKER_URL,
+    WORKER_INTERNAL_KEY: context.cloudflare.env.WORKER_INTERNAL_KEY,
+  };
   const workOrderId = params.id;
 
   if (!workOrderId) {
     throw new Response('Work Order ID is required', { status: 400 });
   }
 
-  const workOrder = await getWorkOrderById(db, siteId, workOrderId);
+  const workOrder = await fetchWorkOrderFromWorker(workerEnv, siteId, workOrderId);
 
   if (!workOrder) {
     throw new Response('Work Order not found', { status: 404 });
@@ -26,21 +29,24 @@ export async function loader({ params, request, context }: LoaderFunctionArgs) {
 
   let tenant = null;
   if (workOrder.tenantId) {
-    const tenants = await getTenants(db, siteId);
+    const tenants = await fetchTenantsFromWorker(workerEnv, siteId);
     tenant = tenants.find(t => t.id === workOrder.tenantId) || null;
   }
 
   let property = null;
   if (workOrder.propertyId) {
-    property = await getPropertyById(db, siteId, workOrder.propertyId);
+    property = await fetchPropertyFromWorker(workerEnv, siteId, workOrder.propertyId);
   }
 
   return json({ workOrder, tenant, property });
 }
 
 export async function action({ params, request, context }: ActionFunctionArgs) {
-  const db = context.cloudflare.env.DB;
   const siteId = getSiteId(request);
+  const workerEnv = {
+    WORKER_URL: context.cloudflare.env.WORKER_URL,
+    WORKER_INTERNAL_KEY: context.cloudflare.env.WORKER_INTERNAL_KEY,
+  };
   const workOrderId = params.id;
 
   if (!workOrderId) {
@@ -52,7 +58,7 @@ export async function action({ params, request, context }: ActionFunctionArgs) {
 
   if (action === 'updateStatus') {
     const status = formData.get('status') as string;
-    await updateWorkOrder(db, siteId, workOrderId, { status: status as WorkOrder['status'] });
+    await saveWorkOrderToWorker(workerEnv, siteId, { id: workOrderId, status });
     return json({ success: true });
   }
 
@@ -69,7 +75,7 @@ export async function action({ params, request, context }: ActionFunctionArgs) {
     if (notes !== null) updates.notes = notes || undefined;
     if (priority) updates.priority = priority as WorkOrder['priority'];
 
-    await updateWorkOrder(db, siteId, workOrderId, updates);
+    await saveWorkOrderToWorker(workerEnv, siteId, { id: workOrderId, ...updates });
     return json({ success: true });
   }
 

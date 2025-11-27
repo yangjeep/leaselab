@@ -1,6 +1,6 @@
 import type { ActionFunctionArgs } from '@remix-run/cloudflare';
 import { json } from '@remix-run/cloudflare';
-import { getLeadById, getLeadFiles, getPropertyById, getUnitsByPropertyId, createAIEvaluation, updateLead } from '~/lib/db.server';
+import { fetchLeadFromWorker, fetchLeadFilesFromWorker, fetchPropertyFromWorker, fetchUnitsFromWorker, runAIEvaluationToWorker, updateLeadToWorker } from '~/lib/worker-client';
 import { runLeadAIEvaluation, generateSignedUrls } from '~/lib/ai.server';
 import { getSiteId } from '~/lib/site.server';
 
@@ -14,10 +14,13 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
     return json({ success: false, error: 'Lead ID required' }, { status: 400 });
   }
 
-  const db = context.cloudflare.env.DB;
+  const siteId = getSiteId(request);
+  const workerEnv = {
+    WORKER_URL: context.cloudflare.env.WORKER_URL,
+    WORKER_INTERNAL_KEY: context.cloudflare.env.WORKER_INTERNAL_KEY,
+  };
   const bucket = context.cloudflare.env.PRIVATE_BUCKET; // Use private bucket for application files
   const openaiApiKey = context.cloudflare.env.OPENAI_API_KEY;
-  const siteId = getSiteId(request);
 
   if (!openaiApiKey) {
     return json(
@@ -28,26 +31,27 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 
   try {
     // Fetch lead
-    const lead = await getLeadById(db, siteId, leadId);
+    const lead = await fetchLeadFromWorker(workerEnv, siteId, leadId);
     if (!lead) {
       return json({ success: false, error: 'Lead not found' }, { status: 404 });
     }
 
     // Fetch property for context
-    const property = await getPropertyById(db, siteId, lead.propertyId);
+    const property = await fetchPropertyFromWorker(workerEnv, siteId, lead.propertyId);
     if (!property) {
       return json({ success: false, error: 'Property not found' }, { status: 404 });
     }
 
     // Get units for the property to determine rent amount
-    const units = await getUnitsByPropertyId(db, siteId, lead.propertyId);
-    const rentAmount = units.length > 0 ? units[0].rentAmount : 0; // Use first unit's rent as typical
+    const units = await fetchUnitsFromWorker(workerEnv, siteId);
+    const propertyUnits = units.filter(u => u.propertyId === lead.propertyId);
+    const rentAmount = propertyUnits.length > 0 ? propertyUnits[0].rentAmount : 0; // Use first unit's rent as typical
 
     // Fetch files
-    const files = await getLeadFiles(db, siteId, leadId);
+    const files = await fetchLeadFilesFromWorker(workerEnv, siteId, leadId);
 
     // Update status to evaluating
-    await updateLead(db, siteId, leadId, { status: 'ai_evaluating' });
+    await updateLeadToWorker(workerEnv, siteId, leadId, { status: 'ai_evaluating' });
 
     // Generate signed URLs for files
     const signedUrls = await generateSignedUrls(bucket, files);
@@ -60,9 +64,8 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
       signedUrls,
     });
 
-    // Save evaluation
-    const evaluation = await createAIEvaluation(db, siteId, {
-      leadId,
+    // Save evaluation using worker
+    const evaluation = await runAIEvaluationToWorker(workerEnv, siteId, leadId, {
       score: result.score,
       label: result.label,
       summary: result.summary,
@@ -73,7 +76,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
     });
 
     // Update lead with AI results
-    await updateLead(db, siteId, leadId, {
+    await updateLeadToWorker(workerEnv, siteId, leadId, {
       status: 'ai_evaluated',
       aiScore: result.score,
       aiLabel: result.label,
@@ -93,7 +96,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
     console.error('Error running AI evaluation:', error);
 
     // Reset status on failure
-    await updateLead(db, siteId, leadId, { status: 'documents_received' });
+    await updateLeadToWorker(workerEnv, siteId, leadId, { status: 'documents_received' });
 
     return json(
       { success: false, error: 'AI evaluation failed' },

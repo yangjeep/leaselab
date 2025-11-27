@@ -1,12 +1,12 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs } from '@remix-run/cloudflare';
 import { json } from '@remix-run/cloudflare';
 import { CreateWorkOrderSchema } from '~/shared/config';
-import { getWorkOrders, createWorkOrder } from '~/lib/db.server';
+import { fetchWorkOrdersFromWorker, saveWorkOrderToWorker } from '~/lib/worker-client';
 import { getSiteId } from '~/lib/site.server';
 
 // GET /api/work-orders
 export async function loader({ request, context }: LoaderFunctionArgs) {
-  const db = context.cloudflare.env.DB;
+  const env = context.cloudflare.env;
   const siteId = getSiteId(request);
   const url = new URL(request.url);
 
@@ -14,7 +14,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   const propertyId = url.searchParams.get('propertyId') || undefined;
 
   try {
-    const workOrders = await getWorkOrders(db, siteId, { status, propertyId });
+    const workOrders = await fetchWorkOrdersFromWorker(env, siteId);
     return json({ success: true, data: workOrders });
   } catch (error) {
     console.error('Error fetching work orders:', error);
@@ -31,7 +31,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
     return json({ success: false, error: 'Method not allowed' }, { status: 405 });
   }
 
-  const db = context.cloudflare.env.DB;
+  const env = context.cloudflare.env;
   const siteId = getSiteId(request);
 
   try {
@@ -46,7 +46,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
     }
 
     const data = validationResult.data;
-    const workOrder = await createWorkOrder(db, siteId, {
+    const workOrder = await saveWorkOrderToWorker(env, siteId, {
       propertyId: data.propertyId,
       tenantId: data.tenantId,
       title: data.title,

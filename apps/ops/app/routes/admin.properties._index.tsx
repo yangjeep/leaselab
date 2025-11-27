@@ -1,7 +1,7 @@
 import type { LoaderFunctionArgs, MetaFunction } from '@remix-run/cloudflare';
 import { json } from '@remix-run/cloudflare';
 import { useLoaderData, Link, useSearchParams } from '@remix-run/react';
-import { getProperties, getUnitsByPropertyId, getImagesByEntity } from '~/lib/db.server';
+import { fetchPropertiesFromWorker, fetchUnitsFromWorker, fetchImagesFromWorker } from '~/lib/worker-client';
 import type { Property, Unit, PropertyImage } from '~/shared/types';
 import { getSiteId } from '~/lib/site.server';
 
@@ -19,16 +19,16 @@ type PropertyWithStats = Property & {
 };
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
-  const db = context.cloudflare.env.DB;
+  const env = context.cloudflare.env;
   const siteId = getSiteId(request);
-  const properties = await getProperties(db, siteId);
+  const properties = await fetchPropertiesFromWorker(env, siteId);
   const baseUrl = context.cloudflare.env.R2_PUBLIC_URL || '';
 
   // Fetch units and images for each property
   const propertiesWithStats: PropertyWithStats[] = await Promise.all(
     properties.map(async (property) => {
-      const units = await getUnitsByPropertyId(db, siteId, property.id);
-      const rawImages = await getImagesByEntity(db, siteId, 'property', property.id);
+      const units = await fetchUnitsFromWorker(env, siteId, property.id);
+      const rawImages = await fetchImagesFromWorker(env, siteId, 'property', property.id);
 
       const images = rawImages.map(img => ({
         ...img,

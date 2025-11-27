@@ -10,6 +10,10 @@ import {
   useLoaderData,
 } from "@remix-run/react";
 import { getSiteId } from "~/lib/site.server";
+import { getSessionCookie, verifySessionCookie } from "~/lib/session-cookie.server";
+import { fetchUserAccessibleSitesFromWorker, fetchUserHasAccessToSiteFromWorker } from "~/lib/worker-client";
+import { setActiveSite } from "~/lib/auth.server";
+import { SiteSwitcher } from "~/components/SiteSwitcher";
 
 import "./tailwind.css";
 
@@ -26,9 +30,41 @@ export const links: LinksFunction = () => [
   },
 ];
 
-export async function loader({ request }: LoaderFunctionArgs) {
-  const siteId = getSiteId(request);
-  return json({ siteId });
+export async function loader({ request, context }: LoaderFunctionArgs) {
+  const env = context.cloudflare.env;
+  const workerEnv = { WORKER_URL: env.WORKER_URL, WORKER_INTERNAL_KEY: env.WORKER_INTERNAL_KEY };
+  const sessionSecret = env.SESSION_SECRET;
+
+  let activeSite: string | null = null;
+  let accessibleSites: { siteId: string; grantedAt?: string }[] = [];
+
+  const cookie = getSessionCookie(request);
+  if (cookie) {
+    const session = await verifySessionCookie(cookie, sessionSecret);
+    if (session) {
+      activeSite = session.siteId;
+      // Fetch sites user can access
+      accessibleSites = await fetchUserAccessibleSitesFromWorker(workerEnv, session.userId);
+      // If active site revoked, choose first accessible and reissue cookie
+      if (activeSite && !accessibleSites.find(s => s.siteId === activeSite)) {
+        if (accessibleSites.length > 0) {
+          const newSiteId = accessibleSites[0].siteId;
+          const setCookieHeader = await setActiveSite(request, sessionSecret, newSiteId);
+          activeSite = newSiteId;
+          return json({ siteId: activeSite, accessibleSites }, { headers: { 'Set-Cookie': setCookieHeader } });
+        } else {
+          activeSite = null;
+        }
+      }
+    }
+  }
+
+  // Fallback to request-derived site if no session-based context
+  if (!activeSite) {
+    activeSite = getSiteId(request);
+  }
+
+  return json({ siteId: activeSite, accessibleSites });
 }
 
 export function Layout({ children }: { children: React.ReactNode }) {
@@ -50,8 +86,18 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
-  const { siteId } = useLoaderData<typeof loader>();
-  return <Outlet context={{ siteId }} />;
+  const { siteId, accessibleSites } = useLoaderData<typeof loader>();
+  return (
+    <>
+      <div className="border-b bg-white shadow-sm">
+        <div className="mx-auto max-w-7xl px-4 py-2 flex items-center justify-between">
+          <h1 className="text-lg font-semibold">LeaseLab Ops Dashboard</h1>
+          <SiteSwitcher currentSite={siteId || ''} availableSites={accessibleSites || []} />
+        </div>
+      </div>
+      <Outlet context={{ siteId, accessibleSites }} />
+    </>
+  );
 }
 
 export function ErrorBoundary() {

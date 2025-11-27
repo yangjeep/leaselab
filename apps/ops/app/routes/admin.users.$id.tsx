@@ -2,36 +2,33 @@ import type { LoaderFunctionArgs, ActionFunctionArgs } from '@remix-run/cloudfla
 import { json, redirect } from '@remix-run/cloudflare';
 import { useLoaderData, Form, useNavigation } from '@remix-run/react';
 import { requireAuth } from '~/lib/auth.server';
-import {
-    getUserById,
-    getUserSiteAccess,
-    setSuperAdminStatus,
-    grantSiteAccess,
-    revokeSiteAccess,
-} from '~/lib/db.server';
+import { fetchUserFromWorker, fetchUserSitesFromWorker, grantSiteAccessToWorker, revokeSiteAccessToWorker, setSuperAdminStatusToWorker } from '~/lib/worker-client';
 import { getSiteId } from '~/lib/site.server';
 
 export async function loader({ params, request, context }: LoaderFunctionArgs) {
     const { id } = params;
     if (!id) throw new Response('Not found', { status: 404 });
 
-    const db = context.cloudflare.env.DB;
     const siteId = getSiteId(request);
     const secret = context.cloudflare.env.SESSION_SECRET as string;
+    const workerEnv = {
+        WORKER_URL: context.cloudflare.env.WORKER_URL,
+        WORKER_INTERNAL_KEY: context.cloudflare.env.WORKER_INTERNAL_KEY,
+    };
 
-    const currentUser = await requireAuth(request, db, secret, siteId);
+    const currentUser = await requireAuth(request, workerEnv, secret, siteId);
 
     // Only super admins can edit users (previous policy)
     if (!currentUser.isSuperAdmin) {
         throw new Response('Unauthorized', { status: 403 });
     }
 
-    const user = await getUserById(db, siteId, id);
+    const user = await fetchUserFromWorker(workerEnv, siteId, id);
     if (!user) {
         throw new Response('User not found', { status: 404 });
     }
 
-    const siteAccess = await getUserSiteAccess(db, id);
+    const siteAccess = await fetchUserSitesFromWorker(workerEnv, id);
 
     return json({ user, siteAccess });
 }
@@ -40,11 +37,14 @@ export async function action({ params, request, context }: ActionFunctionArgs) {
     const { id } = params;
     if (!id) return json({ error: 'User ID required' }, { status: 400 });
 
-    const db = context.cloudflare.env.DB;
     const siteId = getSiteId(request);
     const secret = context.cloudflare.env.SESSION_SECRET as string;
+    const workerEnv = {
+        WORKER_URL: context.cloudflare.env.WORKER_URL,
+        WORKER_INTERNAL_KEY: context.cloudflare.env.WORKER_INTERNAL_KEY,
+    };
 
-    const currentUser = await requireAuth(request, db, secret, siteId);
+    const currentUser = await requireAuth(request, workerEnv, secret, siteId);
 
     // Only super admins can edit users (previous policy)
     if (!currentUser.isSuperAdmin) {
@@ -56,13 +56,13 @@ export async function action({ params, request, context }: ActionFunctionArgs) {
 
     if (action === 'toggle_super_admin') {
         const isSuperAdmin = formData.get('is_super_admin') === 'true';
-        await setSuperAdminStatus(db, id, isSuperAdmin);
+        await setSuperAdminStatusToWorker(workerEnv, id, isSuperAdmin);
     } else if (action === 'grant_site_access') {
         const targetSiteId = formData.get('site_id') as string;
-        await grantSiteAccess(db, id, targetSiteId, currentUser.id);
+        await grantSiteAccessToWorker(workerEnv, id, targetSiteId, currentUser.id);
     } else if (action === 'revoke_site_access') {
         const targetSiteId = formData.get('site_id') as string;
-        await revokeSiteAccess(db, id, targetSiteId);
+        await revokeSiteAccessToWorker(workerEnv, id, targetSiteId);
     }
 
     return redirect(`/admin/users/${id}`);
