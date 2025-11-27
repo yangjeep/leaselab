@@ -1,8 +1,7 @@
 import type { ActionFunctionArgs } from '@remix-run/cloudflare';
 import { json } from '@remix-run/cloudflare';
 import { FileUploadSchema } from '~/shared/config';
-import { fetchLeadFromWorker, updateLeadToWorker } from '~/lib/worker-client';
-import { createLeadFile } from '~/lib/db.server';
+import { fetchLeadFromWorker, updateLeadToWorker, createLeadFileToWorker } from '~/lib/worker-client';
 import { generateId } from '~/shared/utils';
 import { getSiteId } from '~/lib/site.server';
 
@@ -45,9 +44,8 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
     // Generate R2 key
     const r2Key = `leads/${leadId}/${generateId()}/${data.fileName}`;
 
-    // Create file record (still direct until worker JSON variant exists)
-    const file = await createLeadFile(context.cloudflare.env.DB, siteId, {
-      leadId,
+    // Create file record via worker
+    const file = await createLeadFileToWorker(workerEnv, siteId, leadId, {
       fileType: data.fileType,
       fileName: data.fileName,
       fileSize: data.fileSize,

@@ -84,6 +84,12 @@ export interface EnvVars {
 export interface CloudflareEnv extends D1Bindings, R2Bindings, EnvVars {}
 
 /**
+ * Ops App Environment (no D1, only R2 for file uploads)
+ * Ops app accesses all data through Worker API, only needs R2 for direct file uploads
+ */
+export interface OpsEnv extends R2Bindings, EnvVars {}
+
+/**
  * Optional Cloudflare Environment (for routes that may not need all bindings)
  */
 export interface PartialCloudflareEnv extends D1Bindings, Partial<R2Bindings>, Partial<EnvVars> {}

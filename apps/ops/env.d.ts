@@ -2,13 +2,13 @@
 /// <reference types="vite/client" />
 /// <reference types="@cloudflare/workers-types" />
 
-// Import shared environment types from centralized config
-import type { CloudflareEnv } from '~/shared/config';
+// Import Ops-specific environment types from centralized config
+import type { OpsEnv } from '~/shared/config';
 
 declare module "@remix-run/cloudflare" {
   interface AppLoadContext {
     cloudflare: {
-      env: CloudflareEnv;
+      env: OpsEnv;
       cf: CfProperties;
       ctx: ExecutionContext;
     };

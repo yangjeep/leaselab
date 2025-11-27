@@ -1531,4 +1531,36 @@ opsRoutes.post('/leads/:id/history', async (c: Context) => {
   }
 });
 
+/**
+ * POST /api/ops/leads/:id/files
+ * Create a lead file record (for metadata only, actual upload happens separately)
+ */
+opsRoutes.post('/leads/:id/files', async (c: Context) => {
+  try {
+    const siteId = c.req.header('X-Site-Id') || 'default';
+    const leadId = c.req.param('id');
+    const body = await c.req.json();
+
+    const file = await createLeadFile(c.env.DB, siteId, {
+      leadId,
+      fileType: body.fileType,
+      fileName: body.fileName,
+      fileSize: body.fileSize,
+      mimeType: body.mimeType,
+      r2Key: body.r2Key,
+    });
+
+    return c.json({
+      success: true,
+      data: file,
+    }, 201);
+  } catch (error) {
+    console.error('Error creating lead file:', error);
+    return c.json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    }, 500);
+  }
+});
+
 export { opsRoutes };

@@ -822,3 +822,26 @@ export async function deleteWorkOrderToWorker(
     method: 'DELETE',
   }, siteId);
 }
+
+/**
+ * Create lead file metadata
+ */
+export async function createLeadFileToWorker(
+  env: WorkerEnv,
+  siteId: string,
+  leadId: string,
+  data: {
+    fileType: string;
+    fileName: string;
+    fileSize: number;
+    mimeType: string;
+    r2Key: string;
+  }
+): Promise<any> {
+  const url = `${env.WORKER_URL}/api/ops/leads/${leadId}/files`;
+  const response = await workerFetch(url, env, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }, siteId);
+  return parseResponse(response);
+}
