@@ -313,6 +313,28 @@ export async function fetchUserSitesFromWorker(
 }
 
 /**
+ * Get user's accessible sites (alias for fetchUserSitesFromWorker)
+ */
+export async function fetchUserAccessibleSitesFromWorker(
+  env: WorkerEnv,
+  userId: string
+): Promise<any[]> {
+  return fetchUserSitesFromWorker(env, userId);
+}
+
+/**
+ * Check if user has access to a specific site
+ */
+export async function fetchUserHasAccessToSiteFromWorker(
+  env: WorkerEnv,
+  userId: string,
+  siteId: string
+): Promise<boolean> {
+  const sites = await fetchUserSitesFromWorker(env, userId);
+  return sites.some((s: any) => s.siteId === siteId);
+}
+
+/**
  * Grant site access to user
  */
 export async function grantSiteAccessToWorker(
