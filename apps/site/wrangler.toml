@@ -13,6 +13,7 @@ WORKER_URL = "https://leaselab-worker.yangjeep.workers.dev"
 # SITE_API_TOKEN is set via 'wrangler pages secret put SITE_API_TOKEN'
 OPS_API_URL = "https://leaselab-ops.pages.dev"
 # GOOGLE_MAPS_API_KEY is set via 'wrangler pages secret put GOOGLE_MAPS_API_KEY'
+R2_PUBLIC_URL = "https://pub-3e517223e87b41968fff44a1b232ae24.r2.dev"
 
 # Preview environment
 [env.preview]
@@ -22,6 +23,7 @@ name = "leaselab-site-preview"
 ENVIRONMENT = "preview"
 WORKER_URL = "https://leaselab-worker-preview.yangjeep.workers.dev"
 OPS_API_URL = "https://leaselab-ops-preview.pages.dev"
+R2_PUBLIC_URL = "https://pub-3e517223e87b41968fff44a1b232ae24.r2.dev"
 
 # Production environment
 [env.production]
@@ -33,3 +35,4 @@ name = "leaselab-site"
 ENVIRONMENT = "production"
 WORKER_URL = "https://leaselab-worker.yangjeep.workers.dev"
 OPS_API_URL = "https://leaselab-ops.pages.dev"
+R2_PUBLIC_URL = "https://pub.leaselab.io"

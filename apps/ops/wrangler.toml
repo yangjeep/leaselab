@@ -38,6 +38,7 @@ ENVIRONMENT = "preview"
 WORKER_URL = "https://leaselab-worker-preview.yangjeep.workers.dev"
 WORKER_INTERNAL_KEY = "preview-internal-key-change-in-production"
 SESSION_SECRET = "preview-session-secret"
+R2_PUBLIC_URL="https://pub-3e517223e87b41968fff44a1b232ae24.r2.dev"
 
 # Production environment
 [env.production]
@@ -55,3 +56,4 @@ bucket_name = "leaselab-pri"
 ENVIRONMENT = "production"
 WORKER_URL = "https://leaselab-worker.yangjeep.workers.dev"
 WORKER_INTERNAL_KEY = "production-internal-key-change-in-production"
+R2_PUBLIC_URL="https://pub.leaselab.io"
