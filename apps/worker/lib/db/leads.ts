@@ -30,6 +30,7 @@ function mapLeadWithOccupancyFromDb(row: unknown): Lead {
     const lead = mapLeadFromDb(row);
     const r = row as Record<string, unknown>;
     lead.isUnitOccupied = Boolean(r.is_unit_occupied);
+    lead.propertyName = r.property_name as string | undefined;
     return lead;
 }
 
@@ -74,14 +75,16 @@ export async function getLeads(dbInput: DatabaseInput, siteId: string, options?:
     const db = normalizeDb(dbInput);
     const { status, propertyId, sortBy = 'created_at', sortOrder = 'desc', limit = 50, offset = 0 } = options || {};
 
-    // Join with units to check if the unit is occupied
+    // Join with units to check if the unit is occupied and properties to get property name
     let query = `
     SELECT
       l.*,
       u.status as unit_status,
-      CASE WHEN u.status = 'occupied' THEN 1 ELSE 0 END as is_unit_occupied
+      CASE WHEN u.status = 'occupied' THEN 1 ELSE 0 END as is_unit_occupied,
+      p.name as property_name
     FROM leads l
     LEFT JOIN units u ON l.unit_id = u.id OR (l.property_id = u.property_id AND u.unit_number = 'Main')
+    LEFT JOIN properties p ON l.property_id = p.id
     WHERE l.site_id = ?
   `;
     const params: (string | number)[] = [siteId];
@@ -96,7 +99,15 @@ export async function getLeads(dbInput: DatabaseInput, siteId: string, options?:
         params.push(propertyId);
     }
 
-    const orderColumn = sortBy === 'aiScore' ? 'l.ai_score' : `l.${sortBy.replace(/([A-Z])/g, '_$1').toLowerCase()}`;
+    // Map sort fields to database columns
+    let orderColumn: string;
+    if (sortBy === 'aiScore' || sortBy === 'ai_score') {
+        orderColumn = 'l.ai_score';
+    } else if (sortBy === 'propertyName' || sortBy === 'property_name') {
+        orderColumn = 'p.name';
+    } else {
+        orderColumn = `l.${sortBy.replace(/([A-Z])/g, '_$1').toLowerCase()}`;
+    }
     query += ` ORDER BY ${orderColumn} ${sortOrder.toUpperCase()} LIMIT ? OFFSET ?`;
     params.push(limit, offset);
 

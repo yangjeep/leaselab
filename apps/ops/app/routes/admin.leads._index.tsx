@@ -133,7 +133,7 @@ export default function LeadsIndex() {
             <thead className="bg-gray-50">
               <tr>
                 <SortableTableHeader column="firstName" label="Applicant" />
-                <NonSortableTableHeader label="Property" />
+                <SortableTableHeader column="propertyName" label="Property" />
                 <SortableTableHeader column="email" label="Contact" />
                 <NonSortableTableHeader label="Notes" />
                 <SortableTableHeader column="status" label="Status" />
