@@ -852,10 +852,19 @@ opsRoutes.get('/tenants', async (c: Context) => {
   try {
     const siteId = c.req.header('X-Site-Id');
     if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
+
+    // Get query parameters
     const status = c.req.query('status');
     const propertyId = c.req.query('propertyId');
+    const sortBy = c.req.query('sortBy');
+    const sortOrder = c.req.query('sortOrder') as 'asc' | 'desc' | undefined;
 
-    const tenants = await getTenants(c.env.DB, siteId, { status, propertyId });
+    const tenants = await getTenants(c.env.DB, siteId, {
+      status,
+      propertyId,
+      sortBy,
+      sortOrder,
+    });
 
     return c.json({
       success: true,
