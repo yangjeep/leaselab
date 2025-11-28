@@ -104,7 +104,7 @@ export function PropertyImage({
             image.r2Key,
             widths,
             {
-                height: height || preset?.height,
+                height: height || (preset && 'height' in preset ? preset.height : undefined),
                 quality: quality || preset?.quality || 85,
                 fit: fit || preset?.fit || 'cover',
                 format: 'auto',
@@ -174,7 +174,7 @@ export function PropertyImage({
                 onLoad={handleLoad}
                 onError={handleError}
                 width={width || (size && size !== 'custom' ? ImageSizePresets[size].width : undefined)}
-                height={height || (size && size !== 'custom' ? ImageSizePresets[size].height : undefined)}
+                height={height || (size && size !== 'custom' && 'height' in ImageSizePresets[size] ? ImageSizePresets[size].height : undefined)}
             />
         </div>
     );

@@ -68,11 +68,11 @@ async function apiRequest<T>(
     });
 
     if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' })) as { error?: string };
         throw new Error(errorData.error || `API request failed with status ${response.status}`);
     }
 
-    const data = await response.json();
+    const data = await response.json() as { success: boolean; data?: T; error?: string };
     if (!data.success) {
         throw new Error(data.error || 'API request failed');
     }
@@ -163,11 +163,11 @@ export async function submitApplication(
         });
 
         if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+            const errorData = await response.json().catch(() => ({ error: 'Unknown error' })) as { error?: string };
             throw new Error(errorData.error || 'Failed to submit application');
         }
 
-        const result = await response.json();
+        const result = await response.json() as { data?: any };
         return result.data;
     }
 
@@ -190,10 +190,10 @@ export async function submitApplication(
     });
 
     if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' })) as { error?: string };
         throw new Error(errorData.error || 'Failed to submit application');
     }
 
-    const result = await response.json();
+    const result = await response.json() as { data?: any };
     return result.data;
 }

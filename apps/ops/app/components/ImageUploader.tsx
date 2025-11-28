@@ -62,7 +62,8 @@ export function ImageUploader({
           throw new Error('Failed to get upload URL');
         }
 
-        const { data: presignData } = await presignRes.json();
+        const presignJson = await presignRes.json() as { data: { uploadUrl: string; r2Key: string } };
+        const presignData = presignJson.data;
         setUploadProgress(prev => ({ ...prev, [file.name]: 33 }));
 
         // Step 2: Upload to R2
@@ -95,7 +96,8 @@ export function ImageUploader({
           throw new Error('Failed to register image');
         }
 
-        const { data: newImage } = await registerRes.json();
+        const registerJson = await registerRes.json() as { data: PropertyImage };
+        const newImage = registerJson.data;
         setUploadProgress(prev => ({ ...prev, [file.name]: 100 }));
         onUploadComplete?.(newImage);
 

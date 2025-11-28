@@ -162,11 +162,18 @@ export async function action({ request, context }: ActionFunctionArgs) {
 }
 
 export default function SettingsPage() {
-    const { user, tokens } = useLoaderData<typeof loader>();
+    const loaderData = useLoaderData<typeof loader>();
     const actionData = useActionData<typeof action>();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showNewTokenModal, setShowNewTokenModal] = useState(false);
     const [newTokenDescription, setNewTokenDescription] = useState('');
+
+    // Type guard for loader data
+    if ('error' in loaderData) {
+        return <div className="p-8"><p className="text-red-600">{loaderData.error}</p></div>;
+    }
+
+    const { user, tokens } = loaderData;
 
     // Extract new token from action data
     const newToken = actionData && 'newToken' in actionData ? actionData.newToken : null;
@@ -192,13 +199,13 @@ export default function SettingsPage() {
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
                     <h2 className="text-xl font-semibold text-gray-900 mb-4">Account Information</h2>
 
-                    {actionData?.error && (
+                    {actionData && 'error' in actionData && (
                         <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
                             <p className="text-sm text-red-800">{actionData.error}</p>
                         </div>
                     )}
 
-                    {actionData?.success && (
+                    {actionData && 'success' in actionData && (
                         <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
                             <p className="text-sm text-green-800">{actionData.success}</p>
                         </div>

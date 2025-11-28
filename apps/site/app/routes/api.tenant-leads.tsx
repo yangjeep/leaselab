@@ -1,5 +1,5 @@
-import type { ActionFunctionArgs } from "@remix-run/cloudflare";
-import { json, redirect } from "@remix-run/cloudflare";
+import type { ActionFunctionArgs } from "@remix-run/node";
+import { json, redirect } from "@remix-run/node";
 
 export async function action({ request, context }: ActionFunctionArgs) {
   if (request.method !== "POST") {
@@ -33,7 +33,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
   }
 
   // Handle both Cloudflare Pages and Vite dev mode
-  const env = context.cloudflare?.env || process.env;
+  const env = (context as any).cloudflare?.env || process.env;
   const opsApiUrl = env.OPS_API_URL;
 
   if (!opsApiUrl) {

@@ -288,15 +288,15 @@ export default function PropertyDetail() {
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-gray-500">Occupied</span>
-                <span className="text-sm font-medium">{units.filter(u => u.status === 'occupied').length}</span>
+                <span className="text-sm font-medium">{units.filter((u: Unit) => u.status === 'occupied').length}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-gray-500">Vacant</span>
-                <span className="text-sm font-medium text-green-600">{units.filter(u => u.status === 'available').length}</span>
+                <span className="text-sm font-medium text-green-600">{units.filter((u: Unit) => u.status === 'available').length}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-gray-500">Total Monthly Rent</span>
-                <span className="text-sm font-medium">{formatCurrency(units.reduce((sum, u) => sum + u.rentAmount, 0))}</span>
+                <span className="text-sm font-medium">{formatCurrency(units.reduce((sum: number, u: Unit) => sum + u.rentAmount, 0))}</span>
               </div>
             </div>
           </div>
@@ -311,7 +311,7 @@ export default function PropertyDetail() {
             </div>
             {images.length > 0 ? (
               <div className="grid grid-cols-3 gap-2">
-                {images.slice(0, 6).map((image) => (
+                {images.slice(0, 6).map((image: PropertyImage) => (
                   <div key={image.id} className="aspect-square bg-gray-100 rounded overflow-hidden">
                     <img src={image.url} alt="" className="w-full h-full object-cover" />
                   </div>
@@ -354,7 +354,7 @@ export default function PropertyDetail() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {units.map((unit) => (
+                {units.map((unit: Unit) => (
                   <tr key={unit.id} className="hover:bg-gray-50">
                     <td className="py-3 pr-4">
                       <div className="font-medium text-gray-900">{unit.unitNumber}</div>

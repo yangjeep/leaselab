@@ -99,7 +99,7 @@ export function OptimizedImage({
             image.r2Key,
             widths,
             {
-                height: preset.height,
+                height: 'height' in preset ? preset.height : undefined,
                 quality: preset.quality,
                 fit: preset.fit,
                 format: 'auto',
@@ -115,7 +115,7 @@ export function OptimizedImage({
             className={className}
             loading={lazy ? 'lazy' : 'eager'}
             width={width || (size && size !== 'custom' ? ImageSizePresets[size].width : undefined)}
-            height={height || (size && size !== 'custom' ? ImageSizePresets[size].height : undefined)}
+            height={height || (size && size !== 'custom' && 'height' in ImageSizePresets[size] ? ImageSizePresets[size].height : undefined)}
         />
     );
 }
