@@ -605,7 +605,7 @@ opsRoutes.post('/users/:id/site-access', async (c) => {
     try {
         const userId = c.req.param('id');
         const body = await c.req.json();
-        await grantSiteAccess(c.env.DB, userId, body.siteId, body.role || 'admin');
+        await grantSiteAccess(c.env.DB, userId, body.siteId, body.role || 'admin', body.grantedBy);
         return c.json({
             success: true,
         });

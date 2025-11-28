@@ -68,11 +68,12 @@ export async function createSiteApiToken(
     const db = normalizeDb(dbInput);
 
     // Import crypto functions
-    const { generateApiToken, hashToken } = await import('../../../ops/app/lib/api-auth.server.js');
+    const { hashToken, generateRandomToken } = await import('../../../../shared/utils');
+    const { API_TOKEN_SALT } = await import('../../../../shared/constants');
 
     const tokenId = generateId('tok');
-    const plainToken = generateApiToken();
-    const tokenHash = hashToken(plainToken);
+    const plainToken = generateRandomToken(32);
+    const tokenHash = await hashToken(plainToken, API_TOKEN_SALT);
     const now = new Date().toISOString();
 
     await db.execute(

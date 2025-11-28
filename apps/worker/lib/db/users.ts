@@ -6,6 +6,7 @@ import { normalizeDb } from './helpers';
 export interface AccessibleSite {
     siteId: string;
     role: string;
+    grantedAt?: string;
 }
 
 export async function getUserByEmail(dbInput: DatabaseInput, siteId: string, email: string): Promise<User | null> {
@@ -121,7 +122,7 @@ export async function getUserSiteAccess(
 ): Promise<AccessibleSite[]> {
     const db = normalizeDb(dbInput);
     const results = await db.query<AccessibleSite>(
-        `SELECT site_id as siteId, role
+        `SELECT site_id as siteId, role, granted_at as grantedAt
      FROM user_access
      WHERE user_id = ?`,
         [userId]
@@ -145,14 +146,20 @@ export async function getUserAccessibleSites(
     );
 
     if (user?.is_super_admin) {
-        // Super admins have access to all sites - return a special marker
-        // The actual site list should be fetched from the sites table
-        return [{ siteId: '*', role: 'super_admin' }];
+        // Super admins have access to all sites
+        // Fetch all sites from the sites table
+        const allSites = await db.query<{ id: string }>(`SELECT id FROM sites`);
+
+        return allSites.map(site => ({
+            siteId: site.id,
+            role: 'super_admin',
+            grantedAt: new Date().toISOString() // Dynamic access
+        }));
     }
 
     // Return user's explicitly granted site access
     const access = await db.query<AccessibleSite>(
-        `SELECT site_id as siteId, role
+        `SELECT site_id as siteId, role, granted_at as grantedAt
      FROM user_access
      WHERE user_id = ?`,
         [userId]
@@ -197,7 +204,8 @@ export async function grantSiteAccess(
     dbInput: DatabaseInput,
     userId: string,
     siteId: string,
-    role: string = 'admin'
+    role: string = 'admin',
+    grantedBy?: string
 ): Promise<void> {
     const db = normalizeDb(dbInput);
 
@@ -217,9 +225,9 @@ export async function grantSiteAccess(
         // Insert new access
         const id = `ua_${crypto.randomUUID().replace(/-/g, '').slice(0, 16)}`;
         await db.execute(
-            `INSERT INTO user_access (id, user_id, site_id, role, created_at)
-       VALUES (?, ?, ?, ?, ?)`,
-            [id, userId, siteId, role, new Date().toISOString()]
+            `INSERT INTO user_access (id, user_id, site_id, role, granted_by, created_at, granted_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [id, userId, siteId, role, grantedBy || null, new Date().toISOString(), new Date().toISOString()]
         );
     }
 }

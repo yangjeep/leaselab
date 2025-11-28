@@ -351,12 +351,13 @@ export async function grantSiteAccessToWorker(
   env: WorkerEnv,
   userId: string,
   siteId: string,
-  role?: string
+  role?: string,
+  grantedBy?: string
 ): Promise<void> {
   const url = `${env.WORKER_URL}/api/ops/users/${userId}/site-access`;
   await workerFetch(url, env, {
     method: 'POST',
-    body: JSON.stringify({ siteId, role }),
+    body: JSON.stringify({ siteId, role, grantedBy }),
   });
 }
 

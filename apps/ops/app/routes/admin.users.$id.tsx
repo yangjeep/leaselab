@@ -59,7 +59,7 @@ export async function action({ params, request, context }: ActionFunctionArgs) {
         await setSuperAdminStatusToWorker(workerEnv, id, isSuperAdmin);
     } else if (action === 'grant_site_access') {
         const targetSiteId = formData.get('site_id') as string;
-        await grantSiteAccessToWorker(workerEnv, id, targetSiteId, currentUser.id);
+        await grantSiteAccessToWorker(workerEnv, id, targetSiteId, 'admin', currentUser.id);
     } else if (action === 'revoke_site_access') {
         const targetSiteId = formData.get('site_id') as string;
         await revokeSiteAccessToWorker(workerEnv, id, targetSiteId);
@@ -133,8 +133,8 @@ export default function UserEdit() {
                                 type="submit"
                                 disabled={isSubmitting}
                                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 ${user.isSuperAdmin
-                                        ? 'bg-purple-600 text-white hover:bg-purple-700'
-                                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                    ? 'bg-purple-600 text-white hover:bg-purple-700'
+                                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                                     }`}
                             >
                                 {user.isSuperAdmin ? 'Enabled' : 'Disabled'}

@@ -20,6 +20,13 @@ publicRoutes.use('*', authMiddleware);
  */
 publicRoutes.get('/properties', async (c) => {
     try {
+        if (!c.env.R2_PUBLIC_URL) {
+            console.error('R2_PUBLIC_URL is not defined');
+            return c.json({
+                error: 'Configuration error',
+                message: 'R2_PUBLIC_URL is not configured',
+            }, 500);
+        }
         const siteId = c.get('siteId');
         const city = c.req.query('city');
         const status = c.req.query('status');
