@@ -170,11 +170,13 @@ export async function updateUserProfile(
 
 export async function updateUserRole(
     dbInput: DatabaseInput,
+    siteId: string,
     userId: string,
     role: User['role']
 ): Promise<void> {
     const db = normalizeDb(dbInput);
-    await db.execute('UPDATE users SET role = ? WHERE id = ?', [role, userId]);
+    // Enforce site isolation - only allow role updates for users in the requesting site
+    await db.execute('UPDATE users SET role = ? WHERE id = ? AND site_id = ?', [role, userId, siteId]);
 }
 
 /**

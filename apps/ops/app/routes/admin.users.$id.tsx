@@ -89,7 +89,8 @@ export async function action({ params, request, context }: ActionFunctionArgs) {
         await updateUserPasswordToWorker(workerEnv, siteId, id, passwordHash);
     } else if (action === 'grant_site_access') {
         const targetSiteId = formData.get('site_id') as string;
-        const role = formData.get('access_role') as string || 'admin';
+        // Default to 'viewer' role for least-privilege security
+        const role = formData.get('access_role') as string || 'viewer';
         await grantSiteAccessToWorker(workerEnv, id, targetSiteId, role, currentUser.id);
     } else if (action === 'revoke_site_access') {
         const targetSiteId = formData.get('site_id') as string;
@@ -136,6 +137,7 @@ export default function UserEdit() {
                                 <select
                                     name="role"
                                     defaultValue={user.role}
+                                    aria-label="User role"
                                     className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
                                 >
                                     <option value="admin">Admin</option>
@@ -296,11 +298,13 @@ export default function UserEdit() {
                                 <div className="flex gap-2">
                                     <select
                                         name="access_role"
+                                        defaultValue="viewer"
+                                        aria-label="Site access role"
                                         className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
                                     >
-                                        <option value="admin">Admin</option>
-                                        <option value="maintenance">Maintenance</option>
                                         <option value="viewer">Viewer</option>
+                                        <option value="maintenance">Maintenance</option>
+                                        <option value="admin">Admin</option>
                                     </select>
                                     <button
                                         type="submit"

@@ -5,7 +5,6 @@ import { useState } from 'react';
 import { requireAuth } from '~/lib/auth.server';
 import { fetchUsersFromWorker, createUserToWorker } from '~/lib/worker-client';
 import { getSiteId } from '~/lib/site.server';
-import { hashPassword } from '~/shared/utils';
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
     const siteId = getSiteId(request);
@@ -63,14 +62,12 @@ export async function action({ request, context }: ActionFunctionArgs) {
         }
 
         try {
-            // Hash the password
-            const passwordHash = await hashPassword(password);
-
-            // Create user
+            // Send plain password to worker - it will be hashed server-side
+            // This prevents hash interception attacks
             await createUserToWorker(workerEnv, {
                 email,
                 name,
-                passwordHash,
+                password,
                 role,
                 siteId: userSiteId,
                 isSuperAdmin,

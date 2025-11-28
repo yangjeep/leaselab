@@ -525,17 +525,23 @@ opsRoutes.post('/users', async (c: Context) => {
     const body = await c.req.json();
 
     // Validate required fields
-    if (!body.email || !body.name || !body.passwordHash || !body.role || !body.siteId) {
+    if (!body.email || !body.name || !body.password || !body.role || !body.siteId) {
       return c.json({
         error: 'Bad request',
-        message: 'Missing required fields: email, name, passwordHash, role, siteId',
+        message: 'Missing required fields: email, name, password, role, siteId',
       }, 400);
     }
+
+    // Import hashPassword from shared utils
+    const { hashPassword } = await import('../../../shared/utils/crypto');
+
+    // Hash password server-side to prevent hash interception attacks
+    const passwordHash = await hashPassword(body.password);
 
     const user = await createUser(c.env.DB, {
       email: body.email,
       name: body.name,
-      passwordHash: body.passwordHash,
+      passwordHash,
       role: body.role,
       siteId: body.siteId,
       isSuperAdmin: body.isSuperAdmin || false,
@@ -722,6 +728,10 @@ opsRoutes.post('/users/:id/super-admin', async (c: Context) => {
  */
 opsRoutes.put('/users/:id/role', async (c: Context) => {
   try {
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) {
+      return c.json({ error: 'Missing X-Site-Id header' }, 400);
+    }
     const id = c.req.param('id');
     const body = await c.req.json();
 
@@ -732,7 +742,7 @@ opsRoutes.put('/users/:id/role', async (c: Context) => {
       }, 400);
     }
 
-    await updateUserRole(c.env.DB, id, body.role);
+    await updateUserRole(c.env.DB, siteId, id, body.role);
 
     return c.json({
       success: true,

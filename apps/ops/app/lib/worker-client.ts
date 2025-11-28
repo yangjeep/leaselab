@@ -243,7 +243,7 @@ export async function createUserToWorker(
   data: {
     email: string;
     name: string;
-    passwordHash: string;
+    password: string;
     role: string;
     siteId: string;
     isSuperAdmin?: boolean;
