@@ -308,3 +308,4 @@ export async function retry<T>(
 
 // Export image utilities
 export * from './image';
+export * from './crypto';
