@@ -1,5 +1,12 @@
 import { useFetcher, useLoaderData } from '@remix-run/react';
-import type { AccessibleSite } from '~/lib/db.server';
+
+// Type definition for accessible sites
+interface AccessibleSite {
+    siteId: string;
+    grantedAt?: string;
+    role?: string;
+}
+
 
 interface SiteSwitcherProps {
     currentSite: string;
