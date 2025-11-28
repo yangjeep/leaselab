@@ -78,6 +78,9 @@ export const API_ROUTES = {
   // Public routes
   PUBLIC: {
     LEADS: '/api/public/leads',
+    PROPERTIES: '/api/public/properties',
+    PROPERTY_BY_SLUG: (slug: string) => `/api/public/properties/${slug}`,
+    FILE_UPLOAD: '/api/public/leads/files/upload',
   },
   // Lead routes
   LEADS: {
@@ -151,12 +154,37 @@ export const LeadSubmissionSchema = z.object({
 
 export type LeadSubmissionInput = z.infer<typeof LeadSubmissionSchema>;
 
+// File Upload Constraints
+export const FILE_UPLOAD_CONSTRAINTS = {
+  maxFileSize: 5 * 1024 * 1024, // 5MB per file
+  maxFilesPerLead: 10, // Maximum 10 files per application
+  allowedMimeTypes: [
+    'application/pdf',
+    'image/jpeg',
+    'image/png',
+    'image/heic',
+    'image/heif',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  ] as const,
+  allowedExtensions: [
+    '.pdf',
+    '.jpg',
+    '.jpeg',
+    '.png',
+    '.heic',
+    '.heif',
+    '.doc',
+    '.docx',
+  ] as const,
+} as const;
+
 // File Upload Schema
 export const FileUploadSchema = z.object({
   fileType: LeadFileTypeEnum,
   fileName: z.string().min(1).max(255),
-  fileSize: z.number().positive().max(10 * 1024 * 1024), // 10MB max
-  mimeType: z.string().min(1),
+  fileSize: z.number().positive().max(FILE_UPLOAD_CONSTRAINTS.maxFileSize),
+  mimeType: z.enum(FILE_UPLOAD_CONSTRAINTS.allowedMimeTypes as unknown as [string, ...string[]]),
 });
 
 export type FileUploadInput = z.infer<typeof FileUploadSchema>;

@@ -162,6 +162,9 @@ export interface LeadFile {
   mimeType: string;
   r2Key: string;
   uploadedAt: string;
+  // Computed (for ops viewing)
+  signedUrl?: string;
+  expiresAt?: string;
 }
 
 export type LeadFileType =
@@ -171,6 +174,21 @@ export type LeadFileType =
   | 'tax_return'
   | 'employment_letter'
   | 'other';
+
+// File Upload Response
+export interface FileUploadResponse {
+  fileId: string;
+  fileName: string;
+  fileSize: number;
+  fileType: LeadFileType;
+  uploadedAt: string;
+}
+
+// Property with Images Response (for public site)
+export interface PropertyWithImagesResponse {
+  property: Property & { images: PropertyImage[] };
+  unit?: Unit & { images: PropertyImage[] };
+}
 
 // AI Evaluation Types
 export interface LeadAIResult {

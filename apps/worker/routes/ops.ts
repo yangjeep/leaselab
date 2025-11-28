@@ -1282,7 +1282,7 @@ opsRoutes.post('/images/reorder', async (c: Context) => {
 
 /**
  * GET /api/ops/leads/:id/files
- * Get files for a lead
+ * Get files for a lead with signed URLs for downloading (valid for 24 hours)
  */
 opsRoutes.get('/leads/:id/files', async (c: Context) => {
   try {
@@ -1292,9 +1292,25 @@ opsRoutes.get('/leads/:id/files', async (c: Context) => {
 
     const files = await getLeadFiles(c.env.DB, siteId, leadId);
 
+    // Generate signed URLs for each file (valid for 24 hours)
+    const filesWithUrls = await Promise.all(files.map(async (file) => {
+      // Generate signed URL using R2's built-in signing
+      const signedUrl = await c.env.PRIVATE_BUCKET.sign(file.r2Key, {
+        expiresIn: 24 * 60 * 60, // 24 hours in seconds
+      });
+
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+
+      return {
+        ...file,
+        signedUrl,
+        expiresAt,
+      };
+    }));
+
     return c.json({
       success: true,
-      data: files,
+      data: filesWithUrls,
     });
   } catch (error) {
     console.error('Error fetching lead files:', error);

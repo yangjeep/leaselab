@@ -37,6 +37,8 @@ export {
     updateImage,
     deleteImage,
     setCoverImage,
+    addImageUrls,
+    getImagesByEntityWithUrls,
 } from './images';
 
 // Re-export all lead operations
@@ -47,6 +49,9 @@ export {
     updateLead,
     getLeadFiles,
     createLeadFile,
+    createTempLeadFile,
+    associateFilesWithLead,
+    countLeadFiles,
     getAIEvaluation,
     createAIEvaluation,
     getLeadHistory,

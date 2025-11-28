@@ -225,6 +225,66 @@ export async function createLeadFile(dbInput: DatabaseInput, siteId: string, dat
     return { ...data, id, uploadedAt: now };
 }
 
+/**
+ * Create a temporary lead file (before lead is associated)
+ * Used during the upload workflow where files are uploaded before lead submission
+ */
+export async function createTempLeadFile(dbInput: DatabaseInput, siteId: string, data: {
+    fileType: LeadFile['fileType'];
+    fileName: string;
+    fileSize: number;
+    mimeType: string;
+    r2Key: string;
+}): Promise<{ id: string; uploadedAt: string }> {
+    const db = normalizeDb(dbInput);
+    const id = generateId('file');
+    const now = new Date().toISOString();
+
+    // Insert with NULL lead_id (temporary file)
+    await db.execute(`
+    INSERT INTO lead_files (id, site_id, lead_id, file_type, file_name, file_size, mime_type, r2_key, uploaded_at)
+    VALUES (?, ?, NULL, ?, ?, ?, ?, ?, ?)
+  `, [id, siteId, data.fileType, data.fileName, data.fileSize, data.mimeType, data.r2Key, now]);
+
+    return { id, uploadedAt: now };
+}
+
+/**
+ * Associate temporary files with a lead
+ * Updates lead_id for temp files and returns the count of files associated
+ */
+export async function associateFilesWithLead(dbInput: DatabaseInput, siteId: string, leadId: string, fileIds: string[]): Promise<number> {
+    if (fileIds.length === 0) return 0;
+
+    const db = normalizeDb(dbInput);
+    const placeholders = fileIds.map(() => '?').join(',');
+
+    // Update lead_id for all specified files
+    const result = await db.execute(`
+    UPDATE lead_files
+    SET lead_id = ?
+    WHERE id IN (${placeholders})
+      AND site_id = ?
+      AND lead_id IS NULL
+  `, [leadId, ...fileIds, siteId]);
+
+    return result.meta?.changes || 0;
+}
+
+/**
+ * Count files for a lead (or count temp files if leadId is null)
+ */
+export async function countLeadFiles(dbInput: DatabaseInput, siteId: string, leadId: string | null = null): Promise<number> {
+    const db = normalizeDb(dbInput);
+    const query = leadId === null
+        ? 'SELECT COUNT(*) as count FROM lead_files WHERE site_id = ? AND lead_id IS NULL'
+        : 'SELECT COUNT(*) as count FROM lead_files WHERE site_id = ? AND lead_id = ?';
+    const params = leadId === null ? [siteId] : [siteId, leadId];
+
+    const result = await db.queryOne(query, params);
+    return (result as any)?.count || 0;
+}
+
 // AI Evaluations
 export async function getAIEvaluation(dbInput: DatabaseInput, siteId: string, leadId: string): Promise<LeadAIResult | null> {
     const db = normalizeDb(dbInput);
