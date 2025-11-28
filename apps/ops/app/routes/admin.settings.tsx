@@ -176,7 +176,7 @@ export default function SettingsPage() {
     const { user, tokens } = loaderData;
 
     // Extract new token from action data
-    const newToken = actionData && 'newToken' in actionData ? actionData.newToken : null;
+    const newToken = actionData && 'newToken' in actionData ? (actionData.newToken as string) : null;
 
     const formatDate = (dateStr: string | null) => {
         if (!dateStr) return 'Never';

@@ -115,7 +115,7 @@ export function OptimizedImage({
             className={className}
             loading={lazy ? 'lazy' : 'eager'}
             width={width || (size && size !== 'custom' ? ImageSizePresets[size].width : undefined)}
-            height={height || (size && size !== 'custom' && 'height' in ImageSizePresets[size] ? ImageSizePresets[size].height : undefined)}
+            height={height || (size && size !== 'custom' && 'height' in ImageSizePresets[size] ? (ImageSizePresets[size] as any).height : undefined)}
         />
     );
 }

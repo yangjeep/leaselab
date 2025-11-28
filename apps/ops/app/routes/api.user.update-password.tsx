@@ -18,7 +18,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
     // Ensure user is authenticated
         const user = await requireAuth(request, workerEnv, secret, siteId);
 
-    const body = await request.json();
+    const body = await request.json() as { currentPassword?: string; newPassword?: string };
     const { currentPassword, newPassword } = body;
 
     if (!currentPassword || !newPassword) {

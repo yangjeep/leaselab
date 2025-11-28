@@ -12,7 +12,7 @@ export const onRequest = createPagesFunctionHandler({
       ctx: {
         waitUntil: context.waitUntil.bind(context),
         passThroughOnException: context.passThroughOnException.bind(context),
-      },
+      } as any,
     },
   }),
 });
