@@ -1,10 +1,11 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs } from '@remix-run/cloudflare';
 import { json, redirect } from '@remix-run/cloudflare';
-import { useLoaderData, Link, Form, useNavigation, useActionData } from '@remix-run/react';
-import { useState } from 'react';
+import { useLoaderData, Link, Form, useNavigation, useActionData, useSearchParams } from '@remix-run/react';
+import { useState, useMemo } from 'react';
 import { requireAuth } from '~/lib/auth.server';
 import { fetchUsersFromWorker, createUserToWorker } from '~/lib/worker-client';
 import { getSiteId } from '~/lib/site.server';
+import { SortableTableHeader, NonSortableTableHeader } from '~/components/SortableTableHeader';
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
     const siteId = getSiteId(request);
@@ -91,6 +92,45 @@ export default function UsersIndex() {
     const navigation = useNavigation();
     const isSubmitting = navigation.state === 'submitting';
     const [showCreateModal, setShowCreateModal] = useState(false);
+    const [searchParams] = useSearchParams();
+
+    const sortedUsers = useMemo(() => {
+        const sortBy = searchParams.get('sortBy') || 'name';
+        const sortOrder = searchParams.get('sortOrder') || 'asc';
+
+        const sorted = [...users].sort((a: any, b: any) => {
+            let aVal: any;
+            let bVal: any;
+
+            switch (sortBy) {
+                case 'name':
+                    aVal = a.name?.toLowerCase() || '';
+                    bVal = b.name?.toLowerCase() || '';
+                    break;
+                case 'email':
+                    aVal = a.email?.toLowerCase() || '';
+                    bVal = b.email?.toLowerCase() || '';
+                    break;
+                case 'role':
+                    aVal = a.role?.toLowerCase() || '';
+                    bVal = b.role?.toLowerCase() || '';
+                    break;
+                case 'siteId':
+                    aVal = a.siteId?.toLowerCase() || '';
+                    bVal = b.siteId?.toLowerCase() || '';
+                    break;
+                default:
+                    aVal = a.name?.toLowerCase() || '';
+                    bVal = b.name?.toLowerCase() || '';
+            }
+
+            if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
+            if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
+            return 0;
+        });
+
+        return sorted;
+    }, [users, searchParams]);
 
     return (
         <div className="p-8">
@@ -119,17 +159,17 @@ export default function UsersIndex() {
                 ) : (
                     <table className="w-full">
                         <thead className="bg-gray-50">
-                            <tr className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                <th className="px-6 py-3">Name</th>
-                                <th className="px-6 py-3">Email</th>
-                                <th className="px-6 py-3">Role</th>
-                                <th className="px-6 py-3">Site</th>
-                                <th className="px-6 py-3">Status</th>
-                                <th className="px-6 py-3"></th>
+                            <tr>
+                                <SortableTableHeader column="name" label="Name" />
+                                <SortableTableHeader column="email" label="Email" />
+                                <SortableTableHeader column="role" label="Role" />
+                                <SortableTableHeader column="siteId" label="Site" />
+                                <NonSortableTableHeader label="Status" />
+                                <NonSortableTableHeader label="" />
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
-                            {users.map((user: any) => (
+                            {sortedUsers.map((user: any) => (
                                 <tr key={user.id} className="hover:bg-gray-50">
                                     <td className="px-6 py-4">
                                         <div>

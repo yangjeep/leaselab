@@ -4,6 +4,8 @@ import { useLoaderData, Link, useSearchParams } from '@remix-run/react';
 import { fetchPropertiesFromWorker, fetchUnitsFromWorker, fetchImagesFromWorker } from '~/lib/worker-client';
 import type { Property, Unit, PropertyImage } from '~/shared/types';
 import { getSiteId } from '~/lib/site.server';
+import { SortableTableHeader, NonSortableTableHeader } from '~/components/SortableTableHeader';
+import { useMemo } from 'react';
 
 export const meta: MetaFunction = () => {
   return [{ title: 'Properties - LeaseLab.io' }];
@@ -122,36 +124,70 @@ export default function PropertiesIndex() {
 }
 
 function ListView({ properties }: { properties: PropertyWithStats[] }) {
+  const [searchParams] = useSearchParams();
+
+  const sortedProperties = useMemo(() => {
+    const sortBy = searchParams.get('sortBy') || 'name';
+    const sortOrder = searchParams.get('sortOrder') || 'asc';
+
+    const sorted = [...properties].sort((a, b) => {
+      let aVal: any;
+      let bVal: any;
+
+      switch (sortBy) {
+        case 'name':
+          aVal = a.name.toLowerCase();
+          bVal = b.name.toLowerCase();
+          break;
+        case 'city':
+          aVal = a.city?.toLowerCase() || '';
+          bVal = b.city?.toLowerCase() || '';
+          break;
+        case 'propertyType':
+          aVal = a.propertyType?.toLowerCase() || '';
+          bVal = b.propertyType?.toLowerCase() || '';
+          break;
+        case 'unitCount':
+          aVal = a.unitCount;
+          bVal = b.unitCount;
+          break;
+        case 'occupiedCount':
+          aVal = a.occupiedCount;
+          bVal = b.occupiedCount;
+          break;
+        case 'totalRent':
+          aVal = a.totalRent;
+          bVal = b.totalRent;
+          break;
+        default:
+          aVal = a.name.toLowerCase();
+          bVal = b.name.toLowerCase();
+      }
+
+      if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    return sorted;
+  }, [properties, searchParams]);
+
   return (
     <div className="bg-white rounded-xl shadow-sm overflow-hidden">
       <table className="min-w-full divide-y divide-gray-200">
         <thead className="bg-gray-50">
           <tr>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Property
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Location
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Type
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Units
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Occupancy
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Status
-            </th>
-            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Actions
-            </th>
+            <SortableTableHeader column="name" label="Property" />
+            <SortableTableHeader column="city" label="Location" />
+            <SortableTableHeader column="propertyType" label="Type" />
+            <SortableTableHeader column="unitCount" label="Units" defaultSortOrder="desc" />
+            <SortableTableHeader column="occupiedCount" label="Occupancy" defaultSortOrder="desc" />
+            <NonSortableTableHeader label="Status" />
+            <NonSortableTableHeader label="Actions" className="text-right" />
           </tr>
         </thead>
         <tbody className="bg-white divide-y divide-gray-200">
-          {properties.map((property) => (
+          {sortedProperties.map((property) => (
             <tr key={property.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => window.location.href = `/admin/properties/${property.id}`}>
               <td className="px-6 py-4 whitespace-nowrap">
                 <div className="flex items-center">

@@ -3,6 +3,7 @@ import { json } from '@remix-run/cloudflare';
 import { useLoaderData, Link, useSearchParams } from '@remix-run/react';
 import { fetchWorkOrdersFromWorker } from '~/lib/worker-client';
 import { getSiteId } from '~/lib/site.server';
+import { SortableTableHeader, NonSortableTableHeader } from '~/components/SortableTableHeader';
 
 export const meta: MetaFunction = () => {
   return [{ title: 'Work Orders - LeaseLab.io' }];
@@ -16,8 +17,15 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   };
   const url = new URL(request.url);
   const status = url.searchParams.get('status') || undefined;
-  const all = await fetchWorkOrdersFromWorker(workerEnv, siteId);
-  const workOrders = status && status !== 'all' ? all.filter((wo) => wo.status === status) : all;
+  const sortBy = url.searchParams.get('sortBy') || 'created_at';
+  const sortOrder = (url.searchParams.get('sortOrder') || 'desc') as 'asc' | 'desc';
+
+  const workOrders = await fetchWorkOrdersFromWorker(workerEnv, siteId, {
+    status: status && status !== 'all' ? status : undefined,
+    sortBy,
+    sortOrder,
+  });
+
   return json({ workOrders });
 }
 
@@ -79,21 +87,29 @@ export default function WorkOrdersIndex() {
         ) : (
           <table className="w-full">
             <thead className="bg-gray-50">
-              <tr className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                <th className="px-6 py-3">Title</th>
-                <th className="px-6 py-3">Category</th>
-                <th className="px-6 py-3">Priority</th>
-                <th className="px-6 py-3">Status</th>
-                <th className="px-6 py-3">Created</th>
-                <th className="px-6 py-3"></th>
+              <tr>
+                <SortableTableHeader column="title" label="Title" />
+                <SortableTableHeader column="propertyName" label="Property" />
+                <SortableTableHeader column="unitNumber" label="Unit" />
+                <SortableTableHeader column="category" label="Category" />
+                <SortableTableHeader column="priority" label="Priority" />
+                <SortableTableHeader column="status" label="Status" />
+                <SortableTableHeader column="createdAt" label="Created" defaultSortOrder="desc" />
+                <NonSortableTableHeader label="" />
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {workOrders.map((wo) => (
+              {workOrders.map((wo: any) => (
                 <tr key={wo.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4">
                     <p className="font-medium text-gray-900">{wo.title}</p>
                     <p className="text-sm text-gray-500 truncate max-w-xs">{wo.description}</p>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="text-sm text-gray-700">{wo.propertyName || '-'}</span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="text-sm text-gray-700">{wo.unitNumber || '-'}</span>
                   </td>
                   <td className="px-6 py-4">
                     <span className="text-sm text-gray-600 capitalize">{wo.category}</span>

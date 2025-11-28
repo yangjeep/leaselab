@@ -176,9 +176,17 @@ export async function createLeadToWorker(
 
 export async function fetchWorkOrdersFromWorker(
   env: WorkerEnv,
-  siteId: string
+  siteId: string,
+  options?: { status?: string; propertyId?: string; sortBy?: string; sortOrder?: 'asc' | 'desc' }
 ): Promise<any[]> {
-  const url = `${env.WORKER_URL}/api/ops/work-orders`;
+  let url = `${env.WORKER_URL}/api/ops/work-orders`;
+  const params = new URLSearchParams();
+  if (options?.status) params.set('status', options.status);
+  if (options?.propertyId) params.set('propertyId', options.propertyId);
+  if (options?.sortBy) params.set('sortBy', options.sortBy);
+  if (options?.sortOrder) params.set('sortOrder', options.sortOrder);
+  if (params.toString()) url += `?${params.toString()}`;
+
   const response = await workerFetch(url, env, {}, siteId);
   return parseResponse(response);
 }
@@ -420,12 +428,14 @@ export async function revokeSiteAccessToWorker(
 export async function fetchTenantsFromWorker(
   env: WorkerEnv,
   siteId: string,
-  options?: { status?: string; propertyId?: string }
+  options?: { status?: string; propertyId?: string; sortBy?: string; sortOrder?: 'asc' | 'desc' }
 ): Promise<any[]> {
   let url = `${env.WORKER_URL}/api/ops/tenants`;
   const params = new URLSearchParams();
   if (options?.status) params.set('status', options.status);
   if (options?.propertyId) params.set('propertyId', options.propertyId);
+  if (options?.sortBy) params.set('sortBy', options.sortBy);
+  if (options?.sortOrder) params.set('sortOrder', options.sortOrder);
   if (params.toString()) url += `?${params.toString()}`;
 
   const response = await workerFetch(url, env, {}, siteId);

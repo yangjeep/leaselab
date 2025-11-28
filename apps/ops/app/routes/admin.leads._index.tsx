@@ -3,6 +3,7 @@ import { json } from '@remix-run/cloudflare';
 import { useLoaderData, Link, useSearchParams } from '@remix-run/react';
 import { fetchLeadsFromWorker, fetchPropertiesFromWorker } from '~/lib/worker-client';
 import { getSiteId } from '~/lib/site.server';
+import { SortableTableHeader, NonSortableTableHeader } from '~/components/SortableTableHeader';
 
 export const meta: MetaFunction = () => {
   return [{ title: 'Rental Applications - LeaseLab.io' }];
@@ -130,15 +131,15 @@ export default function LeadsIndex() {
         ) : (
           <table className="w-full">
             <thead className="bg-gray-50">
-              <tr className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                <th className="px-6 py-3">Applicant</th>
-                <th className="px-6 py-3">Property</th>
-                <th className="px-6 py-3">Contact</th>
-                <th className="px-6 py-3">Notes</th>
-                <th className="px-6 py-3">Status</th>
-                <th className="px-6 py-3">AI Score</th>
-                <th className="px-6 py-3">Date</th>
-                <th className="px-6 py-3"></th>
+              <tr>
+                <SortableTableHeader column="firstName" label="Applicant" />
+                <NonSortableTableHeader label="Property" />
+                <SortableTableHeader column="email" label="Contact" />
+                <NonSortableTableHeader label="Notes" />
+                <SortableTableHeader column="status" label="Status" />
+                <SortableTableHeader column="aiScore" label="AI Score" defaultSortOrder="desc" />
+                <SortableTableHeader column="createdAt" label="Date" defaultSortOrder="desc" />
+                <NonSortableTableHeader label="" />
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
