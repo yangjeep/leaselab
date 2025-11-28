@@ -1,0 +1,214 @@
+{
+  "version": "1.0.0",
+  "skills": {
+    "skill-developer": {
+      "type": "domain",
+      "enforcement": "suggest",
+      "priority": "high",
+      "promptTriggers": {
+        "keywords": [
+          "skill system",
+          "create skill",
+          "skill-rules.json",
+          "add skill",
+          "modify skill"
+        ],
+        "intentPatterns": [
+          "(how do|explain).*?skill",
+          "(create|add|modify).*?skill"
+        ]
+      },
+      "fileTriggers": {
+        "pathPatterns": [
+          ".claude/skills/**/*.md",
+          ".claude/skills/skill-rules.json"
+        ]
+      }
+    },
+    "cloudflare-worker-guidelines": {
+      "type": "domain",
+      "enforcement": "suggest",
+      "priority": "high",
+      "promptTriggers": {
+        "keywords": [
+          "worker",
+          "hono",
+          "cloudflare workers",
+          "d1",
+          "r2",
+          "api route",
+          "endpoint",
+          "middleware",
+          "wrangler"
+        ],
+        "intentPatterns": [
+          "(create|add|modify).*?(api|endpoint|route)",
+          "(worker|hono).*?(api|route|endpoint)"
+        ]
+      },
+      "fileTriggers": {
+        "pathPatterns": [
+          "apps/worker/**/*.ts",
+          "apps/worker/worker.ts",
+          "apps/worker/routes/**/*.ts",
+          "apps/worker/lib/**/*.ts",
+          "apps/worker/middleware/**/*.ts",
+          "apps/worker/wrangler.toml"
+        ],
+        "excludePatterns": [
+          "**/*.test.ts",
+          "**/*.spec.ts"
+        ]
+      }
+    },
+    "remix-frontend-guidelines": {
+      "type": "domain",
+      "enforcement": "suggest",
+      "priority": "high",
+      "promptTriggers": {
+        "keywords": [
+          "remix",
+          "route",
+          "loader",
+          "action",
+          "form",
+          "component",
+          "ui",
+          "frontend",
+          "ops app",
+          "site app"
+        ],
+        "intentPatterns": [
+          "(create|add|modify).*?(component|page|route)",
+          "remix.*?(loader|action|form)"
+        ]
+      },
+      "fileTriggers": {
+        "pathPatterns": [
+          "apps/ops/app/**/*.tsx",
+          "apps/ops/app/routes/**/*.tsx",
+          "apps/ops/app/components/**/*.tsx",
+          "apps/site/app/**/*.tsx",
+          "apps/site/app/routes/**/*.tsx",
+          "apps/site/app/components/**/*.tsx"
+        ],
+        "excludePatterns": [
+          "**/*.test.tsx",
+          "**/*.spec.tsx"
+        ]
+      }
+    },
+    "multi-tenancy-guidelines": {
+      "type": "guardrail",
+      "enforcement": "block",
+      "priority": "critical",
+      "promptTriggers": {
+        "keywords": [
+          "database query",
+          "db query",
+          "sql",
+          "d1",
+          "multi-tenant",
+          "site_id",
+          "create property",
+          "create unit",
+          "create lead",
+          "database operation"
+        ],
+        "intentPatterns": [
+          "(create|add|modify).*?(database|query|sql)",
+          "database.*?(operation|query|function)"
+        ]
+      },
+      "fileTriggers": {
+        "pathPatterns": [
+          "apps/worker/lib/db/**/*.ts"
+        ],
+        "excludePatterns": [
+          "**/*.test.ts"
+        ]
+      }
+    },
+    "security-guidelines": {
+      "type": "guardrail",
+      "enforcement": "block",
+      "priority": "critical",
+      "promptTriggers": {
+        "keywords": [
+          "password",
+          "hash",
+          "token",
+          "authentication",
+          "api token",
+          "user creation",
+          "login",
+          "auth"
+        ],
+        "intentPatterns": [
+          "(hash|encrypt|store).*?(password|token)",
+          "authentication.*?(password|token)",
+          "(create|add).*?user"
+        ]
+      },
+      "fileTriggers": {
+        "pathPatterns": [
+          "apps/worker/lib/db/users.ts",
+          "apps/worker/lib/db/site-tokens.ts",
+          "apps/worker/middleware/auth.ts",
+          "shared/utils/crypto.ts"
+        ]
+      }
+    },
+    "d1-database-guidelines": {
+      "type": "domain",
+      "enforcement": "suggest",
+      "priority": "high",
+      "promptTriggers": {
+        "keywords": [
+          "migration",
+          "schema",
+          "database",
+          "d1",
+          "sql",
+          "alter table",
+          "create table"
+        ],
+        "intentPatterns": [
+          "(create|modify|alter).*?(table|schema|migration)",
+          "database.*?(migration|schema)"
+        ]
+      },
+      "fileTriggers": {
+        "pathPatterns": [
+          "apps/worker/migrations/**/*.sql",
+          "scripts/**/*.sql"
+        ]
+      }
+    },
+    "shared-types-guidelines": {
+      "type": "domain",
+      "enforcement": "suggest",
+      "priority": "medium",
+      "promptTriggers": {
+        "keywords": [
+          "type",
+          "interface",
+          "shared type",
+          "add property",
+          "add field",
+          "modify type"
+        ],
+        "intentPatterns": [
+          "(create|add|modify).*?(type|interface)",
+          "shared.*?type"
+        ]
+      },
+      "fileTriggers": {
+        "pathPatterns": [
+          "shared/types/**/*.ts",
+          "shared/config/**/*.ts"
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "hooks": {
+    "UserPromptSubmit": {
+      "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/skill-activation-prompt.sh"
+    },
+    "PostToolUse": {
+      "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/post-tool-use-tracker.sh",
+      "matchers": ["Edit", "MultiEdit", "Write"]
+    }
+  },
+  "mcpServers": {},
+  "acceptEdits": true
+}
