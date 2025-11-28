@@ -147,11 +147,14 @@ export async function getUserAccessibleSites(
 
     if (user?.is_super_admin) {
         // Super admins have access to all sites
-        // Fetch all sites from the sites table
-        const allSites = await db.query<{ id: string }>(`SELECT id FROM sites`);
+        // There is no dedicated sites table in the current schema.
+        // Use active site API tokens to enumerate available site IDs.
+        const allSites = await db.query<{ site_id: string }>(
+            `SELECT DISTINCT site_id FROM site_api_tokens WHERE is_active = 1`
+        );
 
         return allSites.map(site => ({
-            siteId: site.id,
+            siteId: site.site_id,
             role: 'super_admin',
             grantedAt: new Date().toISOString() // Dynamic access
         }));
