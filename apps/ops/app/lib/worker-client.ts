@@ -236,6 +236,28 @@ export async function fetchUserFromWorker(
 }
 
 /**
+ * Create a new user
+ */
+export async function createUserToWorker(
+  env: WorkerEnv,
+  data: {
+    email: string;
+    name: string;
+    passwordHash: string;
+    role: string;
+    siteId: string;
+    isSuperAdmin?: boolean;
+  }
+): Promise<any> {
+  const url = `${env.WORKER_URL}/api/ops/users`;
+  const response = await workerFetch(url, env, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+  return parseResponse(response);
+}
+
+/**
  * Get user by email (for login)
  */
 export async function fetchUserByEmailFromWorker(
@@ -305,6 +327,21 @@ export async function setSuperAdminStatusToWorker(
   await workerFetch(url, env, {
     method: 'POST',
     body: JSON.stringify({ isSuperAdmin }),
+  });
+}
+
+/**
+ * Update user role
+ */
+export async function updateUserRoleToWorker(
+  env: WorkerEnv,
+  userId: string,
+  role: string
+): Promise<void> {
+  const url = `${env.WORKER_URL}/api/ops/users/${userId}/role`;
+  await workerFetch(url, env, {
+    method: 'PUT',
+    body: JSON.stringify({ role }),
   });
 }
 

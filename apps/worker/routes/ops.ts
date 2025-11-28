@@ -46,8 +46,10 @@ import {
   getUsers,
   getUserById,
   getUserByEmail,
+  createUser,
   updateUserPassword,
   updateUserProfile,
+  updateUserRole,
   getUserSiteAccess,
   getUserAccessibleSites,
   userHasAccessToSite,
@@ -515,6 +517,44 @@ opsRoutes.get('/users', async (c: Context) => {
 });
 
 /**
+ * POST /api/ops/users
+ * Create a new user
+ */
+opsRoutes.post('/users', async (c: Context) => {
+  try {
+    const body = await c.req.json();
+
+    // Validate required fields
+    if (!body.email || !body.name || !body.passwordHash || !body.role || !body.siteId) {
+      return c.json({
+        error: 'Bad request',
+        message: 'Missing required fields: email, name, passwordHash, role, siteId',
+      }, 400);
+    }
+
+    const user = await createUser(c.env.DB, {
+      email: body.email,
+      name: body.name,
+      passwordHash: body.passwordHash,
+      role: body.role,
+      siteId: body.siteId,
+      isSuperAdmin: body.isSuperAdmin || false,
+    });
+
+    return c.json({
+      success: true,
+      data: user,
+    }, 201);
+  } catch (error) {
+    console.error('Error creating user:', error);
+    return c.json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    }, 500);
+  }
+});
+
+/**
  * GET /api/ops/users/:id
  * Get a single user by ID
  */
@@ -669,6 +709,36 @@ opsRoutes.post('/users/:id/super-admin', async (c: Context) => {
     });
   } catch (error) {
     console.error('Error updating super admin status:', error);
+    return c.json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    }, 500);
+  }
+});
+
+/**
+ * PUT /api/ops/users/:id/role
+ * Update user role
+ */
+opsRoutes.put('/users/:id/role', async (c: Context) => {
+  try {
+    const id = c.req.param('id');
+    const body = await c.req.json();
+
+    if (!body.role) {
+      return c.json({
+        error: 'Bad request',
+        message: 'Missing required field: role',
+      }, 400);
+    }
+
+    await updateUserRole(c.env.DB, id, body.role);
+
+    return c.json({
+      success: true,
+    });
+  } catch (error) {
+    console.error('Error updating user role:', error);
     return c.json({
       error: 'Internal server error',
       message: error instanceof Error ? error.message : 'Unknown error',
