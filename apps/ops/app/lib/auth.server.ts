@@ -162,3 +162,6 @@ export async function login(
 export async function logout(request: Request): Promise<void> {
   // Nothing to do server-side for signed cookies
 }
+
+// Re-export password utilities for routes that imported them from auth.server historically
+export { hashPassword, verifyPassword };
