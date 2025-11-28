@@ -8,7 +8,7 @@ type = "javascript"
 
 # Environment variables
 [vars]
-R2_PUBLIC_URL = "https://pub-08cf33d3a3ab49bda744210087b16bae.r2.dev"
+R2_PUBLIC_URL = "https://pub-3e517223e87b41968fff44a1b232ae24.r2.dev"
 
 # Bindings (same as ops)
 [[d1_databases]]
@@ -46,7 +46,7 @@ head_sampling_rate = 1
 name = "leaselab-worker-preview"
 
 [env.preview.vars]
-R2_PUBLIC_URL = "https://pub-08cf33d3a3ab49bda744210087b16bae.r2.dev"
+R2_PUBLIC_URL = "https://pub-3e517223e87b41968fff44a1b232ae24.r2.dev"
 
 [[env.preview.d1_databases]]
 binding = "DB"
