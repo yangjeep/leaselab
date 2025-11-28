@@ -176,10 +176,10 @@ export default function TenantsIndex() {
             <thead className="bg-gray-50">
               <tr>
                 <SortableTableHeader column="firstName" label="Name" />
-                <NonSortableTableHeader label="Property / Unit" />
+                <SortableTableHeader column="propertyName" label="Property / Unit" />
                 <SortableTableHeader column="email" label="Contact" />
                 <SortableTableHeader column="status" label="Status" />
-                <NonSortableTableHeader label="Work Orders" />
+                <SortableTableHeader column="activeWorkOrderCount" label="Work Orders" defaultSortOrder="desc" />
                 <SortableTableHeader column="createdAt" label="Since" defaultSortOrder="desc" />
                 <NonSortableTableHeader label="" />
               </tr>

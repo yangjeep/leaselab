@@ -159,6 +159,12 @@ function ListView({ properties }: { properties: PropertyWithStats[] }) {
           aVal = a.totalRent;
           bVal = b.totalRent;
           break;
+        case 'isActive':
+        case 'status':
+          // Sort active properties first (true > false)
+          aVal = a.isActive ? 1 : 0;
+          bVal = b.isActive ? 1 : 0;
+          break;
         default:
           aVal = a.name.toLowerCase();
           bVal = b.name.toLowerCase();
@@ -182,7 +188,7 @@ function ListView({ properties }: { properties: PropertyWithStats[] }) {
             <SortableTableHeader column="propertyType" label="Type" />
             <SortableTableHeader column="unitCount" label="Units" defaultSortOrder="desc" />
             <SortableTableHeader column="occupiedCount" label="Occupancy" defaultSortOrder="desc" />
-            <NonSortableTableHeader label="Status" />
+            <SortableTableHeader column="isActive" label="Status" defaultSortOrder="desc" />
             <NonSortableTableHeader label="Actions" className="text-right" />
           </tr>
         </thead>
