@@ -1,5 +1,5 @@
-import type { LoaderFunctionArgs, MetaFunction } from "@remix-run/cloudflare";
-import { json } from "@remix-run/cloudflare";
+import type { LoaderFunctionArgs, MetaFunction } from "@remix-run/node";
+import { json } from "@remix-run/node";
 import { useLoaderData, useSearchParams, Link } from "@remix-run/react";
 import { useState } from "react";
 import PropertyMap from "~/components/PropertyMap";
@@ -20,7 +20,7 @@ export const meta: MetaFunction = () => {
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
   // Handle both Cloudflare Pages and Vite dev mode
-  const env = context.cloudflare?.env || process.env;
+  const env = (context as any).cloudflare?.env || process.env;
   const url = new URL(request.url);
 
   // Get filter params
@@ -57,7 +57,14 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
 }
 
 export default function Index() {
-  const { listings, allListings, siteConfig, hasFilters, mapsApiKey } = useLoaderData<typeof loader>();
+  const data = useLoaderData<typeof loader>();
+  const { listings, allListings, siteConfig, hasFilters, mapsApiKey } = data as {
+    listings: any[];
+    allListings: any[];
+    siteConfig: any;
+    hasFilters: boolean;
+    mapsApiKey: string | undefined;
+  };
   const [searchParams] = useSearchParams();
   const [showMap, setShowMap] = useState(true);
 
@@ -141,7 +148,7 @@ export default function Index() {
                 </div>
               )}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {listings.map((listing) => (
+                {listings.map((listing: any) => (
                   <ListingCard
                     key={listing.id}
                     listing={listing}

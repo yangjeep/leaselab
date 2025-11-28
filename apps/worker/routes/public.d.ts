@@ -5,10 +5,8 @@
  * Authentication: Bearer token (SITE_API_TOKEN)
  */
 import { Hono } from 'hono';
-type Bindings = {
-    DB: D1Database;
-    FILE_BUCKET: R2Bucket;
-};
+import type { CloudflareEnv } from '../../../shared/config';
+type Bindings = CloudflareEnv;
 declare const publicRoutes: Hono<{
     Bindings: Bindings;
 }, import("hono/types").BlankSchema, "/">;

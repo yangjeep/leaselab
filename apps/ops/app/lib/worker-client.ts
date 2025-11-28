@@ -272,7 +272,7 @@ export async function updateUserPasswordToWorker(
 ): Promise<void> {
   const url = `${env.WORKER_URL}/api/ops/users/${userId}/password`;
   await workerFetch(url, env, {
-    method: 'PUT',
+    method: 'POST',
     body: JSON.stringify({ passwordHash }),
   }, siteId);
 }
@@ -288,7 +288,7 @@ export async function updateUserProfileToWorker(
 ): Promise<void> {
   const url = `${env.WORKER_URL}/api/ops/users/${userId}/profile`;
   await workerFetch(url, env, {
-    method: 'PUT',
+    method: 'POST',
     body: JSON.stringify(data),
   }, siteId);
 }
@@ -303,7 +303,7 @@ export async function setSuperAdminStatusToWorker(
 ): Promise<void> {
   const url = `${env.WORKER_URL}/api/ops/users/${userId}/super-admin`;
   await workerFetch(url, env, {
-    method: 'PUT',
+    method: 'POST',
     body: JSON.stringify({ isSuperAdmin }),
   });
 }
@@ -351,12 +351,13 @@ export async function grantSiteAccessToWorker(
   env: WorkerEnv,
   userId: string,
   siteId: string,
-  role?: string
+  role?: string,
+  grantedBy?: string
 ): Promise<void> {
   const url = `${env.WORKER_URL}/api/ops/users/${userId}/site-access`;
   await workerFetch(url, env, {
     method: 'POST',
-    body: JSON.stringify({ siteId, role }),
+    body: JSON.stringify({ siteId, role, grantedBy }),
   });
 }
 
@@ -368,9 +369,9 @@ export async function revokeSiteAccessToWorker(
   userId: string,
   siteId: string
 ): Promise<void> {
-  const url = `${env.WORKER_URL}/api/ops/users/${userId}/site-access/${siteId}`;
+  const url = `${env.WORKER_URL}/api/ops/users/${userId}/site-access/${siteId}/delete`;
   await workerFetch(url, env, {
-    method: 'DELETE',
+    method: 'POST',
   });
 }
 
@@ -389,7 +390,7 @@ export async function fetchTenantsFromWorker(
   if (options?.status) params.set('status', options.status);
   if (options?.propertyId) params.set('propertyId', options.propertyId);
   if (params.toString()) url += `?${params.toString()}`;
-  
+
   const response = await workerFetch(url, env, {}, siteId);
   return parseResponse(response);
 }
@@ -418,7 +419,7 @@ export async function updateTenantToWorker(
 ): Promise<void> {
   const url = `${env.WORKER_URL}/api/ops/tenants/${tenantId}`;
   await workerFetch(url, env, {
-    method: 'PUT',
+    method: 'POST',
     body: JSON.stringify(data),
   }, siteId);
 }
@@ -479,7 +480,7 @@ export async function updateImageToWorker(
 ): Promise<void> {
   const url = `${env.WORKER_URL}/api/ops/images/${imageId}`;
   await workerFetch(url, env, {
-    method: 'PUT',
+    method: 'POST',
     body: JSON.stringify(data),
   }, siteId);
 }
@@ -492,9 +493,9 @@ export async function deleteImageToWorker(
   siteId: string,
   imageId: string
 ): Promise<void> {
-  const url = `${env.WORKER_URL}/api/ops/images/${imageId}`;
+  const url = `${env.WORKER_URL}/api/ops/images/${imageId}/delete`;
   await workerFetch(url, env, {
-    method: 'DELETE',
+    method: 'POST',
   }, siteId);
 }
 
@@ -571,7 +572,7 @@ export async function reorderImagesToWorker(
 ): Promise<void> {
   const url = `${env.WORKER_URL}/api/ops/images/reorder`;
   await workerFetch(url, env, {
-    method: 'PUT',
+    method: 'POST',
     body: JSON.stringify({ imageIds }),
   }, siteId);
 }
@@ -736,9 +737,9 @@ export async function deletePropertyToWorker(
   siteId: string,
   propertyId: string
 ): Promise<void> {
-  const url = `${env.WORKER_URL}/api/ops/properties/${propertyId}`;
+  const url = `${env.WORKER_URL}/api/ops/properties/${propertyId}/delete`;
   await workerFetch(url, env, {
-    method: 'DELETE',
+    method: 'POST',
   }, siteId);
 }
 
@@ -778,9 +779,9 @@ export async function deleteUnitToWorker(
   siteId: string,
   unitId: string
 ): Promise<void> {
-  const url = `${env.WORKER_URL}/api/ops/units/${unitId}`;
+  const url = `${env.WORKER_URL}/api/ops/units/${unitId}/delete`;
   await workerFetch(url, env, {
-    method: 'DELETE',
+    method: 'POST',
   }, siteId);
 }
 

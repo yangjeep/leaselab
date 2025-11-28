@@ -7,31 +7,18 @@ import {
   clearSessionCookieHeader,
   getSessionCookie,
 } from './session-cookie.server';
-import { 
-  updateUserLastLoginToWorker, 
+import {
+  updateUserLastLoginToWorker,
   isWorkerConfigured,
   fetchUserFromWorker,
   fetchUserByEmailFromWorker,
 } from './worker-client';
+import { hashPassword, verifyPassword } from '~/shared/utils';
 
 // WorkerEnv interface for worker API calls
 interface WorkerEnv {
   WORKER_URL: string;
   WORKER_INTERNAL_KEY?: string;
-}
-
-// Simple password hashing (in production, use bcrypt or argon2)
-export async function hashPassword(password: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-export async function verifyPassword(password: string, hash: string): Promise<boolean> {
-  const passwordHash = await hashPassword(password);
-  return passwordHash === hash;
 }
 
 // Session management
@@ -175,3 +162,6 @@ export async function login(
 export async function logout(request: Request): Promise<void> {
   // Nothing to do server-side for signed cookies
 }
+
+// Re-export password utilities for routes that imported them from auth.server historically
+export { hashPassword, verifyPassword };

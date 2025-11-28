@@ -15,7 +15,6 @@
     "jsx": "react-jsx",
     "moduleDetection": "force",
     "noEmit": true,
-    "rootDir": ".",
     "paths": {
       "~/*": [
         "./app/*"

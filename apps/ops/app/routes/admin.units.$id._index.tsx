@@ -58,7 +58,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
     const featuresStr = formData.get('features') as string;
     const features = featuresStr ? featuresStr.split(',').map(f => f.trim()).filter(Boolean) : [];
 
-    const currentUnit = await getUnitWithDetails(db, siteId, id);
+    const currentUnit = await fetchUnitWithDetailsFromWorker(workerEnv, siteId, id);
     const newStatus = formData.get('status') as string;
     const newRentAmount = parseFloat(formData.get('rentAmount') as string);
 

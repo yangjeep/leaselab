@@ -1,466 +1,606 @@
-AI Development Task Guide (Cursor-Ready)
-LeaseLab.io - AI-First Rental Ops Platform – Monorepo Build Instructions
+# AI Development Task Guide (Claude Code Ready)
+LeaseLab.io - AI-First Rental Ops Platform – Monorepo Architecture
 
-Repo Name: leaselab
-Primary Goal:
-Build a unified rental management platform using Remix + Cloudflare Pages/Workers for both storefront and ops backend, with shared types, configs, and utilities in a monorepo structure.
+**Repo Name:** leaselab2
 
-Secondary Goal (Migration):
-Migrate the existing Next.js storefront to Remix + Cloudflare Pages for consistency, performance, and unified deployment.
+**Primary Goal:**
+Build a unified rental management platform using Remix + Cloudflare Pages for admin ops and Hono + Cloudflare Workers for the backend API, with shared types, configs, and utilities in a monorepo structure.
 
-This document is written for AI Agents (Cursor) to follow safely.
+**Current Status:**
+- ✅ Worker API (Hono + Cloudflare Workers) - Complete
+- ✅ Ops Admin (Remix + Cloudflare Pages) - Complete
+- ⏳ Site Storefront (Remix + Cloudflare Pages) - Planned
 
-📁 1. Monorepo Directory Structure (Strict Requirement)
+This document is written for AI Agents (Claude Code, Cursor) to follow safely.
 
-The repository MUST follow this layout:
+---
 
-leaselab/
+## 📁 1. Monorepo Directory Structure (Current Implementation)
+
+The repository follows this layout:
+
+```
+leaselab2/
 ├─ apps/
-│  ├─ site/        # Storefront (Remix + Cloudflare Pages)
-│  ├─ ops/         # Ops backend (Remix + Cloudflare Workers)
-│  └─ worker/      # Backend API (Hono + Cloudflare Workers)
+│  ├─ worker/      # Backend API (Hono + Cloudflare Workers) ✅
+│  ├─ ops/         # Admin dashboard (Remix + Cloudflare Pages) ✅
+│  └─ site/        # Public storefront (Remix + Cloudflare Pages) ⏳
 │
 ├─ shared/
-│  ├─ types/           # Shared TypeScript types
-│  ├─ utils/           # Shared utilities
-│  ├─ config/          # Shared configuration and schemas
+│  ├─ types/           # Shared TypeScript types and domain models
+│  ├─ utils/           # Shared utilities (crypto, date, money, image)
+│  ├─ config/          # Shared configuration, Zod schemas, and enums
 │  ├─ storage-core/    # Storage abstraction interfaces
 │  └─ storage-cloudflare/ # Cloudflare storage adapters
 │
-├─ package.json         # root workspace config
-├─ turbo.json           # optional (if using TurboRepo)
+├─ scripts/            # Database migrations and utilities
+├─ package.json        # Root workspace config (npm workspaces)
 └─ README.md
+```
 
-⚠️ 2. Critical Safety Rules for Cursor
-During migration, preserve all existing functionality while converting to new framework.
+---
 
-The folder:
+## ⚠️ 2. Critical Architecture Principles
 
-apps/site/
+### **Multi-Tenancy (MANDATORY)**
+- **ALL database operations MUST include `site_id` filtering**
+- Each site has isolated data (properties, units, leads, tenants, etc.)
+- Users can have access to multiple sites via `user_access` table
+- Super admins can access any site with active API tokens
+- Database queries MUST filter by `site_id` to prevent data leaks
 
+### **Security (MANDATORY)**
+- **ALL passwords MUST use PBKDF2-SHA256 hashing** (100,000 iterations)
+- **API tokens MUST be hashed** using shared crypto utilities
+- Use `shared/utils/crypto.ts` for all hashing operations:
+  - `hashPassword(password)` - Hash passwords with random salt
+  - `verifyPassword(password, storedHash)` - Verify password
+  - `hashToken(token, salt)` - Hash API tokens deterministically
+  - `generateRandomToken(length)` - Generate secure tokens
+- **Never store plaintext passwords or tokens**
+- All sensitive data in R2 `PRIVATE_BUCKET` (not `PUBLIC_BUCKET`)
 
-Will be migrated from Next.js to Remix + Cloudflare Pages.
-All existing pages, components, and functionality must be preserved.
-Migration should be incremental and testable.
+### **App Isolation & Data Flow**
+```
+┌─────────┐     HTTP/Bearer Token      ┌─────────────┐
+│ apps/   │ ─────────────────────────> │ apps/worker │
+│ ops     │                             │   (Hono)    │
+└─────────┘                             └──────┬──────┘
+                                               │
+┌─────────┐     HTTP/Bearer Token             │
+│ apps/   │ ─────────────────────────>        │
+│ site    │                                    │
+└─────────┘                                    │
+                                               ▼
+                                        ┌─────────────┐
+                                        │ D1 Database │
+                                        │ R2 Storage  │
+                                        └─────────────┘
+```
 
-Ops App is isolated
+**Rules:**
+- `apps/worker/` - Centralized API for ALL D1/R2 operations
+- `apps/ops/` - Admin dashboard (NO direct DB access)
+- `apps/site/` - Public storefront (NO direct DB access)
+- Apps communicate with worker via HTTP + Bearer tokens
+- Worker enforces site isolation at the database layer
 
-All backend/Ops code must live inside:
+---
 
-apps/ops/
+## 🔧 3. Root package.json (Current Workspace Setup)
 
-Shared packages must use non-conflicting import paths
+The workspace is configured with npm workspaces:
 
-Use path aliases:
-
-@leaselab/shared-types
-@leaselab/shared-utils
-@leaselab/shared-config
-
-🔄 2.1 Site Migration Strategy (Next.js → Remix)
-
-The migration must follow these principles:
-
-1. Feature parity - All existing pages and functionality preserved
-2. Incremental migration - Convert one route/component at a time
-3. Shared infrastructure - Both apps use same Cloudflare bindings
-4. Consistent patterns - Same auth, data fetching, and styling approach
-
-🔧 3. Root package.json (Workspace Setup)
-
-Cursor MUST generate a root package.json like this:
-
+```json
 {
   "name": "leaselab",
   "private": true,
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
+  "workspaces": ["apps/*"],
   "scripts": {
-    "dev:site": "npm run dev --workspace site",
-    "dev:ops": "npm run dev --workspace ops",
-    "dev": "npm-run-all -p dev:site dev:ops",
+    "dev:site": "npm run dev --workspace=@leaselab/site",
+    "dev:ops": "npm run dev --workspace=@leaselab/ops",
+    "dev:worker": "npm run dev --workspace=leaselab-worker",
+    "dev": "npm-run-all --parallel dev:ops dev:worker",
     "build": "npm-run-all build:site build:ops",
-    "build:site": "npm run build --workspace site",
-    "build:ops": "npm run build --workspace ops"
+    "build:site": "npm run build --workspace=@leaselab/site",
+    "build:ops": "npm run build --workspace=@leaselab/ops",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "vitest run"
   }
 }
-
-🧱 4. Shared Packages – Required Structure
-
-Cursor must scaffold:
-
-packages/shared-types/src/index.ts
-packages/shared-utils/src/index.ts
-packages/shared-config/src/index.ts
-
-Shared-types must export core domain models:
-
-Property
-
-Tenant
-
-Lead
-
-LeadAIResult
-
-Lease
-
-WorkOrder
-
-ScreeningResult (placeholder)
-
-DocuSignEnvelopeInfo (placeholder)
-
-shared-config must contain:
-
-status enums
-
-route definitions
-
-Zod schemas for API DTOs
-
-shared-utils must contain:
-
-date helpers
-
-income/rent ratio
-
-money formatting
-
-R2 signed URL helper
-
-🔌 5. tsconfig Path Mapping
-
-Cursor must create root tsconfig.json:
-
-{
-  "compilerOptions": {
-    "baseUrl": ".",
-    "paths": {
-      "@leaselab/shared-types": ["packages/shared-types/src"],
-      "@leaselab/shared-utils": ["packages/shared-utils/src"],
-      "@leaselab/shared-config": ["packages/shared-config/src"]
-    }
-  }
-}
-
-
-Both Remix apps (ops and site) tsconfigs must extend this.
-
-⚡ 6. Ops App (Remix + Cloudflare) – Required Setup
-
-Create folder:
-
-apps/ops/
-
-
-Inside:
-
-Remix Cloudflare template
-
-wrangler.toml with:
-
-D1 binding
-
-KV binding
-
-R2 binding
-
-Mandatory routes:
-
-Route	Method	Description
-/api/public/leads	POST	Receive new leads from storefront
-/api/leads/:id/files	POST	R2 file metadata register
-/api/leads/:id/ai	POST	Trigger AI screening
-/api/leads/:id/screening	POST	Placeholder for Certn/SingleKey
-/api/leases/:id/send	POST	Placeholder for DocuSign
-/api/work-orders	CRUD	Maintenance ops
-🏠 7. Site App Migration (Next.js → Remix + Cloudflare Pages)
-
-Cursor must migrate the existing Next.js storefront to Remix + Cloudflare Pages.
-
-7.1 Migration Scope
-
-Pages to migrate:
-- `/` - Home page with property listings
-- `/properties/[slug]` - Property detail page
-- `/thank-you` - Form submission confirmation
-
-Components to migrate:
-- ContactForm.tsx - Lead submission form
-- Filters.tsx - Property filtering
-- ListingCard.tsx - Property card display
-- ListingGallery.tsx - Image gallery
-- GoogleMap.tsx - Map integration
-- PropertyTabs.tsx / HomeTabs.tsx - Tab navigation
-- AboutSection.tsx - About content
-
-7.2 Technical Requirements
-
-Remix Configuration:
-- Use Cloudflare Pages adapter
-- Configure wrangler.toml with D1 binding for property data
-- Set up proper meta tags and SEO
-
-Route Structure:
-```
-app/routes/
-├─ _index.tsx          # Home page
-├─ properties.$slug.tsx # Property detail
-└─ thank-you.tsx       # Confirmation
 ```
 
-Data Loading:
-- Use Remix loaders instead of getServerSideProps/getStaticProps
-- Fetch properties from D1 database
-- Implement proper caching with Cloudflare
+**Note:** Worker app uses plain package.json (not workspace-aware due to Wrangler compatibility)
 
-Styling:
-- Keep Tailwind CSS configuration
-- Migrate global styles to Remix conventions
+---
 
-7.3 API Routes Migration
+## 🧱 4. Shared Packages – Current Implementation
 
-Convert Next.js API routes to Remix resource routes:
-- `/api/properties` → `app/routes/api.properties.tsx`
-- `/api/tenant-leads` → `app/routes/api.tenant-leads.tsx`
-- `/api/revalidate` → Remove (not needed in Remix)
+### **shared/types/index.ts** exports:
 
-7.4 Cloudflare Bindings
+**Property Management:**
+- `Property`, `PropertyType`, `Unit`, `UnitStatus`, `UnitHistory`, `UnitEventType`
+- `PropertyImage` (for both properties and units)
 
-wrangler.toml for site:
+**Lead Processing:**
+- `Lead`, `LeadStatus`, `LeadFile`, `LeadFileType`
+- `LeadAIEvaluation`, `AILabel`, `LeadHistory`
+- `EmploymentStatus`
+
+**Operations:**
+- `Tenant`, `TenantStatus`
+- `Lease`, `LeaseStatus`
+- `WorkOrder`, `WorkOrderCategory`, `WorkOrderPriority`, `WorkOrderStatus`
+
+**Auth & Access:**
+- `User`, `UserRole`, `Session`
+- `SiteApiToken`, `UserAccess`, `Site`
+
+### **shared/config/index.ts** contains:
+
+- **Zod enums** for all status types (PropertyTypeEnum, UnitStatusEnum, etc.)
+- **API_ROUTES** - Centralized route definitions
+- **Zod validation schemas** (LeadSubmissionSchema, etc.)
+- **CloudflareEnv** type for environment bindings
+
+### **shared/utils/index.ts** contains:
+
+- **Date helpers:** `formatDate`, `parseDate`, `calculateAge`, `daysBetween`, `addDays`, `isDateInPast`, `isDateInFuture`
+- **Income/rent calculators:** `calculateIncomeToRentRatio`, `meetsIncomeRequirement`, `getIncomeRatioLabel`
+- **Money formatting:** `formatCurrency`, `formatNumber`, `parseCurrency`
+- **R2 utilities:** `generateSignedUrl`, `getPublicUrl`
+
+### **shared/utils/crypto.ts** contains:
+
+- `hashPassword(password): Promise<string>` - PBKDF2-SHA256 with random salt
+- `verifyPassword(password, storedHash): Promise<boolean>` - Verify password
+- `hashToken(token, salt): Promise<string>` - Hash API tokens with provided salt
+- `generateRandomToken(length = 32): string` - Generate secure random tokens
+
+### **shared/utils/image.ts** contains:
+
+- Image upload/download helpers
+- R2 bucket operations
+- Image metadata extraction
+- Thumbnail generation utilities
+
+---
+
+## 🔌 5. Import Paths (No Path Mapping Required)
+
+Shared packages are imported using **relative paths** from the monorepo root:
+
+```typescript
+// In apps/worker or apps/ops
+import type { Property, Unit, Lead } from '../../shared/types';
+import { hashPassword, verifyPassword } from '../../shared/utils/crypto';
+import { API_ROUTES, LeadSubmissionSchema } from '../../shared/config';
+import { formatCurrency, formatDate } from '../../shared/utils';
+```
+
+**Benefits:**
+- Works natively with TypeScript and bundlers
+- No tsconfig path mapping needed
+- Clearer dependency relationships
+- Better IDE support (auto-complete, go-to-definition)
+
+---
+
+## ⚡ 6. Worker App (Hono + Cloudflare Workers) – Current Implementation
+
+**Location:** `apps/worker/`
+
+### Architecture:
+
+```
+apps/worker/
+├─ worker.ts              # Main Hono app with CORS and error handling
+├─ routes/
+│  ├─ public.ts           # Public API routes (for apps/site)
+│  └─ ops.ts              # Ops API routes (for apps/ops)
+├─ lib/db/                # Database operations (all multi-tenant)
+│  ├─ users.ts            # User CRUD + authentication
+│  ├─ properties.ts       # Property management
+│  ├─ units.ts            # Unit management
+│  ├─ leads.ts            # Lead management + AI evaluations
+│  ├─ tenants.ts          # Tenant management
+│  ├─ leases.ts           # Lease management
+│  ├─ work-orders.ts      # Work order management
+│  ├─ images.ts           # Image/file management
+│  ├─ site-tokens.ts      # API token management
+│  └─ helpers.ts          # DB normalization utilities
+├─ middleware/
+│  ├─ auth.ts             # Bearer token authentication
+│  └─ internal.ts         # Internal API authentication
+└─ migrations/            # D1 database migrations
+   ├─ 0000_init_from_production.sql  # Full schema
+   ├─ 0001_test_data.sql             # Sample data
+   └─ 0002_reset_hashes.sql          # Password hash upgrade
+```
+
+### wrangler.toml bindings:
+
 ```toml
 [[d1_databases]]
 binding = "DB"
 database_name = "leaselab-db"
-database_id = "YOUR_D1_DATABASE_ID"
+
+[[r2_buckets]]
+binding = "PUBLIC_BUCKET"
+bucket_name = "leaselab-pub"    # Property images, public assets
+
+[[r2_buckets]]
+binding = "PRIVATE_BUCKET"
+bucket_name = "leaselab-pri"    # Applications, leases, sensitive docs
 ```
 
-🤝 8. Linking Site → Ops API
+### API Routes:
 
-The site must submit leads to the Ops API:
+```
+GET  /                           # Health check
+POST /api/public/*               # Public APIs (Bearer token auth)
+POST /api/ops/*                  # Ops APIs (Internal auth + Bearer)
+```
 
-POST https://ops.<domain>/api/public/leads
+### Database Operations Pattern:
 
+**ALL database operations follow this pattern:**
 
-Payload must follow a Zod schema defined in:
-
-packages/shared-config
-
-
-No direct DB writes from site - read-only access to properties table.
-
-🪄 9. AI Evaluation Pipeline (Ops)
-
-Cursor must implement:
-
-POST /api/leads/:id/ai
-
-
-Steps:
-
-Fetch lead + files + property rent
-
-Generate signed URLs from R2
-
-Call OpenAI (Vision + Text)
-
-Expect JSON response:
-
-{
-  "score": 0-100,
-  "label": "A/B/C/D",
-  "summary": "",
-  "risk_flags": [],
-  "recommendation": "",
-  "fraud_signals": [],
-  "model_version": "v1"
+```typescript
+export async function getProperties(
+  dbInput: DatabaseInput,
+  siteId: string,  // ← REQUIRED for multi-tenancy
+  options?: FilterOptions
+): Promise<Property[]> {
+  const db = normalizeDb(dbInput);
+  const results = await db.query(
+    'SELECT * FROM properties WHERE site_id = ? AND is_active = 1',
+    [siteId]  // ← Always filter by site_id
+  );
+  return results.map(mapToProperty);
 }
-
-
-Save into lead_ai_evaluations + leads.ai_score fields
-
-Dashboard sorted by ai_score DESC
-
-📄 10. D1 Schema (Required Tables)
-
-Cursor must implement models for tables:
-
-properties
-
-leads
-
-lead_files
-
-lead_ai_evaluations
-
-tenants
-
-leases
-
-work_orders
-
-Schema definitions live in packages/shared-config (Zod + SQL).
-
-🔐 11. Auth Requirements
-
-Cursor must set up:
-
-KV-backed session storage
-
-Lucia (preferred) or minimal session system
-
-Protect all admin routes under /admin/*
-
-🚀 12. Development Tasks (Cursor Breakdown)
-Task 1 — Scaffold monorepo folders
-
-Create apps/site, apps/ops, packages/…
-
-Move existing storefront into apps/site
-
-Task 2 — Create root workspace config
-
-package.json
-
-pnpm-workspace
-
-tsconfig paths
-
-Task 3 — Create shared packages
-
-shared-types: export interfaces
-
-shared-utils: basic helpers
-
-shared-config: enums + Zod schemas
-
-Task 4 — Create Ops app (Remix CF)
-
-Setup Remix + Wrangler
-
-Build necessary API routes
-
-Connect to D1/KV/R2 bindings
-
-Task 5 — Implement lead ingestion
-
-From storefront → Ops
-
-Save lead → Save files metadata
-
-Task 6 — Implement AI pipeline
-
-Build runLeadAI service
-
-Call OpenAI with multimodal
-
-Save results to D1
-
-Task 7 — Admin UI
-
-Remix routes:
-
-/admin/leads
-
-/admin/properties
-
-/admin/tenants
-
-/admin/work-orders
-
-Task 8 — Placeholder APIs
-
-Screening API
-
-DocuSign Lease API
-
-Task 9 — Migrate Site to Remix (Phase 1 - Setup)
-
-Create new Remix + Cloudflare Pages structure in apps/site
-
-Set up wrangler.toml with D1 binding
-
-Configure Tailwind CSS
-
-Create base layout and root component
-
-Task 10 — Migrate Site Pages (Phase 2 - Routes)
-
-Convert home page to Remix route
-
-Migrate property detail page
-
-Migrate thank-you page
-
-Implement loaders for data fetching from D1
-
-Task 11 — Migrate Site Components (Phase 3 - UI)
-
-Convert all React components to work with Remix
-
-Update ContactForm to use Remix Form
-
-Migrate image gallery and maps
-
-Ensure responsive design works
-
-Task 12 — Migrate Site API Routes (Phase 4 - APIs)
-
-Convert /api/properties to Remix resource route
-
-Convert /api/tenant-leads to Remix resource route
-
-Update to fetch from D1 instead of Baserow
-
-Task 13 — Site Testing & Cleanup
-
-Test all routes and functionality
-
-Remove old Next.js files
-
-Update documentation
-
-Verify Cloudflare deployment
-
-🎯 13. Acceptance Criteria
-
-Both site and ops apps deploy to Cloudflare Pages/Workers
-
-Site has full feature parity with original Next.js version
-
-All pages render correctly with proper SEO meta tags
-
-Property listings load from D1 database
-
-Lead form submits to Ops API successfully
-
-Google Maps integration works
-
-Image galleries display correctly
-
-Ops app functions as designed
-
-Monorepo resolves shared imports
-
-AI evaluation works end-to-end
-
-Leads from site appear in Ops dashboard
-
-R2 uploads and D1 records correct
-
-Admin UI usable
-
-Screening & DocuSign placeholders wired
-
-💡 14. Bonus Tasks (Optional)
-
-Add TurboRepo pipeline
-
-Add Prettier/ESLint at root
-
-Automatic migrations for D1
-
-Add basic tenant portal skeleton
+```
+
+**CRITICAL:** Every DB function MUST:
+1. Accept `siteId` as the second parameter (after `dbInput`)
+2. Filter ALL queries by `site_id`
+3. Use parameterized queries to prevent SQL injection
+
+---
+
+## 🏢 7. Ops App (Remix + Cloudflare Pages) – Current Implementation
+
+**Location:** `apps/ops/`
+
+### Architecture:
+
+```
+apps/ops/
+├─ app/
+│  ├─ routes/              # Remix routes (UI + API)
+│  │  ├─ _index.tsx        # Dashboard
+│  │  ├─ properties/       # Property management
+│  │  ├─ units/            # Unit management
+│  │  ├─ leads/            # Lead management
+│  │  ├─ tenants/          # Tenant management
+│  │  ├─ leases/           # Lease management
+│  │  ├─ work-orders/      # Work order management
+│  │  └─ api/              # Resource routes (proxy to worker)
+│  ├─ components/          # Reusable UI components
+│  └─ lib/                 # Utilities
+│     └─ worker-client.ts  # HTTP client for worker API
+├─ wrangler.toml           # Cloudflare Pages config
+└─ package.json
+```
+
+### Data Access Pattern:
+
+```typescript
+// In Remix loader (app/routes/properties._index.tsx)
+export async function loader({ request, context }: LoaderFunctionArgs) {
+  const session = await getSession(request);
+  const siteId = session.user.siteId;
+
+  // Call worker API (NOT direct DB access)
+  const response = await fetch(`${WORKER_URL}/api/ops/properties`, {
+    headers: {
+      'Authorization': `Bearer ${siteToken}`,
+      'X-Site-Id': siteId,
+      'X-User-Id': session.user.id,
+    },
+  });
+
+  const properties = await response.json();
+  return json({ properties });
+}
+```
+
+**CRITICAL:** Ops app NEVER accesses D1 directly - always through worker API.
+
+---
+
+## 🏠 8. Site App (Remix + Cloudflare Pages) – Planned
+
+**Location:** `apps/site/` (To be implemented)
+
+### Migration Strategy:
+
+1. **Feature parity** - All existing pages and functionality preserved
+2. **Incremental migration** - Convert one route/component at a time
+3. **Worker API integration** - Use worker for all data operations
+4. **Consistent patterns** - Same auth, data fetching, and styling approach
+
+### Planned Routes:
+
+```
+app/routes/
+├─ _index.tsx              # Home page with property listings
+├─ properties.$slug.tsx    # Property detail page
+├─ thank-you.tsx           # Form submission confirmation
+└─ api/
+   └─ leads.tsx            # Lead submission (proxy to worker)
+```
+
+### Data Flow:
+
+```
+Site → Worker API → D1/R2
+  ↓
+POST /api/public/leads
+{
+  propertyId, firstName, lastName, email, phone,
+  employmentStatus, monthlyIncome, moveInDate, message
+}
+```
+
+---
+
+## 🪄 9. AI Evaluation Pipeline (Implemented in Worker)
+
+### API Endpoint:
+
+```
+POST /api/ops/leads/:id/ai
+```
+
+### Implementation:
+
+```typescript
+// In apps/worker/routes/ops.ts
+1. Fetch lead + files + property rent from D1
+2. Generate signed URLs from R2 (PRIVATE_BUCKET)
+3. Call OpenAI Vision + Text API with documents
+4. Parse JSON response:
+   {
+     "score": 0-100,
+     "label": "A/B/C/D",
+     "summary": "...",
+     "risk_flags": [...],
+     "recommendation": "...",
+     "fraud_signals": [...],
+     "model_version": "v1"
+   }
+5. Save to lead_ai_evaluations table
+6. Update leads.ai_score and leads.ai_label
+7. Record event in lead_history
+```
+
+### Dashboard Integration:
+
+- Leads sorted by `ai_score DESC`
+- Color-coded by `ai_label` (A=green, B=yellow, C=orange, D=red)
+- Risk flags and fraud signals highlighted
+
+---
+
+## 📄 10. D1 Schema (Current Implementation)
+
+**Location:** `apps/worker/migrations/0000_init_from_production.sql`
+
+### Core Tables (all include `site_id` for multi-tenancy):
+
+**Multi-Tenancy:**
+- `sites` - Site/tenant configuration
+- `users` - User accounts with role-based access
+- `user_access` - Many-to-many user-site relationships (with `granted_at`, `granted_by`)
+- `site_api_tokens` - API tokens for site access (hashed)
+- `sessions` - User session management
+
+**Property Management:**
+- `properties` - Property listings (with slug, address, lat/lng)
+- `units` - Individual rental units (with bedrooms, bathrooms, rent)
+- `unit_history` - Unit event tracking (move-in, move-out, rent changes)
+- `images` - Property/unit images (R2 references with sort order, cover flag)
+
+**Lead Processing:**
+- `leads` - Rental applications (with AI score/label, status)
+- `lead_files` - Application documents (R2 references)
+- `lead_ai_evaluations` - AI screening results (score, label, summary, flags)
+- `lead_history` - Lead event tracking
+
+**Operations:**
+- `tenants` - Current/past tenants (linked to leads)
+- `leases` - Lease agreements (with DocuSign integration)
+- `work_orders` - Maintenance requests (with category, priority, status)
+
+### Key Indexes:
+
+```sql
+CREATE INDEX idx_properties_site_id ON properties(site_id);
+CREATE INDEX idx_units_site_id ON units(site_id);
+CREATE INDEX idx_leads_site_id ON leads(site_id);
+CREATE INDEX idx_leads_ai_score ON leads(site_id, ai_score DESC);
+CREATE INDEX idx_site_api_tokens_hash ON site_api_tokens(token_hash);
+CREATE INDEX idx_user_access_lookup ON user_access(user_id, site_id);
+```
+
+---
+
+## 🔐 11. Authentication System (Current Implementation)
+
+### Password Security:
+
+```typescript
+// When creating a user
+const passwordHash = await hashPassword(plainPassword);
+await db.execute(
+  'INSERT INTO users (id, email, password_hash, ...) VALUES (?, ?, ?, ...)',
+  [userId, email, passwordHash, ...]
+);
+
+// When verifying login
+const user = await getUserByEmail(db, siteId, email);
+const isValid = await verifyPassword(plainPassword, user.passwordHash);
+```
+
+**Implementation:**
+- PBKDF2-SHA256 with 100,000 iterations
+- Random 16-byte salt per password
+- Stored as `salt:hash` in hex format
+- Uses Web Crypto API (works in Node.js 19+ and Cloudflare Workers)
+
+### API Token Security:
+
+```typescript
+// When creating a site API token
+const rawToken = generateRandomToken(32);  // Show to user ONCE
+const salt = new TextEncoder().encode(SITE_API_TOKEN_SALT);  // Shared constant
+const tokenHash = await hashToken(rawToken, salt);
+
+await db.execute(
+  'INSERT INTO site_api_tokens (id, site_id, token_hash, ...) VALUES (?, ?, ?, ...)',
+  [tokenId, siteId, tokenHash, ...]
+);
+
+// When verifying a token
+const salt = new TextEncoder().encode(SITE_API_TOKEN_SALT);
+const tokenHash = await hashToken(providedToken, salt);
+const token = await db.queryOne(
+  'SELECT * FROM site_api_tokens WHERE token_hash = ? AND is_active = 1',
+  [tokenHash]
+);
+```
+
+### Session Management:
+
+- Cookie-based sessions with signed cookies
+- Session secret stored in environment (`SESSION_SECRET`)
+- User session stored in D1 `sessions` table
+- Expires after 7 days of inactivity
+
+### Multi-Tenant Access Control:
+
+```typescript
+// Get sites accessible to a user
+const accessibleSites = await db.query(
+  'SELECT site_id, role FROM user_access WHERE user_id = ?',
+  [userId]
+);
+
+// Super admin access (uses active site API tokens)
+if (user.isSuperAdmin) {
+  const tokens = await db.query(
+    'SELECT DISTINCT site_id FROM site_api_tokens WHERE is_active = 1'
+  );
+  // Super admin can access any site with active tokens
+}
+```
+
+---
+
+## 🚀 12. Development Tasks (Current Status)
+
+### ✅ Completed Tasks:
+
+- [x] Task 1 - Scaffold monorepo folders
+- [x] Task 2 - Create root workspace config
+- [x] Task 3 - Create shared packages (types, utils, config)
+- [x] Task 4 - Create Worker app (Hono + Cloudflare Workers)
+- [x] Task 5 - Implement multi-tenancy (site_id, user_access)
+- [x] Task 6 - Implement security (PBKDF2 hashing, API tokens)
+- [x] Task 7 - Create Ops app (Remix + Cloudflare Pages)
+- [x] Task 8 - Implement database operations (all models)
+- [x] Task 9 - Implement authentication & authorization
+- [x] Task 10 - Create admin UI (properties, units, leads, tenants, leases, work orders)
+- [x] Task 11 - Implement AI evaluation pipeline
+- [x] Task 12 - Implement image upload/management
+
+### ⏳ Remaining Tasks:
+
+- [ ] Task 13 - Migrate Site to Remix (storefront)
+- [ ] Task 14 - Implement tenant portal
+- [ ] Task 15 - Integrate DocuSign for lease signing
+- [ ] Task 16 - Integrate screening providers (Certn/SingleKey)
+- [ ] Task 17 - Add payment processing (Stripe/Square)
+
+---
+
+## 🎯 13. Acceptance Criteria (Current Status)
+
+### ✅ Achieved:
+
+- [x] Worker app deployed to Cloudflare Workers
+- [x] Ops app deployed to Cloudflare Pages
+- [x] Multi-tenancy fully implemented (site_id isolation)
+- [x] Secure password hashing (PBKDF2-SHA256)
+- [x] API token authentication (hashed tokens)
+- [x] D1 database with full schema
+- [x] R2 storage (public + private buckets)
+- [x] AI evaluation pipeline functional
+- [x] Admin UI usable (all CRUD operations)
+- [x] Image upload/management working
+
+### ⏳ Pending:
+
+- [ ] Site storefront deployed
+- [ ] Lead form submits to Worker API
+- [ ] Google Maps integration
+- [ ] DocuSign integration
+- [ ] Screening provider integration
+
+---
+
+## 💡 14. Best Practices & Guidelines
+
+### When Adding New Features:
+
+1. **Add types to `shared/types/index.ts`** first
+2. **Add Zod schemas to `shared/config/index.ts`** for validation
+3. **Implement DB operations in `apps/worker/lib/db/`** (MUST include `site_id`)
+4. **Add API routes to `apps/worker/routes/`**
+5. **Add UI in `apps/ops/app/routes/`**
+6. **Test multi-tenancy** - Ensure data isolation between sites
+
+### When Modifying Database:
+
+1. **Create a migration file** in `apps/worker/migrations/`
+2. **Update TypeScript types** in `shared/types/`
+3. **Update DB operations** in `apps/worker/lib/db/`
+4. **Add indexes** for frequently queried columns
+5. **Always include `site_id`** in WHERE clauses
+
+### Security Checklist:
+
+- [ ] All passwords hashed with `hashPassword()`
+- [ ] All API tokens hashed with `hashToken()`
+- [ ] All DB queries filter by `site_id`
+- [ ] All sensitive files in `PRIVATE_BUCKET`
+- [ ] All API endpoints require authentication
+- [ ] All user input validated with Zod schemas
+- [ ] All SQL queries use parameterized queries
+
+---
+
+## 📚 Additional Resources
+
+- **Cloudflare Workers:** https://developers.cloudflare.com/workers/
+- **Cloudflare D1:** https://developers.cloudflare.com/d1/
+- **Cloudflare R2:** https://developers.cloudflare.com/r2/
+- **Remix:** https://remix.run/docs
+- **Hono:** https://hono.dev/
+- **Zod:** https://zod.dev/
+
+---
+
+**Last Updated:** 2024-11-28
+**Version:** 2.0 (Reflects current implementation with multi-tenancy and security enhancements)

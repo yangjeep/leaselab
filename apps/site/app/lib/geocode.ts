@@ -14,7 +14,7 @@ export async function geocodeAddress(address: string, apiKey?: string): Promise<
     const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${apiKey}`;
     const res = await fetch(url);
     if (!res.ok) return null;
-    const data = await res.json();
+    const data = await res.json() as { results?: Array<{ geometry?: { location?: { lat: number; lng: number } } }> };
     const result = data?.results?.[0]?.geometry?.location;
     const value: GeocodeResult = result ? { lat: result.lat, lng: result.lng } : null;
     cache.set(key, value);

@@ -2,31 +2,69 @@
 
 AI-First Rental Operations Platform - Monorepo with Remix + Cloudflare
 
+## Overview
+
+LeaseLab is a comprehensive property management platform built on Cloudflare's edge infrastructure. The platform features:
+
+- **Multi-tenant architecture** with site isolation
+- **AI-powered tenant screening** using OpenAI
+- **Secure authentication** with PBKDF2-SHA256 password hashing
+- **Centralized API** for all database and storage operations
+- **Real-time operations** for property, unit, and lease management
+
 ## Project Structure
 
 ```
-leaselab/
+leaselab2/
 ├── apps/
-│   ├── site/        # Public storefront (Remix + Cloudflare Pages)
-│   ├── ops/         # Admin dashboard (Remix + Cloudflare Workers)
-│   └── worker/      # Backend API (Hono + Cloudflare Workers)
+│   ├── worker/      # Backend API (Hono + Cloudflare Workers) ✅
+│   ├── ops/         # Admin dashboard (Remix + Cloudflare Pages) ✅
+│   └── site/        # Public storefront (Planned) ⏳
 ├── shared/
-│   ├── types/           # Shared TypeScript types
-│   ├── utils/           # Shared utilities
-│   ├── config/          # Shared configuration and schemas
-│   ├── storage-core/    # Storage abstraction interfaces
-│   └── storage-cloudflare/ # Cloudflare storage adapters
-└── docs/
+│   ├── types/       # Shared TypeScript types and domain models
+│   ├── utils/       # Shared utilities (crypto, date, money, image)
+│   ├── config/      # Shared configuration and Zod schemas
+│   ├── storage-core/         # Storage abstraction interfaces
+│   └── storage-cloudflare/   # Cloudflare storage adapters
+└── scripts/         # Database migrations and utilities
 ```
+
+## Architecture
+
+### Data Flow
+
+```
+┌─────────────┐                    ┌──────────────┐
+│  apps/ops   │ ──── HTTP ────────>│ apps/worker  │
+│  (Remix)    │    Bearer Token    │   (Hono)     │
+└─────────────┘                    └──────┬───────┘
+                                          │
+┌─────────────┐                           │
+│  apps/site  │ ──── HTTP ────────>       │
+│  (Remix)    │    Bearer Token           │
+└─────────────┘                           │
+                                          ▼
+                                   ┌─────────────┐
+                                   │ D1 Database │
+                                   │ R2 Storage  │
+                                   └─────────────┘
+```
+
+### Key Principles
+
+1. **Centralized Data Access**: All database and storage operations happen in `apps/worker`
+2. **Multi-Tenancy**: Every database query filters by `site_id` for data isolation
+3. **Security First**: PBKDF2-SHA256 for passwords, hashed API tokens, signed cookies
+4. **Type Safety**: Shared types across all apps, Zod validation for all API inputs
 
 ## Prerequisites
 
-- Node.js 18+
-- npm (Node 18+)
-- [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/install-and-update/) (`npm install -g wrangler`)
-- Cloudflare account
+- **Node.js** 18+ (LTS recommended)
+- **npm** (comes with Node.js)
+- [**Wrangler CLI**](https://developers.cloudflare.com/workers/wrangler/install-and-update/)
+- **Cloudflare account** (free tier works for development)
 
-## Local Development
+## Quick Start
 
 ### 1. Install Dependencies
 
@@ -34,275 +72,400 @@ leaselab/
 npm install
 ```
 
-### 2. Set Up Environment Variables
+This will install dependencies for all workspace apps (ops, worker).
+
+### 2. Set Up Environment
+
+Create a `.env.local` file in the root directory:
 
 ```bash
-# Copy the example env file to .env.local at root
-cp .env.example .env.local
-```
+# Worker API URL (local development)
+WORKER_URL=http://localhost:8787
 
-Edit `.env.local` with your values:
+# OpenAI API Key (for AI tenant screening)
+OPENAI_API_KEY=your_openai_api_key
 
-```bash
-# Required for both apps
+# Session Secret (for cookie signing)
+SESSION_SECRET=your_random_secret_at_least_32_chars_long
+
+# Database IDs (from Cloudflare)
 D1_DATABASE_ID=your_d1_database_id
 
-# Site app
-OPS_API_URL=http://localhost:8788
-GOOGLE_MAPS_API_KEY=your_google_maps_key
-
-# Ops app
-OPENAI_API_KEY=your_openai_api_key
-SESSION_SECRET=your_session_secret_min_32_chars
-KV_NAMESPACE_ID=your_kv_namespace_id
+# R2 Public URL (from Cloudflare)
+R2_PUBLIC_URL=https://pub-your-r2-id.r2.dev
 ```
 
-Both apps read from this single `.env.local` file at the root.
-
-### 3. Run Local Development
+### 3. Run Database Migrations
 
 ```bash
-# Run both apps
+cd apps/worker
+npx wrangler d1 execute leaselab-db --local --file=migrations/0000_init_from_production.sql
+npx wrangler d1 execute leaselab-db --local --file=migrations/0001_test_data.sql
+cd ../..
+```
+
+### 4. Start Development Servers
+
+```bash
+# Run both worker and ops in parallel
 npm run dev
 
 # Or run individually
-npm run dev:site   # http://localhost:5173
-npm run dev:ops    # http://localhost:8788
+npm run dev:worker   # http://localhost:8787 (Worker API)
+npm run dev:ops      # http://localhost:5173 (Ops Dashboard)
+```
+
+### 5. Access the Admin Dashboard
+
+1. Open http://localhost:5173
+2. Login with test credentials:
+   - Email: `admin@leaselab.io`
+   - Password: `password123`
+
+## Development
+
+### Workspace Scripts
+
+```bash
+# Development
+npm run dev              # Run worker + ops in parallel
+npm run dev:worker       # Run worker API only
+npm run dev:ops          # Run ops dashboard only
+
+# Building
+npm run build            # Build all apps
+npm run build:ops        # Build ops dashboard
+
+# Type Checking
+npm run typecheck        # Check types in all apps
+
+# Testing
+npm run test             # Run all tests
+npm run test:watch       # Run tests in watch mode
+```
+
+### Database Operations
+
+```bash
+# Local development database
+cd apps/worker
+npx wrangler d1 execute leaselab-db --local --command "SELECT * FROM properties"
+
+# Production database
+npx wrangler d1 execute leaselab-db --command "SELECT * FROM properties"
+
+# Run migration
+npx wrangler d1 execute leaselab-db --local --file=migrations/0000_init_from_production.sql
+```
+
+### Working with Shared Packages
+
+Shared packages are imported using relative paths:
+
+```typescript
+// In apps/worker or apps/ops
+import type { Property, Unit, Lead } from '../../shared/types';
+import { hashPassword, verifyPassword } from '../../shared/utils/crypto';
+import { API_ROUTES } from '../../shared/config';
+```
+
+### Adding New Features
+
+When adding new features, follow this order:
+
+1. **Define types** in `shared/types/index.ts`
+2. **Add Zod schemas** in `shared/config/index.ts`
+3. **Create DB operations** in `apps/worker/lib/db/` (MUST include `site_id` filtering)
+4. **Add API routes** in `apps/worker/routes/`
+5. **Create UI** in `apps/ops/app/routes/`
+
+Example DB operation:
+
+```typescript
+// apps/worker/lib/db/properties.ts
+export async function getProperties(
+  dbInput: DatabaseInput,
+  siteId: string,  // ← REQUIRED for multi-tenancy
+  options?: FilterOptions
+): Promise<Property[]> {
+  const db = normalizeDb(dbInput);
+  const results = await db.query(
+    'SELECT * FROM properties WHERE site_id = ? AND is_active = 1',
+    [siteId]  // ← Always filter by site_id
+  );
+  return results.map(mapToProperty);
+}
 ```
 
 ## Deployment
 
-### Step 1: Authenticate with Cloudflare
+### Prerequisites
+
+1. Authenticate with Cloudflare:
 
 ```bash
 wrangler login
 ```
 
-### Step 2: Create Cloudflare Resources
-
-#### Create D1 Database
+2. Create Cloudflare resources:
 
 ```bash
+# Create D1 database
 wrangler d1 create leaselab-db
+
+# Create R2 buckets
+wrangler r2 bucket create leaselab-pub    # Public assets
+wrangler r2 bucket create leaselab-pri    # Private documents
 ```
 
-Copy the `database_id` from the output and update both:
-- `apps/site/wrangler.toml`
-- `apps/ops/wrangler.toml`
+3. Update `apps/worker/wrangler.toml` with your database and bucket IDs.
 
-```toml
-[[d1_databases]]
-binding = "DB"
-database_name = "leaselab-db"
-database_id = "YOUR_DATABASE_ID_HERE"
-```
-
-#### Create KV Namespace (for sessions)
+### Deploy Worker API
 
 ```bash
-## Sessions
-Use a signed cookie with `SESSION_SECRET`.
+cd apps/worker
+
+# Run migrations on production database
+npx wrangler d1 execute leaselab-db --file=migrations/0000_init_from_production.sql
+
+# Deploy worker
+npx wrangler deploy
 ```
 
-Update `apps/ops/wrangler.toml` with the namespace ID:
-
-```toml
-[[kv_namespaces]]
-env = "SESSION_SECRET"
-id = "YOUR_KV_NAMESPACE_ID"
-```
-
-#### Create R2 Bucket (for file storage)
-
-```bash
-wrangler r2 bucket create leaselab-files
-```
-
-### Step 3: Run Database Migrations
-
-```bash
-# Local development
-cd apps/ops
-npm run db:migrate
-
-# Production
-npm run db:migrate:prod
-```
-
-### Step 4: Create Cloudflare Pages Projects
-
-#### Create Site Project
-
-```bash
-cd apps/site
-wrangler pages project create leaselab-site
-```
-
-#### Create Ops Project
+### Deploy Ops Dashboard
 
 ```bash
 cd apps/ops
-wrangler pages project create leaselab-ops
-```
 
-### Step 5: Set Production Secrets
-
-#### Site App Secrets
-
-```bash
-cd apps/site
-wrangler pages secret put GOOGLE_MAPS_API_KEY
-```
-
-#### Ops App Secrets
-
-```bash
-cd apps/ops
-wrangler pages secret put OPENAI_API_KEY
-wrangler pages secret put SESSION_SECRET
-```
-
-### Step 6: Configure Pages Bindings
-
-In Cloudflare Dashboard, go to each Pages project's Settings > Functions:
-
-**For leaselab-site:**
-- D1 Database: `DB` → `leaselab-db`
-
-**For leaselab-ops:**
-- D1 Database: `DB` → `leaselab-db`
-- Session Secret: `SESSION_SECRET` → long random string
-- R2 Bucket: `FILE_BUCKET` → `leaselab-files`
-
-### Step 7: Deploy
-
-#### Build and Deploy Site
-
-```bash
-cd apps/site
+# Build the app
 npm run build
-npm run deploy
+
+# Deploy to Cloudflare Pages
+npx wrangler pages deploy ./build/client --project-name=leaselab-ops
 ```
 
-#### Build and Deploy Ops
+### Environment Variables (Production)
+
+Set production secrets using Wrangler:
 
 ```bash
+# Worker API secrets
+cd apps/worker
+npx wrangler secret put OPENAI_API_KEY
+
+# Ops app secrets
 cd apps/ops
-npm run build
-npm run deploy
+npx wrangler pages secret put SESSION_SECRET --project-name=leaselab-ops
+npx wrangler pages secret put WORKER_URL --project-name=leaselab-ops
 ```
 
-Or from root:
+## Security Features
 
-```bash
-npm run build
-npm run deploy:site
-npm run deploy:ops
+### Password Security
+
+- **PBKDF2-SHA256** hashing with 100,000 iterations
+- Random 16-byte salt per password
+- Passwords stored as `salt:hash` in hex format
+- Uses Web Crypto API (works in Node.js 19+ and Cloudflare Workers)
+
+```typescript
+import { hashPassword, verifyPassword } from '../../shared/utils/crypto';
+
+// Hashing
+const hash = await hashPassword('plaintext');  // Returns "salt:hash"
+
+// Verification
+const isValid = await verifyPassword('plaintext', storedHash);
 ```
 
-### Step 8: Update Production URLs
+### API Token Security
 
-After deployment, update `apps/site/wrangler.toml` production vars:
+- Site API tokens hashed using PBKDF2-SHA256
+- Shared salt constant for deterministic token lookup
+- Tokens verified via middleware in `apps/worker/middleware/auth.ts`
 
-```toml
-[env.production.vars]
-ENVIRONMENT = "production"
-OPS_API_URL = "https://leaselab-ops.pages.dev"
+### Multi-Tenancy
+
+- Every database query MUST filter by `site_id`
+- Users can access multiple sites via `user_access` table
+- Super admins can access any site with active API tokens
+- Worker middleware enforces site isolation
+
+## Database Schema
+
+### Core Tables
+
+**Multi-Tenancy:**
+- `sites` - Site/tenant configuration
+- `users` - User accounts with role-based access
+- `user_access` - Many-to-many user-site relationships
+- `site_api_tokens` - API tokens for site access (hashed)
+- `sessions` - User session management
+
+**Property Management:**
+- `properties` - Property listings
+- `units` - Individual rental units
+- `unit_history` - Unit event tracking
+- `images` - Property/unit images (R2 references)
+
+**Lead Processing:**
+- `leads` - Rental applications
+- `lead_files` - Application documents
+- `lead_ai_evaluations` - AI screening results
+- `lead_history` - Lead event tracking
+
+**Operations:**
+- `tenants` - Current/past tenants
+- `leases` - Lease agreements
+- `work_orders` - Maintenance requests
+
+All tables include `site_id` for multi-tenancy (except shared tables like `users`, `sessions`).
+
+## API Documentation
+
+### Worker API Endpoints
+
+**Health Check:**
+```
+GET /
 ```
 
-Redeploy site for changes to take effect.
-
-## CI/CD with GitHub Actions
-
-Create `.github/workflows/deploy.yml`:
-
-```yaml
-name: Deploy
-
-on:
-  push:
-    branches: [main]
-
-jobs:
-  deploy-site:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-      - run: npm ci
-      - run: npm run build:site
-      - uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          workingDirectory: apps/site
-          command: pages deploy ./build/client --project-name=leaselab-site
-
-  deploy-ops:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-      - run: npm ci
-      - run: npm run build:ops
-      - uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          workingDirectory: apps/ops
-          command: pages deploy ./build/client --project-name=leaselab-ops
+**Public API** (for storefront):
+```
+POST /api/public/properties      # List properties
+POST /api/public/properties/:id  # Get property details
+POST /api/public/leads           # Submit lead application
 ```
 
-Add `CLOUDFLARE_API_TOKEN` to your GitHub repository secrets.
+**Ops API** (for admin dashboard):
+```
+POST /api/ops/properties         # Property management
+POST /api/ops/units              # Unit management
+POST /api/ops/leads              # Lead management
+POST /api/ops/leads/:id/ai       # Run AI evaluation
+POST /api/ops/tenants            # Tenant management
+POST /api/ops/leases             # Lease management
+POST /api/ops/work-orders        # Work order management
+POST /api/ops/images             # Image management
+```
 
-## Custom Domains
-
-1. Go to Cloudflare Dashboard → Pages → Your Project → Custom domains
-2. Add your domain (e.g., `leaselab.com` for site, `ops.leaselab.com` for ops)
-3. Update DNS records as instructed
-4. Update `OPS_API_URL` in site's production vars to use the custom domain
+All Ops API requests require:
+- `Authorization: Bearer <token>` header
+- `X-Site-Id: <site_id>` header
+- `X-User-Id: <user_id>` header
 
 ## Troubleshooting
 
 ### Database Issues
 
 ```bash
-# Check D1 database
-wrangler d1 execute leaselab-db --command "SELECT name FROM sqlite_master WHERE type='table'"
+# Check local database
+npx wrangler d1 execute leaselab-db --local --command "SELECT name FROM sqlite_master WHERE type='table'"
+
+# Check production database
+npx wrangler d1 execute leaselab-db --command "SELECT name FROM sqlite_master WHERE type='table'"
 
 # View recent leads
-wrangler d1 execute leaselab-db --command "SELECT * FROM leads LIMIT 10"
+npx wrangler d1 execute leaselab-db --local --command "SELECT * FROM leads LIMIT 10"
 ```
 
-### View Deployment Logs
+### View Logs
 
 ```bash
-wrangler pages deployment tail --project-name=leaselab-site
-wrangler pages deployment tail --project-name=leaselab-ops
+# Worker logs
+cd apps/worker
+npx wrangler tail
+
+# Ops deployment logs
+cd apps/ops
+npx wrangler pages deployment tail --project-name=leaselab-ops
 ```
 
-### Local D1 Reset
+### Reset Local Database
 
 ```bash
-rm -rf apps/ops/.wrangler
-npm run db:migrate
+cd apps/worker
+rm -rf .wrangler/state
+npx wrangler d1 execute leaselab-db --local --file=migrations/0000_init_from_production.sql
+npx wrangler d1 execute leaselab-db --local --file=migrations/0001_test_data.sql
 ```
 
-## Architecture
+### Common Issues
 
-- **Site**: Public-facing property listings, lead capture forms
-- **Ops**: Admin dashboard, AI tenant evaluation, lease management
-- **Shared Packages**: Common types, utilities, and configuration
+**"Module not found" errors:**
+- Run `npm install` in the root directory
+- Make sure you're using Node.js 18+
 
-Both apps use:
-- Remix for full-stack React
-- Cloudflare Pages for hosting
-- D1 (SQLite) for database
-- Tailwind CSS for styling
+**Type errors in shared packages:**
+- Run `npm run typecheck` to identify issues
+- Check that imports use correct relative paths
 
-Ops additionally uses:
-- KV for session storage
-- R2 for file uploads
-- OpenAI for AI tenant screening
+**Database connection errors:**
+- Make sure wrangler is running in local mode
+- Check that D1 database ID is correct in `wrangler.toml`
+
+**Authentication errors:**
+- Verify `SESSION_SECRET` is set in environment
+- Check that cookies are being set correctly
+- Ensure site API tokens are active in database
+
+## Tech Stack
+
+- **Remix** - Full-stack React framework
+- **Hono** - Fast web framework for Cloudflare Workers
+- **Cloudflare Workers** - Serverless compute platform
+- **Cloudflare D1** - Serverless SQLite database
+- **Cloudflare R2** - Object storage (S3-compatible)
+- **Cloudflare Pages** - JAMstack hosting platform
+- **TypeScript** - Type-safe development
+- **Tailwind CSS** - Utility-first CSS framework
+- **Zod** - TypeScript-first schema validation
+- **Vitest** - Fast unit testing framework
+
+## Contributing
+
+### Code Style
+
+- Use TypeScript for all new code
+- Follow existing code structure and patterns
+- Run `npm run typecheck` before committing
+- Add Zod schemas for all API inputs
+- Include `site_id` filtering in all DB queries
+
+### Security Guidelines
+
+- Never store plaintext passwords or tokens
+- Always use `hashPassword()` for passwords
+- Always use `hashToken()` for API tokens
+- Filter all queries by `site_id`
+- Validate all user input with Zod schemas
+- Use parameterized queries to prevent SQL injection
+
+### Testing
+
+```bash
+# Run tests
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Run tests with coverage
+npm run test:coverage
+```
+
+## License
+
+Proprietary - All rights reserved
+
+## Support
+
+For issues or questions:
+- Create an issue in the repository
+- Contact the development team
+
+---
+
+**Built with ❤️ using Cloudflare's edge platform**
+
+Last updated: 2024-11-28

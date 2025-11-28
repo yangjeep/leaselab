@@ -1,5 +1,5 @@
-import type { LoaderFunctionArgs, MetaFunction } from "@remix-run/cloudflare";
-import { json } from "@remix-run/cloudflare";
+import type { LoaderFunctionArgs, MetaFunction } from "@remix-run/node";
+import { json } from "@remix-run/node";
 import { useLoaderData, useSearchParams, Link } from "@remix-run/react";
 import { useState } from "react";
 import { fetchPropertyById, fetchProperties, fetchSiteConfig } from "~/lib/api-client";
@@ -20,7 +20,7 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 
 export async function loader({ params, request, context }: LoaderFunctionArgs) {
   // Handle both Cloudflare Pages and Vite dev mode
-  const env = context.cloudflare?.env || process.env;
+  const env = (context as any).cloudflare?.env || process.env;
   const { slug } = params;
 
   if (!slug) {

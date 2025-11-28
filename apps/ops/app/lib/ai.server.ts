@@ -16,7 +16,8 @@ export async function runLeadAIEvaluation(
   const openai = new OpenAI({ apiKey: openaiApiKey });
 
   const { lead, files, propertyRent, signedUrls } = input;
-  const incomeToRentRatio = lead.monthlyIncome / propertyRent;
+  // Note: monthlyIncome field was removed from Lead type. Income info may be in landlordNote.
+  const incomeToRentRatio = 0; // Not available after monthlyIncome field removal
 
   // Build content for OpenAI
   const content: OpenAI.Chat.Completions.ChatCompletionContentPart[] = [
@@ -110,9 +111,8 @@ function buildPrompt(
 
 ### Financial Information
 - Employment Status: ${lead.employmentStatus}
-- Monthly Income: $${lead.monthlyIncome.toLocaleString()}
 - Property Rent: $${propertyRent.toLocaleString()}
-- Income to Rent Ratio: ${incomeToRentRatio.toFixed(2)}x (Standard requirement: 3x)
+${lead.landlordNote ? `- Landlord Notes: ${lead.landlordNote}` : ''}
 
 ### Desired Move-in Date
 ${lead.moveInDate}

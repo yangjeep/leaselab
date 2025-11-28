@@ -8,7 +8,11 @@ export const onRequest = createPagesFunctionHandler({
   getLoadContext: (context) => ({
     cloudflare: {
       env: context.env,
-      ctx: context,
+      cf: context.request.cf || ({} as any),
+      ctx: {
+        waitUntil: context.waitUntil.bind(context),
+        passThroughOnException: context.passThroughOnException.bind(context),
+      } as any,
     },
   }),
 });

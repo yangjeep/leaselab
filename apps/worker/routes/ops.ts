@@ -66,7 +66,8 @@ import {
   createSiteApiToken,
   updateSiteApiToken,
   deleteSiteApiToken,
-} from '../../ops/app/lib/db.server';
+} from '../lib/db';
+
 
 // Import shared environment types
 import type { CloudflareEnv } from '../../../shared/config';
@@ -584,7 +585,7 @@ opsRoutes.get('/users/email/:email', async (c: Context) => {
 opsRoutes.post('/users/:id/update-login', async (c: Context) => {
   try {
     const userId = c.req.param('id');
-    
+
     await c.env.DB.prepare('UPDATE users SET last_login_at = ? WHERE id = ?')
       .bind(new Date().toISOString(), userId)
       .run();
@@ -602,10 +603,10 @@ opsRoutes.post('/users/:id/update-login', async (c: Context) => {
 });
 
 /**
- * PUT /api/ops/users/:id/password
+ * POST /api/ops/users/:id/password
  * Update user password
  */
-opsRoutes.put('/users/:id/password', async (c: Context) => {
+opsRoutes.post('/users/:id/password', async (c: Context) => {
   try {
     const siteId = c.req.header('X-Site-Id');
     if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
@@ -627,10 +628,10 @@ opsRoutes.put('/users/:id/password', async (c: Context) => {
 });
 
 /**
- * PUT /api/ops/users/:id/profile
+ * POST /api/ops/users/:id/profile
  * Update user profile (name, email)
  */
-opsRoutes.put('/users/:id/profile', async (c: Context) => {
+opsRoutes.post('/users/:id/profile', async (c: Context) => {
   try {
     const siteId = c.req.header('X-Site-Id');
     if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
@@ -652,10 +653,10 @@ opsRoutes.put('/users/:id/profile', async (c: Context) => {
 });
 
 /**
- * PUT /api/ops/users/:id/super-admin
+ * POST /api/ops/users/:id/super-admin
  * Toggle super admin status
  */
-opsRoutes.put('/users/:id/super-admin', async (c: Context) => {
+opsRoutes.post('/users/:id/super-admin', async (c: Context) => {
   try {
     const id = c.req.param('id');
     const body = await c.req.json();
@@ -727,10 +728,10 @@ opsRoutes.post('/users/:id/site-access', async (c: Context) => {
 });
 
 /**
- * DELETE /api/ops/users/:id/site-access/:siteId
+ * POST /api/ops/users/:id/site-access/:siteId/delete
  * Revoke site access from a user
  */
-opsRoutes.delete('/users/:id/site-access/:siteId', async (c: Context) => {
+opsRoutes.post('/users/:id/site-access/:siteId/delete', async (c: Context) => {
   try {
     const userId = c.req.param('id');
     const siteId = c.req.param('siteId');
@@ -810,10 +811,10 @@ opsRoutes.get('/tenants/:id', async (c: Context) => {
 });
 
 /**
- * PUT /api/ops/tenants/:id
+ * POST /api/ops/tenants/:id
  * Update tenant status
  */
-opsRoutes.put('/tenants/:id', async (c: Context) => {
+opsRoutes.post('/tenants/:id', async (c: Context) => {
   try {
     const siteId = c.req.header('X-Site-Id');
     if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
@@ -931,10 +932,10 @@ opsRoutes.post('/images', async (c: Context) => {
 });
 
 /**
- * PUT /api/ops/images/:id
+ * POST /api/ops/images/:id
  * Update an image record
  */
-opsRoutes.put('/images/:id', async (c: Context) => {
+opsRoutes.post('/images/:id', async (c: Context) => {
   try {
     const siteId = c.req.header('X-Site-Id');
     if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
@@ -956,10 +957,10 @@ opsRoutes.put('/images/:id', async (c: Context) => {
 });
 
 /**
- * DELETE /api/ops/images/:id
+ * POST /api/ops/images/:id/delete
  * Delete an image record and R2 file
  */
-opsRoutes.delete('/images/:id', async (c: Context) => {
+opsRoutes.post('/images/:id/delete', async (c: Context) => {
   try {
     const siteId = c.req.header('X-Site-Id');
     if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
@@ -1142,10 +1143,10 @@ opsRoutes.post('/images/upload', async (c: Context) => {
 });
 
 /**
- * PUT /api/ops/images/reorder
+ * POST /api/ops/images/reorder
  * Reorder images for a property or unit
  */
-opsRoutes.put('/images/reorder', async (c: Context) => {
+opsRoutes.post('/images/reorder', async (c: Context) => {
   try {
     const siteId = c.req.header('X-Site-Id');
     if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
@@ -1329,10 +1330,10 @@ opsRoutes.get('/leads/:id/ai-evaluation', async (c: Context) => {
 // ==================== ADDITIONAL ENDPOINTS ====================
 
 /**
- * DELETE /api/ops/properties/:id
+ * POST /api/ops/properties/:id/delete
  * Delete a property
  */
-opsRoutes.delete('/properties/:id', async (c: Context) => {
+opsRoutes.post('/properties/:id/delete', async (c: Context) => {
   try {
     const siteId = c.req.header('X-Site-Id');
     if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
@@ -1353,10 +1354,10 @@ opsRoutes.delete('/properties/:id', async (c: Context) => {
 });
 
 /**
- * DELETE /api/ops/units/:id
+ * POST /api/ops/units/:id/delete
  * Delete a unit
  */
-opsRoutes.delete('/units/:id', async (c: Context) => {
+opsRoutes.post('/units/:id/delete', async (c: Context) => {
   try {
     const siteId = c.req.header('X-Site-Id');
     if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
@@ -1499,10 +1500,10 @@ opsRoutes.get('/work-orders/:id', async (c: Context) => {
 });
 
 /**
- * DELETE /api/ops/work-orders/:id
+ * POST /api/ops/work-orders/:id/delete
  * Delete a work order
  */
-opsRoutes.delete('/work-orders/:id', async (c: Context) => {
+opsRoutes.post('/work-orders/:id/delete', async (c: Context) => {
   try {
     const siteId = c.req.header('X-Site-Id');
     if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
@@ -1771,10 +1772,10 @@ opsRoutes.post('/site-api-tokens', async (c: Context) => {
 });
 
 /**
- * PATCH /api/ops/site-api-tokens/:id
+ * POST /api/ops/site-api-tokens/:id
  * Update an API token (activate/deactivate or change description)
  */
-opsRoutes.patch('/site-api-tokens/:id', async (c: Context) => {
+opsRoutes.post('/site-api-tokens/:id', async (c: Context) => {
   try {
     const siteId = c.req.header('X-Site-Id');
     if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
@@ -1801,10 +1802,10 @@ opsRoutes.patch('/site-api-tokens/:id', async (c: Context) => {
 });
 
 /**
- * DELETE /api/ops/site-api-tokens/:id
+ * POST /api/ops/site-api-tokens/:id/delete
  * Delete (revoke) an API token
  */
-opsRoutes.delete('/site-api-tokens/:id', async (c: Context) => {
+opsRoutes.post('/site-api-tokens/:id/delete', async (c: Context) => {
   try {
     const siteId = c.req.header('X-Site-Id');
     if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }

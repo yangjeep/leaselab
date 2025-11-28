@@ -6,7 +6,7 @@
  */
 import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth';
-import { getPropertyById, createLead, getPublicListings, getUnitWithDetails, } from '../../ops/app/lib/db.server';
+import { getPropertyById, createLead, getPublicListings, getUnitWithDetails, } from '../lib/db';
 const publicRoutes = new Hono();
 // Apply auth middleware to all public routes
 publicRoutes.use('*', authMiddleware);
@@ -20,6 +20,13 @@ publicRoutes.use('*', authMiddleware);
  */
 publicRoutes.get('/properties', async (c) => {
     try {
+        if (!c.env.R2_PUBLIC_URL) {
+            console.error('R2_PUBLIC_URL is not defined');
+            return c.json({
+                error: 'Configuration error',
+                message: 'R2_PUBLIC_URL is not configured',
+            }, 500);
+        }
         const siteId = c.get('siteId');
         const city = c.req.query('city');
         const status = c.req.query('status');
@@ -28,7 +35,7 @@ publicRoutes.get('/properties', async (c) => {
             filters.city = city;
         if (status)
             filters.status = status;
-        const listings = await getPublicListings(c.env.DB, siteId, filters);
+        const listings = await getPublicListings(c.env.DB, siteId, filters, c.env.R2_PUBLIC_URL);
         return c.json({
             success: true,
             data: listings,

@@ -1,4 +1,6 @@
-import crypto from 'crypto';
+// import crypto from 'crypto'; // Use globalThis.crypto for Web Crypto API
+import { hashToken, generateRandomToken } from '~/shared/utils';
+import { API_TOKEN_SALT } from './env';
 /**
  * Validates an API token and returns the associated site_id
  * @param token - The Bearer token from the Authorization header
@@ -9,7 +11,21 @@ export async function validateApiToken(token, db) {
     if (!token)
         return null;
     // Hash the token to compare with stored hash
-    const tokenHash = hashToken(token);
+    // Note: Since we need to query by hash, we can't use a random salt per record easily
+    // unless we store the salt separately or iterate.
+    // However, for API tokens, we usually want a deterministic hash for lookup.
+    // BUT, the requirement is "insufficient computational effort".
+    // If we use PBKDF2 with a FIXED salt (site-wide or hardcoded), we get the computational cost
+    // but still allow lookup.
+    // Ideally, we'd store salt with the token, but then we can't look it up by token efficiently without a secondary index.
+    // Given the constraints and the "lookup by hash" pattern:
+    // We will use a fixed salt for now to allow lookup, but increase iterations.
+    // WARNING: This is a compromise. A better approach is to store a token ID (public) and a secret (private),
+    // look up by ID, then verify secret with salted hash.
+    // For this refactor, I will use a fixed application-level salt to enable lookup while slowing down brute force.
+
+
+    const tokenHash = await hashToken(token, API_TOKEN_SALT);
     // Normalize db to IDatabase
     const normalizedDb = 'query' in db && typeof db.query === 'function'
         ? db
@@ -47,17 +63,12 @@ export function extractBearerToken(request) {
     const match = authHeader.match(/^Bearer\s+(.+)$/i);
     return match ? match[1] : null;
 }
-/**
- * Hash a token using SHA-256
- */
-export function hashToken(token) {
-    return crypto.createHash('sha256').update(token).digest('hex');
-}
+
 /**
  * Generate a random API token
  */
 export function generateApiToken() {
-    return crypto.randomBytes(32).toString('hex');
+    return generateRandomToken(32);
 }
 /**
  * Helper to normalize D1Database to IDatabase interface

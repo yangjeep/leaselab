@@ -3,6 +3,7 @@ import { json } from '@remix-run/cloudflare';
 import { useLoaderData, Link, useSubmit, Form } from '@remix-run/react';
 import { fetchWorkOrderFromWorker, fetchTenantsFromWorker, fetchPropertyFromWorker, saveWorkOrderToWorker } from '~/lib/worker-client';
 import { getSiteId } from '~/lib/site.server';
+import type { WorkOrder } from '~/shared/types';
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
   if (!data) return [{ title: 'Work Order Not Found' }];
