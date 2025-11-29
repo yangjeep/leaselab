@@ -20,7 +20,7 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 
 export async function loader({ params, request, context }: LoaderFunctionArgs) {
   // Handle both Cloudflare Pages and Vite dev mode
-  const env = (context as any).cloudflare?.env || process.env;
+  const env = (context as any).cloudflare?.env || (typeof process !== "undefined" ? process.env : {});
   const { slug } = params;
 
   if (!slug) {

@@ -45,7 +45,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
   }
 
   // Handle both Cloudflare Pages and Vite dev mode
-  const env = (context as any).cloudflare?.env || process.env;
+  const env = (context as any).cloudflare?.env || (typeof process !== "undefined" ? process.env : {});
   const workerUrl = env.WORKER_URL;
   const siteApiToken = env.SITE_API_TOKEN;
 
