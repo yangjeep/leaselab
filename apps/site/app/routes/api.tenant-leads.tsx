@@ -45,16 +45,16 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
   // Handle both Cloudflare Pages and Vite dev mode
   const env = (context as any).cloudflare?.env || process.env;
-  const opsApiUrl = env.OPS_API_URL;
+  const workerUrl = env.WORKER_URL;
 
-  if (!opsApiUrl) {
-    console.error("OPS_API_URL not configured");
+  if (!workerUrl) {
+    console.error("WORKER_URL not configured");
     return json({ error: "Server configuration error" }, { status: 500 });
   }
 
   try {
-    // Submit to Ops API
-    const response = await fetch(`${opsApiUrl}/api/public/leads`, {
+    // Submit to Worker API
+    const response = await fetch(`${workerUrl}/api/public/leads`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

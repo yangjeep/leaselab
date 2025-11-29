@@ -11,11 +11,11 @@ export async function action({ request, context }: ActionFunctionArgs) {
   try {
     // Get environment config
     const env = (context as any).cloudflare?.env || process.env;
-    const workerUrl = env.WORKER_URL || env.OPS_API_URL;
+    const workerUrl = env.WORKER_URL;
     const siteApiToken = env.SITE_API_TOKEN;
 
     if (!workerUrl) {
-      console.error("WORKER_URL or OPS_API_URL not configured");
+      console.error("WORKER_URL not configured");
       return json({ error: "Server configuration error" }, { status: 500 });
     }
 
