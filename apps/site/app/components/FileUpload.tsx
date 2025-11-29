@@ -145,11 +145,13 @@ export default function FileUpload({ onFilesChange }: FileUploadProps) {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await response.json() as { error?: string };
         throw new Error(errorData.error || 'Upload failed');
       }
 
-      const result: FileUploadResponse = await response.json();
+      const responseData = await response.json() as { success?: boolean; data?: FileUploadResponse } | FileUploadResponse;
+      // Handle both direct response and wrapped response { success: true, data: {...} }
+      const result: FileUploadResponse = 'data' in responseData && responseData.data ? responseData.data : responseData as FileUploadResponse;
 
       // Update file with real ID
       setFiles(prev => prev.map(f =>

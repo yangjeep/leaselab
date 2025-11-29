@@ -11,11 +11,17 @@ export async function action({ request, context }: ActionFunctionArgs) {
   try {
     // Get environment config
     const env = (context as any).cloudflare?.env || process.env;
-    const opsApiUrl = env.OPS_API_URL;
+    const workerUrl = env.WORKER_URL || env.OPS_API_URL;
+    const siteApiToken = env.SITE_API_TOKEN;
 
-    if (!opsApiUrl) {
-      console.error("OPS_API_URL not configured");
+    if (!workerUrl) {
+      console.error("WORKER_URL or OPS_API_URL not configured");
       return json({ error: "Server configuration error" }, { status: 500 });
+    }
+
+    if (!siteApiToken) {
+      console.error("SITE_API_TOKEN not configured");
+      return json({ error: "Authentication not configured" }, { status: 500 });
     }
 
     // Check Content-Length header (Layer 2 validation from PRD)
@@ -51,9 +57,12 @@ export async function action({ request, context }: ActionFunctionArgs) {
       workerFormData.append('fileType', fileType);
     }
 
-    // Forward to Worker API
-    const response = await fetch(`${opsApiUrl}/api/public/leads/files/upload`, {
+    // Forward to Worker API with authentication
+    const response = await fetch(`${workerUrl}/api/public/leads/files/upload`, {
       method: "POST",
+      headers: {
+        'Authorization': `Bearer ${siteApiToken}`,
+      },
       body: workerFormData,
       // Note: Don't set Content-Type header - let fetch set it with boundary
     });
