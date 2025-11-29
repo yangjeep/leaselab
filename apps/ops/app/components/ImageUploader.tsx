@@ -1,5 +1,4 @@
-import { useCallback, useState } from 'react';
-import { useDropzone } from 'react-dropzone';
+import { useCallback, useState, useRef, DragEvent, ChangeEvent } from 'react';
 import type { PropertyImage } from '~/shared/types';
 
 interface ImageUploaderProps {
@@ -22,6 +21,8 @@ export function ImageUploader({
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
+  const [isDragActive, setIsDragActive] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleUpload = useCallback(async (files: File[]) => {
     if (files.length === 0) return;
@@ -31,18 +32,6 @@ export function ImageUploader({
 
     try {
       for (const file of files) {
-        // Validate file type
-        if (!file.type.startsWith('image/')) {
-          setError('Only image files are allowed');
-          continue;
-        }
-
-        // Validate file size (10MB max)
-        if (file.size > 10 * 1024 * 1024) {
-          setError('File size must be less than 10MB');
-          continue;
-        }
-
         setUploadProgress(prev => ({ ...prev, [file.name]: 0 }));
 
         // Step 1: Get presigned URL
@@ -117,19 +106,77 @@ export function ImageUploader({
     }
   }, [entityType, entityId, onUploadComplete]);
 
-  const onDrop = useCallback((acceptedFiles: File[]) => {
-    handleUpload(acceptedFiles);
+  // Validate files
+  const validateAndUploadFiles = useCallback((files: FileList | File[]) => {
+    const fileArray = Array.from(files);
+    const validFiles: File[] = [];
+
+    for (const file of fileArray) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        setError('Only image files are allowed');
+        continue;
+      }
+
+      // Validate file size (10MB max)
+      if (file.size > 10 * 1024 * 1024) {
+        setError('File size must be less than 10MB');
+        continue;
+      }
+
+      validFiles.push(file);
+    }
+
+    if (validFiles.length > 0) {
+      handleUpload(validFiles);
+    }
   }, [handleUpload]);
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    accept: {
-      'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp']
-    },
-    maxSize: 10 * 1024 * 1024, // 10MB
-    multiple: true,
-    disabled: uploading,
-  });
+  // Drag event handlers
+  const handleDragEnter = useCallback((e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!uploading) {
+      setIsDragActive(true);
+    }
+  }, [uploading]);
+
+  const handleDragLeave = useCallback((e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragActive(false);
+  }, []);
+
+  const handleDragOver = useCallback((e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handleDrop = useCallback((e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragActive(false);
+
+    if (!uploading && e.dataTransfer.files) {
+      validateAndUploadFiles(e.dataTransfer.files);
+    }
+  }, [uploading, validateAndUploadFiles]);
+
+  // File input change handler
+  const handleFileInputChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      validateAndUploadFiles(e.target.files);
+      // Reset input so same file can be selected again
+      e.target.value = '';
+    }
+  }, [validateAndUploadFiles]);
+
+  // Click to open file dialog
+  const handleClick = useCallback(() => {
+    if (!uploading) {
+      fileInputRef.current?.click();
+    }
+  }, [uploading]);
 
   const handleDelete = async (imageId: string) => {
     if (!confirm('Are you sure you want to delete this image?')) return;
@@ -228,7 +275,11 @@ export function ImageUploader({
 
         {/* Upload Placeholder with "+" */}
         <div
-          {...getRootProps()}
+          onClick={handleClick}
+          onDragEnter={handleDragEnter}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
           className={`
             relative aspect-square rounded-lg border-2 border-dashed cursor-pointer
             transition-all duration-200 flex flex-col items-center justify-center
@@ -239,7 +290,15 @@ export function ImageUploader({
             ${uploading ? 'opacity-50 pointer-events-none' : ''}
           `}
         >
-          <input {...getInputProps()} />
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
+            multiple
+            onChange={handleFileInputChange}
+            disabled={uploading}
+            className="hidden"
+          />
 
           <div className="text-center p-4">
             <div className="text-5xl mb-2 text-gray-400">
