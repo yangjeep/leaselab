@@ -16,6 +16,15 @@ export default defineConfig({
       { find: "~", replacement: path.resolve(__dirname, "./app") },
     ],
   },
+  build: {
+    // Enable tree-shaking and minification
+    minify: 'esbuild',
+    rollupOptions: {
+      output: {
+        manualChunks: undefined, // Let Remix handle chunking
+      },
+    },
+  },
   plugins: [
     remix({
       future: {
