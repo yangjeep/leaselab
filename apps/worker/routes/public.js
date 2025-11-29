@@ -6,7 +6,7 @@
  */
 import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth';
-import { getPropertyById, createLead, getPublicListings, getUnitWithDetails, createTempLeadFile, associateFilesWithLead, countLeadFiles, getImagesByEntityWithVerification, } from '../lib/db';
+import { getPropertyById, createLead, getPublicListings, getUnitWithDetails, createTempLeadFile, countLeadFiles, getImagesByEntityWithVerification, } from '../lib/db';
 import { FILE_UPLOAD_CONSTRAINTS } from '../../../shared/config';
 import { generateId } from '../../../shared/utils';
 const publicRoutes = new Hono();
@@ -232,9 +232,9 @@ publicRoutes.post('/leads/files/upload', async (c) => {
                 message: 'Too many temporary files. Please submit your application or wait.',
             }, 429);
         }
-        // Generate R2 key for temp file
+        // Generate R2 key for staged file
         const fileId = generateId('file');
-        const r2Key = `${siteId}/leads/temp/${fileId}-${file.name}`;
+        const r2Key = `${siteId}/_staged/${fileId}-${file.name}`;
         // Upload to R2 PRIVATE_BUCKET
         await c.env.PRIVATE_BUCKET.put(r2Key, file.stream(), {
             httpMetadata: {
@@ -304,10 +304,43 @@ publicRoutes.post('/leads', async (c) => {
         const lead = await createLead(c.env.DB, siteId, body);
         // Associate uploaded files with the lead (if any)
         if (body.fileIds && Array.isArray(body.fileIds) && body.fileIds.length > 0) {
-            const fileCount = await associateFilesWithLead(c.env.DB, siteId, lead.id, body.fileIds);
-            console.log(`Associated ${fileCount} files with lead ${lead.id}`);
-            // TODO: Move files from temp/ to leads/{leadId}/ in R2
-            // This can be done in a background task or scheduled worker
+            // First, get the staged files to get their R2 keys
+            const placeholders = body.fileIds.map(() => '?').join(',');
+            const stagedFilesResult = await c.env.DB.prepare(`SELECT id, file_name, r2_key FROM staged_files WHERE id IN (${placeholders}) AND site_id = ?`).bind(...body.fileIds, siteId).all();
+            const stagedFiles = stagedFilesResult.results || [];
+            // Move files in R2 from _staged/ to leads/{leadId}/ and build new key mapping
+            const fileKeyMapping = {};
+            for (const stagedFile of stagedFiles) {
+                const oldKey = stagedFile.r2_key;
+                const newKey = `${siteId}/leads/${lead.id}/${stagedFile.id}-${stagedFile.file_name}`;
+                fileKeyMapping[stagedFile.id] = newKey;
+                // Copy file to new location
+                const object = await c.env.PRIVATE_BUCKET.get(oldKey);
+                if (object) {
+                    await c.env.PRIVATE_BUCKET.put(newKey, object.body, {
+                        httpMetadata: object.httpMetadata,
+                    });
+                    // Delete old staged file
+                    await c.env.PRIVATE_BUCKET.delete(oldKey);
+                }
+            }
+            // Move files in database from staged_files to lead_files with updated R2 keys
+            for (const fileId of body.fileIds) {
+                const newKey = fileKeyMapping[fileId];
+                if (newKey) {
+                    // Insert into lead_files with updated r2_key
+                    await c.env.DB.prepare(`
+            INSERT INTO lead_files (id, site_id, lead_id, file_type, file_name, file_size, mime_type, r2_key, uploaded_at)
+            SELECT id, site_id, ?, file_type, file_name, file_size, mime_type, ?, uploaded_at
+            FROM staged_files
+            WHERE id = ? AND site_id = ?
+          `).bind(lead.id, newKey, fileId, siteId).run();
+                    // Delete from staged_files
+                    await c.env.DB.prepare(`DELETE FROM staged_files WHERE id = ? AND site_id = ?`)
+                        .bind(fileId, siteId).run();
+                }
+            }
+            console.log(`Associated ${body.fileIds.length} files with lead ${lead.id}`);
         }
         return c.json({
             success: true,

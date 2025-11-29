@@ -1,5 +1,6 @@
 export type Listing = {
-  id: string;
+  id: string; // Unit ID
+  propertyId?: string; // Property ID (for lead submissions)
   title: string;
   slug: string;
   price: number;

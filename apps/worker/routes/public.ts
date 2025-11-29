@@ -356,14 +356,16 @@ publicRoutes.post('/leads', async (c: Context) => {
     // Associate uploaded files with the lead (if any)
     if (body.fileIds && Array.isArray(body.fileIds) && body.fileIds.length > 0) {
       // First, get the staged files to get their R2 keys
-      const stagedFiles = await c.env.DB.query(
-        `SELECT id, file_name, r2_key FROM staged_files WHERE id IN (${body.fileIds.map(() => '?').join(',')}) AND site_id = ?`,
-        [...body.fileIds, siteId]
-      );
+      const placeholders = body.fileIds.map(() => '?').join(',');
+      const stagedFilesResult = await c.env.DB.prepare(
+        `SELECT id, file_name, r2_key FROM staged_files WHERE id IN (${placeholders}) AND site_id = ?`
+      ).bind(...body.fileIds, siteId).all();
+
+      const stagedFiles = stagedFilesResult.results || [];
 
       // Move files in R2 from _staged/ to leads/{leadId}/ and build new key mapping
       const fileKeyMapping: Record<string, string> = {};
-      for (const stagedFile of stagedFiles.results as any[]) {
+      for (const stagedFile of stagedFiles as any[]) {
         const oldKey = stagedFile.r2_key as string;
         const newKey = `${siteId}/leads/${lead.id}/${stagedFile.id}-${stagedFile.file_name}`;
         fileKeyMapping[stagedFile.id] = newKey;
@@ -385,15 +387,16 @@ publicRoutes.post('/leads', async (c: Context) => {
         const newKey = fileKeyMapping[fileId];
         if (newKey) {
           // Insert into lead_files with updated r2_key
-          await c.env.DB.execute(`
+          await c.env.DB.prepare(`
             INSERT INTO lead_files (id, site_id, lead_id, file_type, file_name, file_size, mime_type, r2_key, uploaded_at)
             SELECT id, site_id, ?, file_type, file_name, file_size, mime_type, ?, uploaded_at
             FROM staged_files
             WHERE id = ? AND site_id = ?
-          `, [lead.id, newKey, fileId, siteId]);
+          `).bind(lead.id, newKey, fileId, siteId).run();
 
           // Delete from staged_files
-          await c.env.DB.execute(`DELETE FROM staged_files WHERE id = ? AND site_id = ?`, [fileId, siteId]);
+          await c.env.DB.prepare(`DELETE FROM staged_files WHERE id = ? AND site_id = ?`)
+            .bind(fileId, siteId).run();
         }
       }
 

@@ -202,6 +202,7 @@ export async function getPublicListings(dbInput, siteId, filters, r2PublicUrl, b
             : verifiedImages.map(img => img.url || `${r2PublicUrl}/${img.r2Key}`);
         return {
             id: row.id,
+            propertyId: row.property_id, // Include property_id for lead submissions
             title: row.title + (row.unit_number !== '1' ? ` - Unit ${row.unit_number}` : ''),
             slug: row.slug,
             price: row.price,

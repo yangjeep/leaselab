@@ -1,4 +1,4 @@
-import { Form, useActionData, useNavigation } from "@remix-run/react";
+import { useFetcher, useNavigate } from "@remix-run/react";
 import { useState, useEffect } from "react";
 import type { Listing } from "~/lib/types";
 import FileUpload from "./FileUpload";
@@ -17,43 +17,56 @@ function getFirstDayOfNextMonth(): string {
 }
 
 export default function ContactForm({ listings = [], selectedProperty }: ContactFormProps) {
-  const actionData = useActionData<{ error?: string; success?: boolean }>();
-  const navigation = useNavigation();
-  const isSubmitting = navigation.state === "submitting";
+  const fetcher = useFetcher<{ error?: string; success?: boolean }>();
+  const navigate = useNavigate();
+  const isSubmitting = fetcher.state === "submitting";
 
-  const [selectedPropertyId, setSelectedPropertyId] = useState(selectedProperty || "");
+  const [selectedListingId, setSelectedListingId] = useState(selectedProperty || "");
   const [fileIds, setFileIds] = useState<string[]>([]);
 
   useEffect(() => {
     if (selectedProperty) {
-      setSelectedPropertyId(selectedProperty);
+      setSelectedListingId(selectedProperty);
     }
   }, [selectedProperty]);
+
+  // Navigate to thank you page when submission succeeds
+  useEffect(() => {
+    if (fetcher.state === "idle" && fetcher.data?.success) {
+      navigate("/thank-you", { replace: true });
+    }
+  }, [fetcher.state, fetcher.data?.success, navigate]);
 
   const handleFilesChange = (newFileIds: string[]) => {
     setFileIds(newFileIds);
   };
 
+  // Find the selected listing to get its propertyId and unitId
+  const selectedListing = listings.find(l => l.id === selectedListingId);
+  const propertyIdToSubmit = selectedListingId === "other"
+    ? "general"
+    : (selectedListing?.propertyId || selectedListingId);
+  const unitIdToSubmit = selectedListingId === "other" ? undefined : selectedListingId;
+
   return (
     <section className="card p-4">
       <h2 className="mb-4 text-xl font-semibold">Apply / Inquire</h2>
-      <Form method="post" action="/api/tenant-leads" className="space-y-4">
-        {actionData?.error && (
+      <fetcher.Form method="post" action="/api/tenant-leads" className="space-y-4">
+        {fetcher.data?.error && (
           <div className="text-red-400 text-sm p-3 rounded-lg bg-red-400/10">
-            {actionData.error}
+            {fetcher.data.error}
           </div>
         )}
 
         {/* Property Select */}
         <div>
-          <label htmlFor="propertyId" className="label block mb-1">
+          <label htmlFor="listingSelect" className="label block mb-1">
             Property <span className="text-red-400">*</span>
           </label>
           <select
-            id="propertyId"
-            name="propertyId"
-            value={selectedPropertyId}
-            onChange={(e) => setSelectedPropertyId(e.target.value)}
+            id="listingSelect"
+            value={selectedListingId}
+            onChange={(e) => setSelectedListingId(e.target.value)}
             className="input w-full"
             required
           >
@@ -66,6 +79,10 @@ export default function ContactForm({ listings = [], selectedProperty }: Contact
             <option value="other">Other Inquiries</option>
           </select>
         </div>
+
+        {/* Hidden inputs for propertyId and unitId */}
+        <input type="hidden" name="propertyId" value={propertyIdToSubmit} />
+        {unitIdToSubmit && <input type="hidden" name="unitId" value={unitIdToSubmit} />}
 
         {/* Name Fields */}
         <div className="grid grid-cols-2 gap-4">
@@ -184,7 +201,7 @@ export default function ContactForm({ listings = [], selectedProperty }: Contact
         >
           {isSubmitting ? "Submitting..." : "Submit Application"}
         </button>
-      </Form>
+      </fetcher.Form>
     </section>
   );
 }

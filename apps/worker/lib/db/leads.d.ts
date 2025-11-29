@@ -19,6 +19,7 @@ export declare function createLeadFile(dbInput: DatabaseInput, siteId: string, d
 /**
  * Create a temporary lead file (before lead is associated)
  * Used during the upload workflow where files are uploaded before lead submission
+ * Files are staged in staged_files table until associated with a lead
  */
 export declare function createTempLeadFile(dbInput: DatabaseInput, siteId: string, data: {
     fileType: LeadFile['fileType'];
@@ -32,11 +33,11 @@ export declare function createTempLeadFile(dbInput: DatabaseInput, siteId: strin
 }>;
 /**
  * Associate temporary files with a lead
- * Updates lead_id for temp files and returns the count of files associated
+ * Moves files from staged_files to lead_files and returns the count of files associated
  */
 export declare function associateFilesWithLead(dbInput: DatabaseInput, siteId: string, leadId: string, fileIds: string[]): Promise<number>;
 /**
- * Count files for a lead (or count temp files if leadId is null)
+ * Count files for a lead (or count staged files if leadId is null)
  */
 export declare function countLeadFiles(dbInput: DatabaseInput, siteId: string, leadId?: string | null): Promise<number>;
 export declare function getAIEvaluation(dbInput: DatabaseInput, siteId: string, leadId: string): Promise<LeadAIResult | null>;

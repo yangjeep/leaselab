@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import type { LeadFileType, FileUploadResponse } from "../../../../shared/types";
 
 // File constraints from PRD
@@ -41,6 +41,14 @@ export default function FileUpload({ onFilesChange }: FileUploadProps) {
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [error, setError] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Automatically notify parent when files change
+  useEffect(() => {
+    const fileIds = files
+      .filter(f => !f.uploading && !f.error && !f.id.startsWith('temp-'))
+      .map(f => f.id);
+    onFilesChange(fileIds);
+  }, [files, onFilesChange]);
 
   const validateFile = (file: File): string | null => {
     // Check file size
@@ -153,15 +161,12 @@ export default function FileUpload({ onFilesChange }: FileUploadProps) {
       // Handle both direct response and wrapped response { success: true, data: {...} }
       const result: FileUploadResponse = 'data' in responseData && responseData.data ? responseData.data : responseData as FileUploadResponse;
 
-      // Update file with real ID
+      // Update file with real ID (useEffect will notify parent)
       setFiles(prev => prev.map(f =>
         f.id === tempId
           ? { ...f, id: result.fileId, uploading: false }
           : f
       ));
-
-      // Notify parent component
-      updateFileIds();
 
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Upload failed';
@@ -177,19 +182,10 @@ export default function FileUpload({ onFilesChange }: FileUploadProps) {
     }
   };
 
-  const updateFileIds = () => {
-    // Get all successfully uploaded file IDs (not temp IDs, not uploading, no errors)
-    const fileIds = files
-      .filter(f => !f.uploading && !f.error && !f.id.startsWith('temp-'))
-      .map(f => f.id);
-    onFilesChange(fileIds);
-  };
-
   const removeFile = (fileId: string) => {
     setFiles(prev => prev.filter(f => f.id !== fileId));
     setError("");
-    // Update parent after state settles
-    setTimeout(() => updateFileIds(), 0);
+    // useEffect will notify parent automatically
   };
 
   const getFileTypeLabel = (type: LeadFileType): string => {

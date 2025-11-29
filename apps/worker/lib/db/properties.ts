@@ -268,6 +268,7 @@ export async function getPublicListings(dbInput: DatabaseInput, siteId: string, 
 
         return {
             id: row.id,
+            propertyId: row.property_id, // Include property_id for lead submissions
             title: row.title + (row.unit_number !== '1' ? ` - Unit ${row.unit_number}` : ''),
             slug: row.slug,
             price: row.price,

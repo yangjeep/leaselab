@@ -9,6 +9,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
   const formData = await request.formData();
 
   const propertyId = formData.get("propertyId") as string;
+  const unitId = formData.get("unitId") as string | null;
   const firstName = formData.get("firstName") as string;
   const lastName = formData.get("lastName") as string;
   const email = formData.get("email") as string;
@@ -67,7 +68,8 @@ export async function action({ request, context }: ActionFunctionArgs) {
         "Authorization": `Bearer ${siteApiToken}`,
       },
       body: JSON.stringify({
-        propertyId: propertyId === "other" ? "general" : propertyId,
+        propertyId,
+        unitId: unitId || undefined,
         firstName,
         lastName,
         email,
@@ -89,8 +91,8 @@ export async function action({ request, context }: ActionFunctionArgs) {
       );
     }
 
-    // Redirect to thank you page on success
-    return redirect("/thank-you");
+    // Return success (fetcher will handle navigation)
+    return json({ success: true });
   } catch (error) {
     console.error("Form submission error:", error);
     return json(
