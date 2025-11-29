@@ -1,5 +1,5 @@
-import type { LoaderFunctionArgs, MetaFunction } from "@remix-run/node";
-import { json } from "@remix-run/node";
+import type { LoaderFunctionArgs, MetaFunction } from "@remix-run/cloudflare";
+import { json } from "@remix-run/cloudflare";
 import { useLoaderData, useSearchParams, Link } from "@remix-run/react";
 import { useState } from "react";
 import { fetchPropertyById, fetchProperties, fetchSiteConfig } from "~/lib/api-client";
@@ -51,7 +51,7 @@ export default function PropertyDetail() {
   const imageUrls = listing.images
     ?.map((img: any) => img.url)
     .filter((url: string) => url && url.trim() !== '') || [];
-  
+
   const gallery = imageUrls.length > 0
     ? imageUrls
     : [listing.imageUrl || "/placeholder1.jpg", "/placeholder2.jpg"];
