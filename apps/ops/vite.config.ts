@@ -26,6 +26,7 @@ export default defineConfig({
         v3_lazyRouteDiscovery: true,
       },
     }),
+    // @ts-expect-error - vite-tsconfig-paths uses vite 7.x types but apps use vite 5.x
     tsconfigPaths({ root: __dirname }),
   ],
 });
