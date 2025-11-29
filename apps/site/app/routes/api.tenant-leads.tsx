@@ -46,10 +46,16 @@ export async function action({ request, context }: ActionFunctionArgs) {
   // Handle both Cloudflare Pages and Vite dev mode
   const env = (context as any).cloudflare?.env || process.env;
   const workerUrl = env.WORKER_URL;
+  const siteApiToken = env.SITE_API_TOKEN;
 
   if (!workerUrl) {
     console.error("WORKER_URL not configured");
     return json({ error: "Server configuration error" }, { status: 500 });
+  }
+
+  if (!siteApiToken) {
+    console.error("SITE_API_TOKEN not configured");
+    return json({ error: "Authentication not configured" }, { status: 500 });
   }
 
   try {
@@ -58,6 +64,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "Authorization": `Bearer ${siteApiToken}`,
       },
       body: JSON.stringify({
         propertyId: propertyId === "other" ? "general" : propertyId,
@@ -93,7 +100,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
   }
 }
 
-// Handle GET requests (not allowed for this route)
+// Handle GET requests (Remix may fetch this route after redirect)
 export async function loader() {
-  return json({ error: "Method not allowed" }, { status: 405 });
+  return json({ success: true });
 }
