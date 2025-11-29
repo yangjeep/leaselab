@@ -1,5 +1,5 @@
 import { useFetcher, useNavigate } from "@remix-run/react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { Listing } from "~/lib/types";
 import FileUpload from "./FileUpload";
 
@@ -20,6 +20,7 @@ export default function ContactForm({ listings = [], selectedProperty }: Contact
   const fetcher = useFetcher<{ error?: string; success?: boolean }>();
   const navigate = useNavigate();
   const isSubmitting = fetcher.state === "submitting";
+  const hasRedirected = useRef(false);
 
   const [selectedListingId, setSelectedListingId] = useState(selectedProperty || "");
   const [fileIds, setFileIds] = useState<string[]>([]);
@@ -33,11 +34,12 @@ export default function ContactForm({ listings = [], selectedProperty }: Contact
   // Navigate to thank you page when submission succeeds
   useEffect(() => {
     console.log("ContactForm fetcher state:", fetcher.state, "data:", fetcher.data);
-    if (fetcher.state === "idle" && fetcher.data?.success) {
+    if (fetcher.state === "idle" && fetcher.data?.success && !hasRedirected.current) {
       console.log("Submission successful, redirecting...");
+      hasRedirected.current = true;
       navigate("/thank-you", { replace: true });
     }
-  }, [fetcher.state, fetcher.data?.success, navigate]);
+  }, [fetcher.state, fetcher.data, navigate]);
 
   const handleFilesChange = (newFileIds: string[]) => {
     setFileIds(newFileIds);
