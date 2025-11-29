@@ -1,5 +1,5 @@
-import type { Lead, LeadFile, LeadAIResult, LeadHistory } from '../../../../shared/types';
-import { generateId } from '../../../../shared/utils';
+import type { Lead, LeadFile, LeadAIResult, LeadHistory } from '~/shared/types';
+import { generateId } from '~/shared/utils';
 import type { DatabaseInput } from './helpers';
 import { normalizeDb } from './helpers';
 
@@ -26,12 +26,14 @@ function mapLeadFromDb(row: unknown): Lead {
     };
 }
 
-function mapLeadWithOccupancyFromDb(row: unknown): Lead {
+function mapLeadWithOccupancyFromDb(row: unknown): Lead & { isUnitOccupied?: boolean; propertyName?: string } {
     const lead = mapLeadFromDb(row);
     const r = row as Record<string, unknown>;
-    lead.isUnitOccupied = Boolean(r.is_unit_occupied);
-    lead.propertyName = r.property_name as string | undefined;
-    return lead;
+    return {
+        ...lead,
+        isUnitOccupied: Boolean(r.is_unit_occupied),
+        propertyName: r.property_name as string | undefined,
+    };
 }
 
 function mapLeadFileFromDb(row: unknown): LeadFile {
@@ -268,7 +270,7 @@ export async function associateFilesWithLead(dbInput: DatabaseInput, siteId: str
       AND lead_id IS NULL
   `, [leadId, ...fileIds, siteId]);
 
-    return result.meta?.changes || 0;
+    return (result.meta?.rows_written || 0) as number;
 }
 
 /**

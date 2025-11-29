@@ -1,0 +1,25 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ES2022"],
+    "types": ["@cloudflare/workers-types"],
+    "moduleDetection": "force",
+    "noEmit": false,
+    "skipLibCheck": true,
+    "baseUrl": "../..",
+    "paths": {
+      "~/shared/types": ["shared/types"],
+      "~/shared/utils": ["shared/utils"],
+      "~/shared/config": ["shared/config"],
+      "~/shared/storage-core": ["shared/storage-core"],
+      "~/shared/storage-cloudflare": ["shared/storage-cloudflare"],
+      "~/shared/constants": ["shared/constants"]
+    }
+  },
+  "include": [
+    "**/*.ts",
+    "global.d.ts"
+  ],
+  "exclude": ["node_modules", "build", ".cache", "../../shared/utils/image.ts"]
+}
+

@@ -57,7 +57,7 @@ export async function getUsers(dbInput: DatabaseInput): Promise<User[]> {
     ORDER BY created_at DESC
   `);
 
-    return results.map((row: Record<string, unknown>) => ({
+    return (results as Array<Record<string, unknown>>).map((row) => ({
         id: row.id as string,
         email: row.email as string,
         name: row.name as string,

@@ -4,6 +4,7 @@
  * This file contains the centralized type definitions for Cloudflare bindings.
  * Use this single source of truth across all apps (worker, ops, site).
  */
+/// <reference types="@cloudflare/workers-types" />
 /**
  * Bucket configuration helper
  */

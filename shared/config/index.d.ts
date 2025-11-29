@@ -15,6 +15,9 @@ export declare const UserRoleEnum: z.ZodEnum<["admin", "manager", "staff"]>;
 export declare const API_ROUTES: {
     readonly PUBLIC: {
         readonly LEADS: "/api/public/leads";
+        readonly PROPERTIES: "/api/public/properties";
+        readonly PROPERTY_BY_SLUG: (slug: string) => string;
+        readonly FILE_UPLOAD: "/api/public/leads/files/upload";
     };
     readonly LEADS: {
         readonly BASE: "/api/leads";
@@ -73,32 +76,38 @@ export declare const LeadSubmissionSchema: z.ZodObject<{
     moveInDate: z.ZodString;
     message: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
-    propertyId: string;
-    firstName: string;
-    lastName: string;
     email: string;
     phone: string;
+    propertyId: string;
     employmentStatus: "employed" | "self_employed" | "unemployed" | "retired" | "student";
+    firstName: string;
+    lastName: string;
     moveInDate: string;
-    currentAddress?: string | undefined;
     message?: string | undefined;
+    currentAddress?: string | undefined;
 }, {
-    propertyId: string;
-    firstName: string;
-    lastName: string;
     email: string;
     phone: string;
+    propertyId: string;
     employmentStatus: "employed" | "self_employed" | "unemployed" | "retired" | "student";
+    firstName: string;
+    lastName: string;
     moveInDate: string;
-    currentAddress?: string | undefined;
     message?: string | undefined;
+    currentAddress?: string | undefined;
 }>;
 export type LeadSubmissionInput = z.infer<typeof LeadSubmissionSchema>;
+export declare const FILE_UPLOAD_CONSTRAINTS: {
+    readonly maxFileSize: number;
+    readonly maxFilesPerLead: 10;
+    readonly allowedMimeTypes: readonly ["application/pdf", "image/jpeg", "image/png", "image/heic", "image/heif", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"];
+    readonly allowedExtensions: readonly [".pdf", ".jpg", ".jpeg", ".png", ".heic", ".heif", ".doc", ".docx"];
+};
 export declare const FileUploadSchema: z.ZodObject<{
     fileType: z.ZodEnum<["government_id", "paystub", "bank_statement", "tax_return", "employment_letter", "other"]>;
     fileName: z.ZodString;
     fileSize: z.ZodNumber;
-    mimeType: z.ZodString;
+    mimeType: z.ZodEnum<[string, ...string[]]>;
 }, "strip", z.ZodTypeAny, {
     fileType: "government_id" | "paystub" | "bank_statement" | "tax_return" | "employment_letter" | "other";
     fileName: string;
@@ -123,16 +132,16 @@ export declare const AIEvaluationResultSchema: z.ZodObject<{
     score: number;
     label: "A" | "B" | "C" | "D";
     summary: string;
-    recommendation: string;
     risk_flags: string[];
+    recommendation: string;
     fraud_signals: string[];
     model_version: string;
 }, {
     score: number;
     label: "A" | "B" | "C" | "D";
     summary: string;
-    recommendation: string;
     risk_flags: string[];
+    recommendation: string;
     fraud_signals: string[];
     model_version: string;
 }>;
@@ -146,19 +155,19 @@ export declare const CreateWorkOrderSchema: z.ZodObject<{
     priority: z.ZodEnum<["low", "medium", "high", "emergency"]>;
     scheduledDate: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
+    priority: "low" | "medium" | "high" | "emergency";
     propertyId: string;
     description: string;
     title: string;
     category: "other" | "plumbing" | "electrical" | "hvac" | "appliance" | "structural" | "pest" | "landscaping";
-    priority: "low" | "medium" | "high" | "emergency";
     tenantId?: string | undefined;
     scheduledDate?: string | undefined;
 }, {
+    priority: "low" | "medium" | "high" | "emergency";
     propertyId: string;
     description: string;
     title: string;
     category: "other" | "plumbing" | "electrical" | "hvac" | "appliance" | "structural" | "pest" | "landscaping";
-    priority: "low" | "medium" | "high" | "emergency";
     tenantId?: string | undefined;
     scheduledDate?: string | undefined;
 }>;
@@ -173,23 +182,23 @@ export declare const UpdateWorkOrderSchema: z.ZodObject<{
     scheduledDate: z.ZodOptional<z.ZodString>;
     notes: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
-    status?: "open" | "in_progress" | "pending_parts" | "scheduled" | "completed" | "cancelled" | undefined;
+    priority?: "low" | "medium" | "high" | "emergency" | undefined;
+    status?: "scheduled" | "open" | "completed" | "in_progress" | "cancelled" | "pending_parts" | undefined;
     description?: string | undefined;
     title?: string | undefined;
     category?: "other" | "plumbing" | "electrical" | "hvac" | "appliance" | "structural" | "pest" | "landscaping" | undefined;
-    priority?: "low" | "medium" | "high" | "emergency" | undefined;
+    notes?: string | undefined;
     assignedTo?: string | undefined;
     scheduledDate?: string | undefined;
-    notes?: string | undefined;
 }, {
-    status?: "open" | "in_progress" | "pending_parts" | "scheduled" | "completed" | "cancelled" | undefined;
+    priority?: "low" | "medium" | "high" | "emergency" | undefined;
+    status?: "scheduled" | "open" | "completed" | "in_progress" | "cancelled" | "pending_parts" | undefined;
     description?: string | undefined;
     title?: string | undefined;
     category?: "other" | "plumbing" | "electrical" | "hvac" | "appliance" | "structural" | "pest" | "landscaping" | undefined;
-    priority?: "low" | "medium" | "high" | "emergency" | undefined;
+    notes?: string | undefined;
     assignedTo?: string | undefined;
     scheduledDate?: string | undefined;
-    notes?: string | undefined;
 }>;
 export type UpdateWorkOrderInput = z.infer<typeof UpdateWorkOrderSchema>;
 export declare const CreatePropertySchema: z.ZodObject<{
@@ -206,31 +215,31 @@ export declare const CreatePropertySchema: z.ZodObject<{
     latitude: z.ZodOptional<z.ZodNumber>;
     longitude: z.ZodOptional<z.ZodNumber>;
 }, "strip", z.ZodTypeAny, {
-    propertyType: "single_family" | "multi_family" | "condo" | "townhouse" | "commercial";
-    city: string;
-    name: string;
     address: string;
-    postalCode: string;
+    city: string;
     province: string;
+    postalCode: string;
+    propertyType: "single_family" | "multi_family" | "condo" | "townhouse" | "commercial";
+    name: string;
     amenities: string[];
     description?: string | undefined;
-    yearBuilt?: number | undefined;
-    lotSize?: number | undefined;
     latitude?: number | undefined;
     longitude?: number | undefined;
+    yearBuilt?: number | undefined;
+    lotSize?: number | undefined;
 }, {
-    propertyType: "single_family" | "multi_family" | "condo" | "townhouse" | "commercial";
-    city: string;
-    name: string;
     address: string;
-    postalCode: string;
+    city: string;
     province: string;
+    postalCode: string;
+    propertyType: "single_family" | "multi_family" | "condo" | "townhouse" | "commercial";
+    name: string;
     description?: string | undefined;
-    yearBuilt?: number | undefined;
-    lotSize?: number | undefined;
+    amenities?: string[] | undefined;
     latitude?: number | undefined;
     longitude?: number | undefined;
-    amenities?: string[] | undefined;
+    yearBuilt?: number | undefined;
+    lotSize?: number | undefined;
 }>;
 export type CreatePropertyInput = z.infer<typeof CreatePropertySchema>;
 export declare const UpdatePropertySchema: z.ZodObject<{
@@ -247,31 +256,31 @@ export declare const UpdatePropertySchema: z.ZodObject<{
     latitude: z.ZodOptional<z.ZodOptional<z.ZodNumber>>;
     longitude: z.ZodOptional<z.ZodOptional<z.ZodNumber>>;
 }, "strip", z.ZodTypeAny, {
-    propertyType?: "single_family" | "multi_family" | "condo" | "townhouse" | "commercial" | undefined;
-    city?: string | undefined;
-    name?: string | undefined;
     address?: string | undefined;
+    city?: string | undefined;
+    province?: string | undefined;
     postalCode?: string | undefined;
+    propertyType?: "single_family" | "multi_family" | "condo" | "townhouse" | "commercial" | undefined;
+    name?: string | undefined;
     description?: string | undefined;
-    yearBuilt?: number | undefined;
-    lotSize?: number | undefined;
+    amenities?: string[] | undefined;
     latitude?: number | undefined;
     longitude?: number | undefined;
-    province?: string | undefined;
-    amenities?: string[] | undefined;
+    yearBuilt?: number | undefined;
+    lotSize?: number | undefined;
 }, {
-    propertyType?: "single_family" | "multi_family" | "condo" | "townhouse" | "commercial" | undefined;
-    city?: string | undefined;
-    name?: string | undefined;
     address?: string | undefined;
+    city?: string | undefined;
+    province?: string | undefined;
     postalCode?: string | undefined;
+    propertyType?: "single_family" | "multi_family" | "condo" | "townhouse" | "commercial" | undefined;
+    name?: string | undefined;
     description?: string | undefined;
-    yearBuilt?: number | undefined;
-    lotSize?: number | undefined;
+    amenities?: string[] | undefined;
     latitude?: number | undefined;
     longitude?: number | undefined;
-    province?: string | undefined;
-    amenities?: string[] | undefined;
+    yearBuilt?: number | undefined;
+    lotSize?: number | undefined;
 }>;
 export type UpdatePropertyInput = z.infer<typeof UpdatePropertySchema>;
 export declare const CreateUnitSchema: z.ZodObject<{
@@ -291,12 +300,12 @@ export declare const CreateUnitSchema: z.ZodObject<{
     bedrooms: number;
     bathrooms: number;
     unitNumber: string;
-    rentAmount: number;
     features: string[];
+    rentAmount: number;
+    floor?: number | undefined;
     name?: string | undefined;
     sqft?: number | undefined;
     depositAmount?: number | undefined;
-    floor?: number | undefined;
     availableDate?: string | undefined;
 }, {
     bedrooms: number;
@@ -304,12 +313,12 @@ export declare const CreateUnitSchema: z.ZodObject<{
     unitNumber: string;
     rentAmount: number;
     status?: "available" | "occupied" | "maintenance" | "pending" | undefined;
+    floor?: number | undefined;
     name?: string | undefined;
     sqft?: number | undefined;
-    depositAmount?: number | undefined;
-    floor?: number | undefined;
-    availableDate?: string | undefined;
     features?: string[] | undefined;
+    depositAmount?: number | undefined;
+    availableDate?: string | undefined;
 }>;
 export type CreateUnitInput = z.infer<typeof CreateUnitSchema>;
 export declare const UpdateUnitSchema: z.ZodObject<{
@@ -326,28 +335,28 @@ export declare const UpdateUnitSchema: z.ZodObject<{
     availableDate: z.ZodOptional<z.ZodOptional<z.ZodString>>;
 }, "strip", z.ZodTypeAny, {
     status?: "available" | "occupied" | "maintenance" | "pending" | undefined;
-    name?: string | undefined;
     bedrooms?: number | undefined;
     bathrooms?: number | undefined;
+    floor?: number | undefined;
     unitNumber?: string | undefined;
+    name?: string | undefined;
     sqft?: number | undefined;
+    features?: string[] | undefined;
     rentAmount?: number | undefined;
     depositAmount?: number | undefined;
-    floor?: number | undefined;
     availableDate?: string | undefined;
-    features?: string[] | undefined;
 }, {
     status?: "available" | "occupied" | "maintenance" | "pending" | undefined;
-    name?: string | undefined;
     bedrooms?: number | undefined;
     bathrooms?: number | undefined;
+    floor?: number | undefined;
     unitNumber?: string | undefined;
+    name?: string | undefined;
     sqft?: number | undefined;
+    features?: string[] | undefined;
     rentAmount?: number | undefined;
     depositAmount?: number | undefined;
-    floor?: number | undefined;
     availableDate?: string | undefined;
-    features?: string[] | undefined;
 }>;
 export type UpdateUnitInput = z.infer<typeof UpdateUnitSchema>;
 export declare const AssignTenantSchema: z.ZodObject<{
@@ -392,8 +401,8 @@ export declare const RegisterImageSchema: z.ZodObject<{
     height: z.ZodOptional<z.ZodNumber>;
     altText: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
-    r2Key: string;
     filename: string;
+    r2Key: string;
     entityType: "property" | "unit";
     entityId: string;
     contentType: string;
@@ -402,8 +411,8 @@ export declare const RegisterImageSchema: z.ZodObject<{
     height?: number | undefined;
     altText?: string | undefined;
 }, {
-    r2Key: string;
     filename: string;
+    r2Key: string;
     entityType: "property" | "unit";
     entityId: string;
     contentType: string;
@@ -436,18 +445,18 @@ export declare const CreateTenantSchema: z.ZodObject<{
     emergencyContact: z.ZodOptional<z.ZodString>;
     emergencyPhone: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
-    firstName: string;
-    lastName: string;
     email: string;
     phone: string;
+    firstName: string;
+    lastName: string;
     leadId?: string | undefined;
     emergencyContact?: string | undefined;
     emergencyPhone?: string | undefined;
 }, {
-    firstName: string;
-    lastName: string;
     email: string;
     phone: string;
+    firstName: string;
+    lastName: string;
     leadId?: string | undefined;
     emergencyContact?: string | undefined;
     emergencyPhone?: string | undefined;
@@ -461,16 +470,16 @@ export declare const CreateLeaseSchema: z.ZodObject<{
     monthlyRent: z.ZodNumber;
     securityDeposit: z.ZodNumber;
 }, "strip", z.ZodTypeAny, {
-    propertyId: string;
     tenantId: string;
     securityDeposit: number;
+    propertyId: string;
     startDate: string;
     endDate: string;
     monthlyRent: number;
 }, {
-    propertyId: string;
     tenantId: string;
     securityDeposit: number;
+    propertyId: string;
     startDate: string;
     endDate: string;
     monthlyRent: number;
@@ -505,17 +514,17 @@ export declare const LeadFilterSchema: z.ZodObject<{
     sortBy: z.ZodDefault<z.ZodEnum<["createdAt", "aiScore", "lastName"]>>;
     sortOrder: z.ZodDefault<z.ZodEnum<["asc", "desc"]>>;
 }, "strip", z.ZodTypeAny, {
-    sortBy: "aiScore" | "createdAt" | "lastName";
     sortOrder: "asc" | "desc";
+    sortBy: "createdAt" | "aiScore" | "lastName";
+    search?: string | undefined;
     status?: "new" | "documents_pending" | "documents_received" | "ai_evaluating" | "ai_evaluated" | "screening" | "approved" | "rejected" | "lease_sent" | "lease_signed" | undefined;
     propertyId?: string | undefined;
-    search?: string | undefined;
 }, {
+    search?: string | undefined;
+    sortOrder?: "asc" | "desc" | undefined;
     status?: "new" | "documents_pending" | "documents_received" | "ai_evaluating" | "ai_evaluated" | "screening" | "approved" | "rejected" | "lease_sent" | "lease_signed" | undefined;
     propertyId?: string | undefined;
-    sortBy?: "aiScore" | "createdAt" | "lastName" | undefined;
-    sortOrder?: "asc" | "desc" | undefined;
-    search?: string | undefined;
+    sortBy?: "createdAt" | "aiScore" | "lastName" | undefined;
 }>;
 export type LeadFilterInput = z.infer<typeof LeadFilterSchema>;
 export declare const SQL_SCHEMAS: {

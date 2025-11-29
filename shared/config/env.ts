@@ -5,6 +5,8 @@
  * Use this single source of truth across all apps (worker, ops, site).
  */
 
+/// <reference types="@cloudflare/workers-types" />
+
 /**
  * Cloudflare R2 Bucket Bindings
  * These are the R2 buckets used across the application

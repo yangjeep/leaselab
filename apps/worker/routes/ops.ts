@@ -1213,7 +1213,10 @@ opsRoutes.post('/images/presign', async (c: Context) => {
 opsRoutes.post('/images/upload', async (c: Context) => {
   try {
     const formData = await c.req.formData();
-    const file = formData.get('file') as File;
+    const file = formData.get('file') as File | null;
+    if (!file || typeof file === 'string') {
+      return c.json({ error: 'Invalid file' }, 400);
+    }
     const key = formData.get('key') as string;
 
     if (!file || !key) {
@@ -1331,7 +1334,10 @@ opsRoutes.post('/leads/:id/files', async (c: Context) => {
     if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
     const leadId = c.req.param('id');
     const formData = await c.req.formData();
-    const file = formData.get('file') as File;
+    const file = formData.get('file') as File | null;
+    if (!file || typeof file === 'string') {
+      return c.json({ error: 'Invalid file' }, 400);
+    }
     const fileType = formData.get('fileType') as string;
 
     if (!file) {

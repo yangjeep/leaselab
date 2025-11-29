@@ -4,7 +4,7 @@
  * Validates API tokens for public endpoints (/api/public/*)
  * Used by apps/site to authenticate requests
  */
-import { validateApiToken } from '../../ops/app/lib/api-auth.server';
+import { validateApiToken } from '../lib/auth';
 export async function authMiddleware(c, next) {
     const auth = c.req.header('Authorization');
     if (!auth?.startsWith('Bearer ')) {

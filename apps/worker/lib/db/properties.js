@@ -2,7 +2,7 @@ import { generateId } from '../../../../shared/utils';
 import { normalizeDb } from './helpers';
 // Import related functions
 import { getUnitsByPropertyId } from './units';
-import { getImagesByEntity } from './images';
+import { getImagesByEntity, addImageUrlsWithVerification } from './images';
 // Mapper function
 function mapPropertyFromDb(row) {
     const r = row;
@@ -12,8 +12,8 @@ function mapPropertyFromDb(row) {
         slug: r.slug,
         address: r.address,
         city: r.city,
-        state: r.province,
-        zipCode: r.postal_code,
+        province: r.province,
+        postalCode: r.postal_code,
         propertyType: r.property_type,
         description: r.description,
         yearBuilt: r.year_built,
@@ -144,7 +144,7 @@ export async function deleteProperty(dbInput, siteId, id) {
     await db.execute('DELETE FROM properties WHERE id = ? AND site_id = ?', [id, siteId]);
 }
 // Listings (for storefront - properties with units)
-export async function getPublicListings(dbInput, siteId, filters, r2PublicUrl) {
+export async function getPublicListings(dbInput, siteId, filters, r2PublicUrl, bucket) {
     const db = normalizeDb(dbInput);
     // Query units with property data joined
     let query = `
@@ -191,10 +191,15 @@ export async function getPublicListings(dbInput, siteId, filters, r2PublicUrl) {
         if (images.length === 0) {
             images = await getImagesByEntity(db, siteId, 'property', row.property_id);
         }
+        // Verify images exist in R2 and generate public URLs
+        let verifiedImages = images;
+        if (bucket && r2PublicUrl) {
+            verifiedImages = await addImageUrlsWithVerification(images, r2PublicUrl, bucket);
+        }
         // Generate R2 public URLs from image r2Keys
-        const imageUrls = r2PublicUrl
+        const imageUrls = r2PublicUrl && !bucket
             ? images.map(img => `${r2PublicUrl}/${img.r2Key}`)
-            : [];
+            : verifiedImages.map(img => img.url || `${r2PublicUrl}/${img.r2Key}`);
         return {
             id: row.id,
             title: row.title + (row.unit_number !== '1' ? ` - Unit ${row.unit_number}` : ''),

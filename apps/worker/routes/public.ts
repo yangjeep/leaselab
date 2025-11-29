@@ -229,7 +229,10 @@ publicRoutes.post('/leads/files/upload', async (c: Context) => {
 
     // Parse multipart form data
     const formData = await c.req.formData();
-    const file = formData.get('file') as File;
+    const file = formData.get('file') as File | null;
+    if (!file || typeof file === 'string') {
+      return c.json({ error: 'Invalid file' }, 400);
+    }
     const fileType = formData.get('fileType') as string;
 
     if (!file) {

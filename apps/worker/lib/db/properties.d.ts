@@ -41,5 +41,5 @@ export declare function deleteProperty(dbInput: DatabaseInput, siteId: string, i
 export declare function getPublicListings(dbInput: DatabaseInput, siteId: string, filters?: {
     city?: string;
     status?: string;
-}, r2PublicUrl?: string): Promise<any[]>;
+}, r2PublicUrl?: string, bucket?: any): Promise<any[]>;
 //# sourceMappingURL=properties.d.ts.map

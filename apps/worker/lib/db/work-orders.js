@@ -20,21 +20,60 @@ function mapWorkOrderFromDb(row) {
         updatedAt: r.updated_at,
     };
 }
+// Mapper function for work orders with details
+function mapWorkOrderWithDetailsFromDb(row) {
+    const r = row;
+    return {
+        ...mapWorkOrderFromDb(row),
+        propertyName: r.property_name,
+        unitNumber: r.unit_number,
+    };
+}
 export async function getWorkOrders(dbInput, siteId, options) {
     const db = normalizeDb(dbInput);
-    let query = 'SELECT * FROM work_orders WHERE site_id = ?';
+    // Join with properties to get property name
+    // Left join with leases to get unit info (if work order has a tenant)
+    let query = `
+        SELECT
+            wo.*,
+            p.name as property_name,
+            u.unit_number as unit_number
+        FROM work_orders wo
+        INNER JOIN properties p ON wo.property_id = p.id
+        LEFT JOIN tenants t ON wo.tenant_id = t.id
+        LEFT JOIN leases l ON t.id = l.tenant_id AND l.status IN ('active', 'signed')
+        LEFT JOIN units u ON l.unit_id = u.id
+        WHERE wo.site_id = ?
+    `;
     const params = [siteId];
     if (options?.status) {
-        query += ' AND status = ?';
+        query += ' AND wo.status = ?';
         params.push(options.status);
     }
     if (options?.propertyId) {
-        query += ' AND property_id = ?';
+        query += ' AND wo.property_id = ?';
         params.push(options.propertyId);
     }
-    query += ' ORDER BY created_at DESC';
+    // Add sorting
+    const sortBy = options?.sortBy || 'created_at';
+    const sortOrder = options?.sortOrder || 'desc';
+    // Map frontend sort fields to database columns
+    const sortFieldMap = {
+        'title': 'wo.title',
+        'category': 'wo.category',
+        'priority': 'wo.priority',
+        'status': 'wo.status',
+        'createdAt': 'wo.created_at',
+        'created_at': 'wo.created_at',
+        'propertyName': 'p.name',
+        'property_name': 'p.name',
+        'unitNumber': 'u.unit_number',
+        'unit_number': 'u.unit_number',
+    };
+    const dbSortField = sortFieldMap[sortBy] || 'wo.created_at';
+    query += ` ORDER BY ${dbSortField} ${sortOrder.toUpperCase()}`;
     const results = await db.query(query, params);
-    return results.map(mapWorkOrderFromDb);
+    return results.map(mapWorkOrderWithDetailsFromDb);
 }
 export async function getWorkOrderById(dbInput, siteId, id) {
     const db = normalizeDb(dbInput);
