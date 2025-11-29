@@ -37,21 +37,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
       - name: Deploy Worker Preview
-        working-directory: apps/worker
-        run: npx wrangler deploy --env preview
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: apps/worker
+          command: deploy --env preview
 
   deploy-ops:
     name: Deploy Ops Preview
@@ -75,11 +67,12 @@ jobs:
         run: npm run build
 
       - name: Deploy to Cloudflare Pages Preview
-        working-directory: apps/ops
-        run: npx wrangler pages deploy build/client --project-name=leaselab-ops --branch=preview-${{ github.event.pull_request.number }}
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: apps/ops
+          command: pages deploy build/client --project-name=leaselab-ops --branch=preview-${{ github.event.pull_request.number }}
 
   deploy-site:
     name: Deploy Site Preview
@@ -103,11 +96,12 @@ jobs:
         run: npm run build
 
       - name: Deploy to Cloudflare Pages Preview
-        working-directory: apps/site
-        run: npx wrangler pages deploy build/client --project-name=leaselab-site --branch=preview-${{ github.event.pull_request.number }}
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: apps/site
+          command: pages deploy build/client --project-name=leaselab-site --branch=preview-${{ github.event.pull_request.number }}
 
   comment:
     name: Comment on PR
