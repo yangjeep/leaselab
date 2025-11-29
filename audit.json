@@ -1,0 +1,218 @@
+{
+  "auditReportVersion": 2,
+  "vulnerabilities": {
+    "@remix-run/dev": {
+      "name": "@remix-run/dev",
+      "severity": "high",
+      "isDirect": true,
+      "via": [
+        "@vanilla-extract/integration",
+        "esbuild",
+        "remark-mdx-frontmatter",
+        "valibot",
+        "wrangler"
+      ],
+      "effects": [],
+      "range": "*",
+      "nodes": [
+        "node_modules/@remix-run/dev"
+      ],
+      "fixAvailable": false
+    },
+    "@vanilla-extract/integration": {
+      "name": "@vanilla-extract/integration",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        "esbuild",
+        "vite",
+        "vite-node"
+      ],
+      "effects": [
+        "@remix-run/dev"
+      ],
+      "range": "<=8.0.0",
+      "nodes": [
+        "node_modules/@vanilla-extract/integration"
+      ],
+      "fixAvailable": false
+    },
+    "esbuild": {
+      "name": "esbuild",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1102341,
+          "name": "esbuild",
+          "dependency": "esbuild",
+          "title": "esbuild enables any website to send any requests to the development server and read the response",
+          "url": "https://github.com/advisories/GHSA-67mh-4wv8-2f99",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-346"
+          ],
+          "cvss": {
+            "score": 5.3,
+            "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:U/C:H/I:N/A:N"
+          },
+          "range": "<=0.24.2"
+        }
+      ],
+      "effects": [
+        "@remix-run/dev",
+        "@vanilla-extract/integration",
+        "vite",
+        "wrangler"
+      ],
+      "range": "<=0.24.2",
+      "nodes": [
+        "node_modules/esbuild",
+        "node_modules/vite/node_modules/esbuild",
+        "node_modules/wrangler/node_modules/esbuild"
+      ],
+      "fixAvailable": false
+    },
+    "estree-util-value-to-estree": {
+      "name": "estree-util-value-to-estree",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1103822,
+          "name": "estree-util-value-to-estree",
+          "dependency": "estree-util-value-to-estree",
+          "title": "estree-util-value-to-estree allows prototype pollution in generated ESTree",
+          "url": "https://github.com/advisories/GHSA-f7f6-9jq7-3rqj",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-1321"
+          ],
+          "cvss": {
+            "score": 0,
+            "vectorString": null
+          },
+          "range": "<3.3.3"
+        }
+      ],
+      "effects": [
+        "remark-mdx-frontmatter"
+      ],
+      "range": "<3.3.3",
+      "nodes": [
+        "node_modules/estree-util-value-to-estree"
+      ],
+      "fixAvailable": true
+    },
+    "remark-mdx-frontmatter": {
+      "name": "remark-mdx-frontmatter",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        "estree-util-value-to-estree"
+      ],
+      "effects": [],
+      "range": "<=2.1.1",
+      "nodes": [
+        "node_modules/remark-mdx-frontmatter"
+      ],
+      "fixAvailable": true
+    },
+    "valibot": {
+      "name": "valibot",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1110992,
+          "name": "valibot",
+          "dependency": "valibot",
+          "title": "Valibot has a ReDoS vulnerability in `EMOJI_REGEX`",
+          "url": "https://github.com/advisories/GHSA-vqpr-j7v3-hqw9",
+          "severity": "high",
+          "cwe": [
+            "CWE-1333"
+          ],
+          "cvss": {
+            "score": 7.5,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+          },
+          "range": ">=0.31.0 <1.2.0"
+        }
+      ],
+      "effects": [
+        "@remix-run/dev"
+      ],
+      "range": "0.31.0 - 1.1.0",
+      "nodes": [
+        "node_modules/valibot"
+      ],
+      "fixAvailable": false
+    },
+    "vite": {
+      "name": "vite",
+      "severity": "moderate",
+      "isDirect": true,
+      "via": [
+        "esbuild"
+      ],
+      "effects": [
+        "@vanilla-extract/integration",
+        "vite-node"
+      ],
+      "range": "0.11.0 - 6.1.6",
+      "nodes": [
+        "node_modules/vite"
+      ],
+      "fixAvailable": false
+    },
+    "vite-node": {
+      "name": "vite-node",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        "vite"
+      ],
+      "effects": [],
+      "range": "<=2.2.0-beta.2",
+      "nodes": [
+        "node_modules/@vanilla-extract/integration/node_modules/vite-node"
+      ],
+      "fixAvailable": true
+    },
+    "wrangler": {
+      "name": "wrangler",
+      "severity": "moderate",
+      "isDirect": true,
+      "via": [
+        "esbuild"
+      ],
+      "effects": [
+        "@remix-run/dev"
+      ],
+      "range": "<=4.10.0",
+      "nodes": [
+        "node_modules/wrangler"
+      ],
+      "fixAvailable": false
+    }
+  },
+  "metadata": {
+    "vulnerabilities": {
+      "info": 0,
+      "low": 0,
+      "moderate": 7,
+      "high": 2,
+      "critical": 0,
+      "total": 9
+    },
+    "dependencies": {
+      "prod": 83,
+      "dev": 938,
+      "optional": 152,
+      "peer": 18,
+      "peerOptional": 0,
+      "total": 1025
+    }
+  }
+}
