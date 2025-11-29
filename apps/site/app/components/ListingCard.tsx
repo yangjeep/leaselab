@@ -7,7 +7,20 @@ type ListingCardProps = {
 };
 
 export default function ListingCard({ listing, queryString }: ListingCardProps) {
-  const imageSrc = (listing.images && listing.images[0]) || listing.imageUrl || "/placeholder1.jpg";
+  // Extract the first valid image URL - handle both object and string formats
+  let firstImageUrl = listing.imageUrl || "/placeholder1.jpg";
+  
+  if (listing.images && listing.images.length > 0) {
+    const firstImage = listing.images[0];
+    if (typeof firstImage === 'string') {
+      firstImageUrl = firstImage;
+    } else if (firstImage && typeof firstImage === 'object' && 'url' in firstImage) {
+      firstImageUrl = firstImage.url || "/placeholder1.jpg";
+    }
+  }
+  
+  const imageSrc = firstImageUrl && firstImageUrl.trim() !== '' ? firstImageUrl : "/placeholder1.jpg";
+  
   // Link to unit detail by unit ID (listings represent units)
   const href = queryString ? `/units/${listing.id}?${queryString}` : `/units/${listing.id}`;
 

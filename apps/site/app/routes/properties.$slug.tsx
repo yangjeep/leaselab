@@ -47,8 +47,13 @@ export default function PropertyDetail() {
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState("overview");
 
-  const gallery = listing.images && listing.images.length > 0
-    ? listing.images
+  // Extract valid image URLs from the images array
+  const imageUrls = listing.images
+    ?.map((img: any) => img.url)
+    .filter((url: string) => url && url.trim() !== '') || [];
+  
+  const gallery = imageUrls.length > 0
+    ? imageUrls
     : [listing.imageUrl || "/placeholder1.jpg", "/placeholder2.jpg"];
 
   // Build back URL with preserved filters
