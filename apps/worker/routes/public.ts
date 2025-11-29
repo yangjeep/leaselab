@@ -15,7 +15,6 @@ import {
   getPublicListings,
   getUnitWithDetails,
   createTempLeadFile,
-  associateFilesWithLead,
   countLeadFiles,
   addImageUrls,
   getImagesByEntityWithUrls,
@@ -276,9 +275,9 @@ publicRoutes.post('/leads/files/upload', async (c: Context) => {
       }, 429);
     }
 
-    // Generate R2 key for temp file
+    // Generate R2 key for staged file
     const fileId = generateId('file');
-    const r2Key = `${siteId}/leads/temp/${fileId}-${file.name}`;
+    const r2Key = `${siteId}/_staged/${fileId}-${file.name}`;
 
     // Upload to R2 PRIVATE_BUCKET
     await c.env.PRIVATE_BUCKET.put(r2Key, file.stream(), {
@@ -356,11 +355,49 @@ publicRoutes.post('/leads', async (c: Context) => {
 
     // Associate uploaded files with the lead (if any)
     if (body.fileIds && Array.isArray(body.fileIds) && body.fileIds.length > 0) {
-      const fileCount = await associateFilesWithLead(c.env.DB, siteId, lead.id, body.fileIds);
-      console.log(`Associated ${fileCount} files with lead ${lead.id}`);
+      // First, get the staged files to get their R2 keys
+      const stagedFiles = await c.env.DB.query(
+        `SELECT id, file_name, r2_key FROM staged_files WHERE id IN (${body.fileIds.map(() => '?').join(',')}) AND site_id = ?`,
+        [...body.fileIds, siteId]
+      );
 
-      // TODO: Move files from temp/ to leads/{leadId}/ in R2
-      // This can be done in a background task or scheduled worker
+      // Move files in R2 from _staged/ to leads/{leadId}/ and build new key mapping
+      const fileKeyMapping: Record<string, string> = {};
+      for (const stagedFile of stagedFiles.results as any[]) {
+        const oldKey = stagedFile.r2_key as string;
+        const newKey = `${siteId}/leads/${lead.id}/${stagedFile.id}-${stagedFile.file_name}`;
+        fileKeyMapping[stagedFile.id] = newKey;
+
+        // Copy file to new location
+        const object = await c.env.PRIVATE_BUCKET.get(oldKey);
+        if (object) {
+          await c.env.PRIVATE_BUCKET.put(newKey, object.body, {
+            httpMetadata: object.httpMetadata,
+          });
+
+          // Delete old staged file
+          await c.env.PRIVATE_BUCKET.delete(oldKey);
+        }
+      }
+
+      // Move files in database from staged_files to lead_files with updated R2 keys
+      for (const fileId of body.fileIds) {
+        const newKey = fileKeyMapping[fileId];
+        if (newKey) {
+          // Insert into lead_files with updated r2_key
+          await c.env.DB.execute(`
+            INSERT INTO lead_files (id, site_id, lead_id, file_type, file_name, file_size, mime_type, r2_key, uploaded_at)
+            SELECT id, site_id, ?, file_type, file_name, file_size, mime_type, ?, uploaded_at
+            FROM staged_files
+            WHERE id = ? AND site_id = ?
+          `, [lead.id, newKey, fileId, siteId]);
+
+          // Delete from staged_files
+          await c.env.DB.execute(`DELETE FROM staged_files WHERE id = ? AND site_id = ?`, [fileId, siteId]);
+        }
+      }
+
+      console.log(`Associated ${body.fileIds.length} files with lead ${lead.id}`);
     }
 
     return c.json({
