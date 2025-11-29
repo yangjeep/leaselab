@@ -34,11 +34,10 @@ export default function TabbedLayout({ tabs, defaultTab, activeTab: controlledAc
           <button
             key={tab.id}
             onClick={() => handleTabChange(tab.id)}
-            className={`px-4 py-2 rounded-lg transition-colors ${
-              activeTab === tab.id
+            className={`px-4 py-2 rounded-lg transition-colors ${activeTab === tab.id
                 ? "bg-white/10 text-white"
                 : "text-white/60 hover:text-white hover:bg-white/5"
-            }`}
+              }`}
           >
             {tab.label}
           </button>
@@ -47,7 +46,14 @@ export default function TabbedLayout({ tabs, defaultTab, activeTab: controlledAc
 
       {/* Tab Content */}
       <div>
-        {tabs.find((tab) => tab.id === activeTab)?.content}
+        {tabs.map((tab) => (
+          <div
+            key={tab.id}
+            style={{ display: activeTab === tab.id ? "block" : "none" }}
+          >
+            {tab.content}
+          </div>
+        ))}
       </div>
     </div>
   );

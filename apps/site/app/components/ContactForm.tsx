@@ -32,7 +32,9 @@ export default function ContactForm({ listings = [], selectedProperty }: Contact
 
   // Navigate to thank you page when submission succeeds
   useEffect(() => {
+    console.log("ContactForm fetcher state:", fetcher.state, "data:", fetcher.data);
     if (fetcher.state === "idle" && fetcher.data?.success) {
+      console.log("Submission successful, redirecting...");
       navigate("/thank-you", { replace: true });
     }
   }, [fetcher.state, fetcher.data?.success, navigate]);
