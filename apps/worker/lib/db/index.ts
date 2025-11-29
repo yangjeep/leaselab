@@ -39,6 +39,8 @@ export {
     setCoverImage,
     addImageUrls,
     getImagesByEntityWithUrls,
+    addImageUrlsWithVerification,
+    getImagesByEntityWithVerification,
 } from './images';
 
 // Re-export all lead operations

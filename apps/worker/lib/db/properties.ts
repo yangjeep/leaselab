@@ -5,7 +5,7 @@ import { normalizeDb } from './helpers';
 
 // Import related functions
 import { getUnitsByPropertyId } from './units';
-import { getImagesByEntity } from './images';
+import { getImagesByEntity, addImageUrlsWithVerification } from './images';
 
 // Mapper function
 function mapPropertyFromDb(row: unknown): Property {
@@ -16,8 +16,8 @@ function mapPropertyFromDb(row: unknown): Property {
         slug: r.slug as string,
         address: r.address as string,
         city: r.city as string,
-        state: r.province as string,
-        zipCode: r.postal_code as string,
+        province: r.province as string,
+        postalCode: r.postal_code as string,
         propertyType: r.property_type as Property['propertyType'],
         description: r.description as string | undefined,
         yearBuilt: r.year_built as number | undefined,
@@ -201,7 +201,7 @@ export async function deleteProperty(dbInput: DatabaseInput, siteId: string, id:
 export async function getPublicListings(dbInput: DatabaseInput, siteId: string, filters?: {
     city?: string;
     status?: string;
-}, r2PublicUrl?: string): Promise<any[]> {
+}, r2PublicUrl?: string, bucket?: any): Promise<any[]> {
     const db = normalizeDb(dbInput);
 
     // Query units with property data joined
@@ -255,10 +255,16 @@ export async function getPublicListings(dbInput: DatabaseInput, siteId: string, 
             images = await getImagesByEntity(db, siteId, 'property', row.property_id);
         }
 
+        // Verify images exist in R2 and generate public URLs
+        let verifiedImages = images;
+        if (bucket && r2PublicUrl) {
+            verifiedImages = await addImageUrlsWithVerification(images, r2PublicUrl, bucket);
+        }
+
         // Generate R2 public URLs from image r2Keys
-        const imageUrls = r2PublicUrl
+        const imageUrls = r2PublicUrl && !bucket
             ? images.map(img => `${r2PublicUrl}/${img.r2Key}`)
-            : [];
+            : verifiedImages.map(img => img.url || `${r2PublicUrl}/${img.r2Key}`);
 
         return {
             id: row.id,

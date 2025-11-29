@@ -19,6 +19,7 @@ import {
   countLeadFiles,
   addImageUrls,
   getImagesByEntityWithUrls,
+  getImagesByEntityWithVerification,
 } from '../lib/db';
 import { FILE_UPLOAD_CONSTRAINTS } from '../../../shared/config';
 import type { FileUploadResponse } from '../../../shared/types';
@@ -53,7 +54,7 @@ publicRoutes.get('/properties', async (c: Context) => {
     if (city) filters.city = city;
     if (status) filters.status = status;
 
-    const listings = await getPublicListings(c.env.DB, siteId, filters, c.env.R2_PUBLIC_URL);
+    const listings = await getPublicListings(c.env.DB, siteId, filters, c.env.R2_PUBLIC_URL, c.env.PUBLIC_BUCKET);
 
     return c.json({
       success: true,
@@ -86,8 +87,8 @@ publicRoutes.get('/properties/:id', async (c: Context) => {
       }, 404);
     }
 
-    // Get property images with URLs
-    const images = await getImagesByEntityWithUrls(c.env.DB, siteId, 'property', property.id, c.env.R2_PUBLIC_URL);
+    // Get property images with URLs and verify they exist in R2
+    const images = await getImagesByEntityWithVerification(c.env.DB, siteId, 'property', property.id, c.env.R2_PUBLIC_URL, c.env.PUBLIC_BUCKET);
 
     return c.json({
       success: true,
@@ -124,16 +125,17 @@ publicRoutes.get('/units/:id', async (c: Context) => {
       }, 404);
     }
 
-    // Get unit images with URLs
-    const unitImages = await getImagesByEntityWithUrls(c.env.DB, siteId, 'unit', id, c.env.R2_PUBLIC_URL);
-
-    // Get property images with URLs (if property exists)
+    // Get property images first (if property exists), then unit images
+    // Verify all images exist in R2 before serving
     let propertyImages: any[] = [];
     if (unit.property) {
-      propertyImages = await getImagesByEntityWithUrls(c.env.DB, siteId, 'property', unit.property.id, c.env.R2_PUBLIC_URL);
+      propertyImages = await getImagesByEntityWithVerification(c.env.DB, siteId, 'property', unit.property.id, c.env.R2_PUBLIC_URL, c.env.PUBLIC_BUCKET);
       // Mark property images for identification
       propertyImages = propertyImages.map(img => ({ ...img, isPropertyImage: true }));
     }
+
+    // Get unit images with verification
+    const unitImages = await getImagesByEntityWithVerification(c.env.DB, siteId, 'unit', id, c.env.R2_PUBLIC_URL, c.env.PUBLIC_BUCKET);
 
     // Combine images: property first, then unit (as per PRD requirements)
     const allImages = [...propertyImages, ...unitImages];
