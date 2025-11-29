@@ -15,30 +15,56 @@ The monorepo contains three applications:
 ## Environments
 
 ### Production Environment
-- **Trigger**: Push to `main` branch
+- **Trigger**: Release creation (when a release is published on GitHub)
 - **Worker URL**: `https://leaselab-worker.yangjeep.workers.dev`
 - **Ops URL**: `https://leaselab-ops.pages.dev`
 - **Site URL**: `https://leaselab-site.pages.dev`
 
-### Preview Environment
+### Preview Environments
+
+#### PR Preview
 - **Trigger**: Pull requests to `main` branch
 - **Worker URL**: `https://leaselab-worker-preview.yangjeep.workers.dev`
 - **Ops URL**: `https://preview-{PR_NUMBER}.leaselab-ops.pages.dev`
 - **Site URL**: `https://preview-{PR_NUMBER}.leaselab-site.pages.dev`
+
+#### Main Branch Preview
+- **Trigger**: Push to `main` branch (after PR merge)
+- **Worker URL**: `https://leaselab-worker-preview.yangjeep.workers.dev`
+- **Ops URL**: `https://preview-main.leaselab-ops.pages.dev`
+- **Site URL**: `https://preview-main.leaselab-site.pages.dev`
 
 ## Deployment Strategy
 
 ### Deployment Order
 
 1. **Worker** deploys first (both ops and site depend on it)
-2. **Ops** deploys second
-3. **Site** deploys last (may depend on ops API)
+2. **Ops** and **Site** deploy in parallel (both depend on worker)
+
+### Preview Environment Naming
+
+To avoid confusion and provide clear staging environments:
+
+- **PR Previews**: `preview-{PR_NUMBER}` (e.g., `preview-123.leaselab-ops.pages.dev`)
+  - Unique URL for each pull request
+  - Automatically deployed when PR is opened or updated
+  - Used for testing individual feature branches
+
+- **Main Preview**: `preview-main` (e.g., `preview-main.leaselab-ops.pages.dev`)
+  - Consistent URL for main branch preview
+  - Automatically deployed after merging to main
+  - Used as final staging environment before production release
+  - Tests integration of multiple merged features
+
+**Note**: Both use the same preview environment configuration (preview D1 database, preview R2 buckets, etc.)
 
 ### Production Deployment
 
-Production deployments are triggered automatically when code is pushed to the `main` branch.
+Production deployments are triggered automatically when a GitHub release is published.
 
 **Workflow**: `.github/workflows/deploy-production.yml`
+
+**Trigger**: `release` event with type `published`
 
 Steps:
 1. Run tests across the workspace
@@ -46,18 +72,43 @@ Steps:
 3. Build and deploy ops to Cloudflare Pages (main branch)
 4. Build and deploy site to Cloudflare Pages (main branch)
 
-### Preview Deployment
+**To deploy to production:**
+1. Ensure all changes are merged to `main` branch
+2. Create a new release on GitHub (e.g., `v1.0.0`)
+3. Publish the release
+4. GitHub Actions will automatically deploy to production
 
-Preview deployments are triggered automatically when a pull request is opened, synchronized, or reopened.
+### Preview Deployments
+
+There are two types of preview deployments, both using the preview environment configuration:
+
+#### PR Preview Deployment
 
 **Workflow**: `.github/workflows/deploy-preview.yml`
+
+**Trigger**: Pull requests opened, synchronized, or reopened
 
 Steps:
 1. Run tests across the workspace
 2. Deploy worker to preview environment
-3. Build and deploy ops to preview branch
-4. Build and deploy site to preview branch
+3. Build and deploy ops to PR-specific preview branch (`preview-{PR_NUMBER}`)
+4. Build and deploy site to PR-specific preview branch (`preview-{PR_NUMBER}`)
 5. Comment on PR with preview URLs
+
+#### Main Branch Preview Deployment
+
+**Workflow**: `.github/workflows/deploy-preview-main.yml`
+
+**Trigger**: Push to `main` branch (after PR merge)
+
+Steps:
+1. Run tests across the workspace
+2. Deploy worker to preview environment
+3. Build and deploy ops to main preview branch (`preview-main`)
+4. Build and deploy site to main preview branch (`preview-main`)
+5. Display preview URLs in workflow summary
+
+**Purpose**: Test the latest `main` branch code in a preview environment before creating a production release
 
 ## Required Secrets
 
@@ -175,37 +226,76 @@ npm run build
 wrangler pages deploy build/client --project-name=leaselab-site --branch=preview
 ```
 
-## Testing Before Merge
+## Deployment Flow
 
-When a PR is created:
-1. Automated tests run
-2. Preview environments are deployed
-3. PR comment shows preview URLs
-4. Test the preview environments thoroughly
-5. Merge PR when ready
+### Development to Production
 
-Upon merge to `main`:
-1. Production deployment automatically triggers
-2. All three apps deploy in sequence
+1. **Create Feature Branch**: Develop your changes in a feature branch
+2. **Open Pull Request**: Create PR to `main` branch
+3. **PR Preview Deployment**: GitHub Actions automatically:
+   - Runs tests
+   - Deploys to PR-specific preview environments
+   - Comments on PR with preview URLs (e.g., `preview-123`)
+4. **Test PR Preview**: Test the PR preview environments thoroughly
+5. **Merge PR**: Merge to `main` when ready
+6. **Main Preview Deployment**: After merge, GitHub Actions automatically:
+   - Runs tests
+   - Deploys to main branch preview environments (`preview-main`)
+   - Provides a final staging environment for testing
+7. **Test Main Preview**: Test the `preview-main` environment (optional but recommended)
+8. **Create Release**: When ready to deploy to production:
+   - Go to GitHub Releases
+   - Create a new release (e.g., `v1.0.0`)
+   - Add release notes describing changes
+   - Publish the release
+9. **Production Deployment**: GitHub Actions automatically deploys to production
+
+### Release Versioning
+
+Follow semantic versioning for releases:
+- **Major** (v1.0.0): Breaking changes
+- **Minor** (v1.1.0): New features, backwards compatible
+- **Patch** (v1.0.1): Bug fixes, backwards compatible
 
 ## Rollback Strategy
 
-### Quick Rollback
+### Quick Rollback (Recommended)
 If a production deployment has issues:
 
-1. **Revert the commit** in `main` branch
-2. Push the revert (triggers new production deployment)
+**Option 1: Create a new patch release**
+1. Fix the issue in a new PR
+2. Merge to `main`
+3. Create a new patch release (e.g., `v1.0.1` → `v1.0.2`)
+4. Publish the release to deploy the fix
+
+**Option 2: Re-release previous version**
+1. Go to GitHub Releases
+2. Find the last working release
+3. Edit it and click "Publish release" again (GitHub will re-trigger the workflow)
 
 ### Manual Rollback
+For immediate rollback without waiting for CI/CD:
+
 ```bash
 # For Worker - use Wrangler rollback
+cd apps/worker
 wrangler rollback --env production
 
-# For Pages - redeploy previous version
-git checkout <previous-commit>
+# For Pages - redeploy previous release
+git checkout <previous-release-tag>
+cd apps/ops
 npm run build
 wrangler pages deploy build/client --project-name=leaselab-ops --branch=main
+
+cd ../site
+npm run build
+wrangler pages deploy build/client --project-name=leaselab-site --branch=main
 ```
+
+### Emergency Rollback
+If you need to rollback immediately:
+1. Use Wrangler CLI commands above for instant rollback
+2. Then create a proper fix and follow the normal release process
 
 ## Monitoring
 
@@ -217,10 +307,12 @@ wrangler pages deploy build/client --project-name=leaselab-ops --branch=main
 
 1. **Always create PRs** for changes - test in preview first
 2. **Review preview deployments** before merging
-3. **Monitor production deployments** after merge
-4. **Keep secrets up to date** in GitHub and Cloudflare
-5. **Test preview resources** periodically to ensure they match production setup
-6. **Use semantic commits** for clear deployment history
+3. **Use release tags** for production deployments - provides clear versioning
+4. **Add release notes** describing what changed in each release
+5. **Monitor production deployments** after release
+6. **Keep secrets up to date** in GitHub and Cloudflare
+7. **Test preview resources** periodically to ensure they match production setup
+8. **Use semantic versioning** for releases (major.minor.patch)
 
 ## Troubleshooting
 

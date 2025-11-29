@@ -1,8 +1,9 @@
-name: Deploy Production
+name: Deploy Preview (Main Branch)
 
 on:
-  release:
-    types: [published]
+  push:
+    branches:
+      - main
 
 jobs:
   test:
@@ -25,7 +26,7 @@ jobs:
         run: npm test
 
   deploy-worker:
-    name: Deploy Worker
+    name: Deploy Worker Preview (Main)
     needs: test
     runs-on: ubuntu-latest
     steps:
@@ -41,15 +42,15 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Deploy Worker
+      - name: Deploy Worker Preview
         working-directory: apps/worker
-        run: npx wrangler deploy --env production
+        run: npx wrangler deploy --env preview
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
   deploy-ops:
-    name: Deploy Ops
+    name: Deploy Ops Preview (Main)
     needs: deploy-worker
     runs-on: ubuntu-latest
     steps:
@@ -69,15 +70,15 @@ jobs:
         working-directory: apps/ops
         run: npm run build
 
-      - name: Deploy to Cloudflare Pages
+      - name: Deploy to Cloudflare Pages Preview (Main)
         working-directory: apps/ops
-        run: npx wrangler pages deploy build/client --project-name=leaselab-ops --branch=main
+        run: npx wrangler pages deploy build/client --project-name=leaselab-ops --branch=preview-main
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
   deploy-site:
-    name: Deploy Site
+    name: Deploy Site Preview (Main)
     needs: deploy-worker
     runs-on: ubuntu-latest
     steps:
@@ -97,23 +98,28 @@ jobs:
         working-directory: apps/site
         run: npm run build
 
-      - name: Deploy to Cloudflare Pages
+      - name: Deploy to Cloudflare Pages Preview (Main)
         working-directory: apps/site
-        run: npx wrangler pages deploy build/client --project-name=leaselab-site --branch=main
+        run: npx wrangler pages deploy build/client --project-name=leaselab-site --branch=preview-main
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
   notify:
-    name: Notify Deployment Success
+    name: Notify Preview Deployment
     needs: [deploy-worker, deploy-ops, deploy-site]
     runs-on: ubuntu-latest
     if: success()
     steps:
       - name: Deployment Summary
         run: |
-          echo "✅ Production deployment completed successfully!"
-          echo "Release: ${{ github.event.release.tag_name }}"
-          echo "Worker: https://leaselab-worker.yangjeep.workers.dev"
-          echo "Ops: https://leaselab-ops.pages.dev"
-          echo "Site: https://leaselab-site.pages.dev"
+          echo "✅ Main branch preview deployment completed!"
+          echo "Commit: ${{ github.sha }}"
+          echo ""
+          echo "Preview URLs (Main Branch):"
+          echo "- Worker: https://leaselab-worker-preview.yangjeep.workers.dev"
+          echo "- Ops: https://preview-main.leaselab-ops.pages.dev"
+          echo "- Site: https://preview-main.leaselab-site.pages.dev"
+          echo ""
+          echo "Test these environments before creating a production release."
+
