@@ -1,6 +1,7 @@
 import { Form, useActionData, useNavigation } from "@remix-run/react";
 import { useState, useEffect } from "react";
 import type { Listing } from "~/lib/types";
+import FileUpload from "./FileUpload";
 
 type ContactFormProps = {
   listings?: Listing[];
@@ -21,12 +22,17 @@ export default function ContactForm({ listings = [], selectedProperty }: Contact
   const isSubmitting = navigation.state === "submitting";
 
   const [selectedPropertyId, setSelectedPropertyId] = useState(selectedProperty || "");
+  const [fileIds, setFileIds] = useState<string[]>([]);
 
   useEffect(() => {
     if (selectedProperty) {
       setSelectedPropertyId(selectedProperty);
     }
   }, [selectedProperty]);
+
+  const handleFilesChange = (newFileIds: string[]) => {
+    setFileIds(newFileIds);
+  };
 
   return (
     <section className="card p-4">
@@ -164,6 +170,12 @@ export default function ContactForm({ listings = [], selectedProperty }: Contact
             className="input w-full"
           />
         </div>
+
+        {/* File Upload */}
+        <FileUpload onFilesChange={handleFilesChange} />
+
+        {/* Hidden input for fileIds */}
+        <input type="hidden" name="fileIds" value={JSON.stringify(fileIds)} />
 
         <button
           type="submit"

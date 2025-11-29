@@ -17,6 +17,17 @@ export async function action({ request, context }: ActionFunctionArgs) {
   const employmentStatus = formData.get("employmentStatus") as string;
   // monthlyIncome removed from public submission
   const message = formData.get("message") as string;
+  const fileIdsJson = formData.get("fileIds") as string;
+
+  // Parse fileIds from JSON
+  let fileIds: string[] = [];
+  if (fileIdsJson) {
+    try {
+      fileIds = JSON.parse(fileIdsJson);
+    } catch (e) {
+      console.error("Failed to parse fileIds:", e);
+    }
+  }
 
   // Validate required fields
   if (!propertyId || !firstName || !lastName || !email || !phone) {
@@ -58,6 +69,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
         // landlord/internal notes now handled in Ops; no monthlyIncome captured
         moveInDate: moveInDate || new Date().toISOString().split("T")[0],
         message,
+        fileIds: fileIds.length > 0 ? fileIds : undefined,
       }),
     });
 
