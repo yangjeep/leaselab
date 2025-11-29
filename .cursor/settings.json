@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "UserPromptSubmit": {
+      "command": "$CURSOR_PROJECT_DIR/.cursor/hooks/skill-activation-prompt.sh"
+    },
+    "PostToolUse": {
+      "command": "$CURSOR_PROJECT_DIR/.cursor/hooks/post-tool-use-tracker.sh",
+      "matchers": ["Edit", "MultiEdit", "Write"]
+    }
+  },
+  "mcpServers": {},
+  "acceptEdits": true
+}
+

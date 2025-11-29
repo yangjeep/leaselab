@@ -1,0 +1,66 @@
+# LeaseLab Development Rules for Cursor
+
+This project uses a structured skill system located in `.cursor/` directory. Always follow these critical principles:
+
+## Critical Guardrails (MUST FOLLOW)
+
+### Multi-Tenancy (CRITICAL)
+- **ALL database operations MUST filter by `site_id`**
+- Every DB function must accept `siteId` as the second parameter
+- All SQL queries must include `WHERE site_id = ?`
+- See: `.cursor/skills/multi-tenancy-guidelines.md`
+
+### Security (CRITICAL)
+- **NEVER store plaintext passwords or tokens**
+- Use `hashPassword()` and `hashToken()` from `shared/utils/crypto.ts`
+- Always use PBKDF2-SHA256 with 100,000 iterations for passwords
+- See: `.cursor/skills/security-guidelines.md`
+
+## Domain Guidelines
+
+### Cloudflare Worker Development
+- Use Hono framework patterns
+- All routes in `apps/worker/routes/`
+- Database operations in `apps/worker/lib/db/`
+- See: `.cursor/skills/cloudflare-worker-guidelines.md`
+
+### Remix Frontend Development
+- **NEVER access D1 database directly from Remix**
+- All data access via HTTP API calls to worker
+- Routes in `apps/ops/app/routes/` or `apps/site/app/routes/`
+- See: `.cursor/skills/remix-frontend-guidelines.md`
+
+### Database Migrations
+- Use D1 (SQLite) patterns
+- Migrations in `apps/worker/migrations/`
+- Always include `site_id` in multi-tenant tables
+- See: `.cursor/skills/d1-database-guidelines.md`
+
+### TypeScript Types
+- Shared types in `shared/types/`
+- Zod schemas in `shared/config/`
+- Use relative imports: `import type { Property } from '../../shared/types'`
+- See: `.cursor/skills/shared-types-guidelines.md`
+
+## Skill System
+
+The `.cursor/` directory contains:
+- **Hooks**: Auto-activate skills based on prompts and file edits
+- **Skills**: Detailed guidelines in `.cursor/skills/*.md`
+- **Rules**: Activation rules in `.cursor/skills/skill-rules.json`
+
+When working on:
+- Database operations → Check multi-tenancy-guidelines
+- Authentication/security → Check security-guidelines
+- Worker/API code → Check cloudflare-worker-guidelines
+- Frontend code → Check remix-frontend-guidelines
+- Database migrations → Check d1-database-guidelines
+- TypeScript types → Check shared-types-guidelines
+
+## Quick Reference
+
+- Project guide: `CLAUDE.md`
+- All skills: `.cursor/skills/`
+- Skill system docs: `.cursor/skills/skill-developer.md`
+- Configuration: `.cursor/settings.json`
+
