@@ -3,8 +3,9 @@
 ## Next Up
 
 ### 1. Applicant Files Feature
-- [ ] Implement feature to list all files submitted by an applicant
-- [ ] Add ability to retrieve/download applicant files in Ops
+- [x] Implement feature to list all files submitted by an applicant
+- [x] Add ability to retrieve/download applicant files in Ops
+- [x] Add file upload functionality for ops staff
 
 ### 2. Archive Applicant
 - [ ] Add ability to "archive" (make inactive) an applicant
