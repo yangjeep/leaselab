@@ -31,6 +31,9 @@
 - [x] Update database operations
 
 ### 6. Fix Year Built Logic
-- [ ] Investigate weird "Year built" logic when adding new properties
-- [ ] Fix the behavior to be more intuitive
+- [x] Investigate weird "Year built" logic when adding new properties
+- [x] Fix the behavior to be more intuitive
+- [x] Add min/max validation to edit form
+- [x] Remove unnecessary grid layout
+- [x] Add helpful placeholder text
 
