@@ -6,7 +6,7 @@
  */
 
 import type { Context, Next } from 'hono';
-import { validateApiToken } from '../../ops/app/lib/api-auth.server';
+import { validateApiToken } from '../lib/auth';
 
 export async function authMiddleware(c: Context, next: Next) {
   const auth = c.req.header('Authorization');

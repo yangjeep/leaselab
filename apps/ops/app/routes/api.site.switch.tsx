@@ -19,8 +19,8 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
     try {
         // Get current user from session
-        const body = await request.json() as { siteId?: string };
-        const siteIdFromReq = body.siteId;
+        const formData = await request.formData();
+        const siteIdFromReq = formData.get('siteId') as string | null;
         const user = await getOptionalUser(request, workerEnv, secret, siteIdFromReq || '');
         if (!user) {
             return json({ success: false, error: 'Unauthorized' }, { status: 401 });

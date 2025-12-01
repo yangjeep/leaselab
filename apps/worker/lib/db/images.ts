@@ -115,3 +115,69 @@ export async function setCoverImage(dbInput: DatabaseInput, siteId: string, enti
     // Set the new cover
     await db.execute('UPDATE images SET is_cover = 1 WHERE id = ? AND site_id = ?', [imageId, siteId]);
 }
+
+/**
+ * Verify if an image exists in R2 bucket
+ */
+async function verifyImageExists(bucket: any, r2Key: string): Promise<boolean> {
+    try {
+        const object = await bucket.head(r2Key);
+        return object !== null;
+    } catch (error) {
+        console.error(`Error checking R2 object ${r2Key}:`, error);
+        return false;
+    }
+}
+
+/**
+ * Add public R2 URLs to images
+ */
+export function addImageUrls(images: PropertyImage[], r2PublicUrl?: string): PropertyImage[] {
+    if (!r2PublicUrl) return images;
+    return images.map(img => ({
+        ...img,
+        url: `${r2PublicUrl}/${img.r2Key}`,
+    }));
+}
+
+/**
+ * Add public R2 URLs to images and verify they exist in R2
+ * Filters out images that don't exist in the bucket
+ */
+export async function addImageUrlsWithVerification(images: PropertyImage[], r2PublicUrl: string | undefined, bucket: any): Promise<PropertyImage[]> {
+    if (!r2PublicUrl) return images;
+    
+    // Verify each image exists in R2 and filter out non-existent ones
+    const verifiedImages: (PropertyImage | null)[] = await Promise.all(
+        images.map(async (img) => {
+            const exists = await verifyImageExists(bucket, img.r2Key);
+            if (!exists) {
+                console.warn(`Image not found in R2: ${img.r2Key} (id: ${img.id})`);
+                return null;
+            }
+            return {
+                ...img,
+                url: `${r2PublicUrl}/${img.r2Key}`,
+            };
+        })
+    );
+    
+    // Filter out null entries (non-existent images)
+    return verifiedImages.filter((img): img is PropertyImage => img !== null);
+}
+
+/**
+ * Get images by entity with public URLs
+ */
+export async function getImagesByEntityWithUrls(dbInput: DatabaseInput, siteId: string, entityType: 'property' | 'unit', entityId: string, r2PublicUrl?: string): Promise<PropertyImage[]> {
+    const images = await getImagesByEntity(dbInput, siteId, entityType, entityId);
+    return addImageUrls(images, r2PublicUrl);
+}
+
+/**
+ * Get images by entity with public URLs and verify they exist in R2
+ */
+export async function getImagesByEntityWithVerification(dbInput: DatabaseInput, siteId: string, entityType: 'property' | 'unit', entityId: string, r2PublicUrl: string | undefined, bucket: any): Promise<PropertyImage[]> {
+    const images = await getImagesByEntity(dbInput, siteId, entityType, entityId);
+    return addImageUrlsWithVerification(images, r2PublicUrl, bucket);
+}

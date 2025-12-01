@@ -1,6 +1,4 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "./tailwind-config.css";
 
 :root {
   --bg: #0b0c10;
@@ -15,24 +13,43 @@ html, body {
 a { text-decoration: none; }
 img { display: block; }
 
-@layer components {
-  .container {
-    @apply mx-auto max-w-6xl px-6;
-  }
+@utility container {
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 72rem;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+}
 
-  .card {
-    @apply rounded-2xl border border-white/10 bg-white/5 shadow-sm;
-  }
+@utility card {
+  border-radius: 1rem;
+  border: 1px solid rgb(255 255 255 / 0.1);
+  background-color: rgb(255 255 255 / 0.05);
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
 
-  .btn {
-    @apply rounded-xl px-4 py-2 border border-white/20 hover:bg-white/10 transition-colors;
+@utility btn {
+  border-radius: 0.75rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid rgb(255 255 255 / 0.2);
+  transition-property: color, background-color;
+  &:hover {
+    background-color: rgb(255 255 255 / 0.1);
   }
+}
 
-  .input {
-    @apply rounded-xl border border-white/20 bg-transparent px-3 py-2 focus:outline-none focus:border-white/40;
+@utility input {
+  border-radius: 0.75rem;
+  border: 1px solid rgb(255 255 255 / 0.2);
+  background-color: transparent;
+  padding: 0.5rem 0.75rem;
+  &:focus {
+    outline: none;
+    border-color: rgb(255 255 255 / 0.4);
   }
+}
 
-  .label {
-    @apply text-sm opacity-70;
-  }
+@utility label {
+  font-size: 0.875rem;
+  opacity: 0.7;
 }

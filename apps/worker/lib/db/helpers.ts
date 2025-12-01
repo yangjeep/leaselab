@@ -1,4 +1,5 @@
-import type { IDatabase } from '../../../../shared/storage-core';
+import type { IDatabase } from '~/shared/storage-core';
+import type { D1Database } from '@cloudflare/workers-types';
 
 // Database type that accepts both D1Database and IDatabase for backward compatibility
 export type DatabaseInput = D1Database | IDatabase;
@@ -31,7 +32,7 @@ export function normalizeDb(db: DatabaseInput): IDatabase {
             const result = await bound.run();
             return {
                 success: result.success,
-                changes: result.meta.changes,
+                changes: (result.meta.rows_written || 0) as number,
                 lastRowId: result.meta.last_row_id,
             };
         },
@@ -46,7 +47,7 @@ export function normalizeDb(db: DatabaseInput): IDatabase {
             const results = await d1.batch(stmts);
             return results.map((result) => ({
                 success: result.success,
-                changes: result.meta.changes,
+                changes: (result.meta.rows_written || 0) as number,
                 lastRowId: result.meta.last_row_id,
             }));
         },

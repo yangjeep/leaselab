@@ -176,9 +176,17 @@ export async function createLeadToWorker(
 
 export async function fetchWorkOrdersFromWorker(
   env: WorkerEnv,
-  siteId: string
+  siteId: string,
+  options?: { status?: string; propertyId?: string; sortBy?: string; sortOrder?: 'asc' | 'desc' }
 ): Promise<any[]> {
-  const url = `${env.WORKER_URL}/api/ops/work-orders`;
+  let url = `${env.WORKER_URL}/api/ops/work-orders`;
+  const params = new URLSearchParams();
+  if (options?.status) params.set('status', options.status);
+  if (options?.propertyId) params.set('propertyId', options.propertyId);
+  if (options?.sortBy) params.set('sortBy', options.sortBy);
+  if (options?.sortOrder) params.set('sortOrder', options.sortOrder);
+  if (params.toString()) url += `?${params.toString()}`;
+
   const response = await workerFetch(url, env, {}, siteId);
   return parseResponse(response);
 }
@@ -232,6 +240,28 @@ export async function fetchUserFromWorker(
 ): Promise<any> {
   const url = `${env.WORKER_URL}/api/ops/users/${userId}`;
   const response = await workerFetch(url, env, {}, siteId);
+  return parseResponse(response);
+}
+
+/**
+ * Create a new user
+ */
+export async function createUserToWorker(
+  env: WorkerEnv,
+  data: {
+    email: string;
+    name: string;
+    password: string;
+    role: string;
+    siteId: string;
+    isSuperAdmin?: boolean;
+  }
+): Promise<any> {
+  const url = `${env.WORKER_URL}/api/ops/users`;
+  const response = await workerFetch(url, env, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
   return parseResponse(response);
 }
 
@@ -305,6 +335,21 @@ export async function setSuperAdminStatusToWorker(
   await workerFetch(url, env, {
     method: 'POST',
     body: JSON.stringify({ isSuperAdmin }),
+  });
+}
+
+/**
+ * Update user role
+ */
+export async function updateUserRoleToWorker(
+  env: WorkerEnv,
+  userId: string,
+  role: string
+): Promise<void> {
+  const url = `${env.WORKER_URL}/api/ops/users/${userId}/role`;
+  await workerFetch(url, env, {
+    method: 'PUT',
+    body: JSON.stringify({ role }),
   });
 }
 
@@ -383,12 +428,14 @@ export async function revokeSiteAccessToWorker(
 export async function fetchTenantsFromWorker(
   env: WorkerEnv,
   siteId: string,
-  options?: { status?: string; propertyId?: string }
+  options?: { status?: string; propertyId?: string; sortBy?: string; sortOrder?: 'asc' | 'desc' }
 ): Promise<any[]> {
   let url = `${env.WORKER_URL}/api/ops/tenants`;
   const params = new URLSearchParams();
   if (options?.status) params.set('status', options.status);
   if (options?.propertyId) params.set('propertyId', options.propertyId);
+  if (options?.sortBy) params.set('sortBy', options.sortBy);
+  if (options?.sortOrder) params.set('sortOrder', options.sortOrder);
   if (params.toString()) url += `?${params.toString()}`;
 
   const response = await workerFetch(url, env, {}, siteId);

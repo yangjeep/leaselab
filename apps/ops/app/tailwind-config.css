@@ -1,0 +1,8 @@
+@import "tailwindcss";
+
+@source "../app/**/*.{js,jsx,ts,tsx}";
+
+@theme {
+  --font-family-sans: 'Inter', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+}
+

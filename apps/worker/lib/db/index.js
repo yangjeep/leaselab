@@ -5,15 +5,15 @@ export { getProperties, getPropertyById, getPropertyBySlug, getPropertyWithUnits
 // Re-export all unit operations
 export { getUnits, getUnitsByPropertyId, getUnitById, getUnitWithDetails, createUnit, updateUnit, deleteUnit, getUnitHistory, createUnitHistory, } from './units';
 // Re-export all image operations
-export { getImagesByEntity, getImageById, createImage, updateImage, deleteImage, setCoverImage, } from './images';
+export { getImagesByEntity, getImageById, createImage, updateImage, deleteImage, setCoverImage, addImageUrls, getImagesByEntityWithUrls, addImageUrlsWithVerification, getImagesByEntityWithVerification, } from './images';
 // Re-export all lead operations
-export { getLeads, getLeadById, createLead, updateLead, getLeadFiles, createLeadFile, getAIEvaluation, createAIEvaluation, getLeadHistory, recordLeadHistory, } from './leads';
+export { getLeads, getLeadById, createLead, updateLead, getLeadFiles, createLeadFile, createTempLeadFile, associateFilesWithLead, countLeadFiles, getAIEvaluation, createAIEvaluation, getLeadHistory, recordLeadHistory, } from './leads';
 // Re-export all tenant operations
 export { getTenants, getTenantById, } from './tenants';
 // Re-export all work order operations
 export { getWorkOrders, getWorkOrderById, createWorkOrder, updateWorkOrder, deleteWorkOrder, } from './work-orders';
 // Re-export all user operations
-export { getUserByEmail, getUserById, getUsers, updateUserPassword, updateUserProfile, getUserSiteAccess, getUserAccessibleSites, userHasAccessToSite, grantSiteAccess, revokeSiteAccess, isUserSuperAdmin, setSuperAdminStatus, } from './users';
+export { getUserByEmail, getUserById, getUsers, createUser, updateUserPassword, updateUserProfile, updateUserRole, getUserSiteAccess, getUserAccessibleSites, userHasAccessToSite, grantSiteAccess, revokeSiteAccess, isUserSuperAdmin, setSuperAdminStatus, } from './users';
 // Re-export all site token operations
 export { getSiteApiTokens, getSiteApiTokenById, createSiteApiToken, updateSiteApiToken, deleteSiteApiToken, } from './site-tokens';
 // Re-export lease module (placeholder)

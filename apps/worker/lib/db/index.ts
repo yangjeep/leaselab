@@ -37,6 +37,10 @@ export {
     updateImage,
     deleteImage,
     setCoverImage,
+    addImageUrls,
+    getImagesByEntityWithUrls,
+    addImageUrlsWithVerification,
+    getImagesByEntityWithVerification,
 } from './images';
 
 // Re-export all lead operations
@@ -47,6 +51,9 @@ export {
     updateLead,
     getLeadFiles,
     createLeadFile,
+    createTempLeadFile,
+    associateFilesWithLead,
+    countLeadFiles,
     getAIEvaluation,
     createAIEvaluation,
     getLeadHistory,
@@ -73,8 +80,10 @@ export {
     getUserByEmail,
     getUserById,
     getUsers,
+    createUser,
     updateUserPassword,
     updateUserProfile,
+    updateUserRole,
     getUserSiteAccess,
     getUserAccessibleSites,
     userHasAccessToSite,

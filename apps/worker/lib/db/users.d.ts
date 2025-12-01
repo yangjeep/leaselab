@@ -3,15 +3,25 @@ import type { DatabaseInput } from './helpers';
 export interface AccessibleSite {
     siteId: string;
     role: string;
+    grantedAt?: string;
 }
 export declare function getUserByEmail(dbInput: DatabaseInput, siteId: string, email: string): Promise<User | null>;
 export declare function getUserById(dbInput: DatabaseInput, siteId: string, id: string): Promise<User | null>;
 export declare function getUsers(dbInput: DatabaseInput): Promise<User[]>;
+export declare function createUser(dbInput: DatabaseInput, data: {
+    email: string;
+    name: string;
+    passwordHash: string;
+    role: User['role'];
+    siteId: string;
+    isSuperAdmin?: boolean;
+}): Promise<User>;
 export declare function updateUserPassword(dbInput: DatabaseInput, siteId: string, userId: string, passwordHash: string): Promise<void>;
 export declare function updateUserProfile(dbInput: DatabaseInput, siteId: string, userId: string, data: {
     name?: string;
     email?: string;
 }): Promise<void>;
+export declare function updateUserRole(dbInput: DatabaseInput, siteId: string, userId: string, role: User['role']): Promise<void>;
 /**
  * Get site access records for a user
  */
@@ -27,7 +37,7 @@ export declare function userHasAccessToSite(dbInput: DatabaseInput, userId: stri
 /**
  * Grant site access to a user
  */
-export declare function grantSiteAccess(dbInput: DatabaseInput, userId: string, siteId: string, role?: string): Promise<void>;
+export declare function grantSiteAccess(dbInput: DatabaseInput, userId: string, siteId: string, role?: string, grantedBy?: string): Promise<void>;
 /**
  * Revoke site access from a user
  */

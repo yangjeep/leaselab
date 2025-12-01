@@ -50,6 +50,9 @@ export default function PropertyMap({
       script.async = true;
       script.defer = true;
       script.onload = () => setReady(true);
+      script.onerror = (error) => {
+        console.error("Failed to load Google Maps API:", error);
+      };
       document.head.appendChild(script);
     }
   }, [apiKey]);
@@ -73,60 +76,68 @@ export default function PropertyMap({
 
     // Place markers using geocoded addresses (ignore lat/lng entirely)
     (async () => {
-      // Clear any existing markers when listings change
-      if (markersRef.current.length) {
-        for (const m of markersRef.current) {
-          m.setMap(null);
+      try {
+        // Clear any existing markers when listings change
+        if (markersRef.current.length) {
+          for (const m of markersRef.current) {
+            m.setMap(null);
+          }
+          markersRef.current = [];
         }
-        markersRef.current = [];
-      }
 
-      const positions: Array<{ listing: Listing; pos: { lat: number; lng: number } }> = [];
-      for (const listing of listings) {
-        if (!apiKey) continue;
-        const addr = buildAddress(listing);
-        if (!addr) continue;
-        const geo = await geocodeAddress(addr, apiKey);
-        if (!geo) continue;
-        positions.push({ listing, pos: geo });
-      }
+        const positions: Array<{ listing: Listing; pos: { lat: number; lng: number } }> = [];
+        for (const listing of listings) {
+          if (!apiKey) continue;
+          const addr = buildAddress(listing);
+          if (!addr) continue;
+          try {
+            const geo = await geocodeAddress(addr, apiKey);
+            if (!geo) continue;
+            positions.push({ listing, pos: geo });
+          } catch (error) {
+            console.error(`Failed to geocode address for ${listing.title}:`, error);
+          }
+        }
 
-      // Fit the map to show all pins initially
-      if (positions.length > 0) {
-        // @ts-expect-error google is provided by Maps JS API
-        const bounds = new google.maps.LatLngBounds();
-        for (const { pos } of positions) {
+        // Fit the map to show all pins initially
+        if (positions.length > 0) {
           // @ts-expect-error google is provided by Maps JS API
-          bounds.extend(new google.maps.LatLng(pos.lat, pos.lng));
+          const bounds = new google.maps.LatLngBounds();
+          for (const { pos } of positions) {
+            // @ts-expect-error google is provided by Maps JS API
+            bounds.extend(new google.maps.LatLng(pos.lat, pos.lng));
+          }
+          map.fitBounds(bounds);
+        } else {
+          // No pins geocoded; keep the default center
+          map.setCenter(center);
         }
-        map.fitBounds(bounds);
-      } else {
-        // No pins geocoded; keep the default center
-        map.setCenter(center);
-      }
 
-      for (const { listing, pos } of positions) {
-        // @ts-expect-error google is provided by Maps JS API
-        const marker = new google.maps.Marker({
-          position: pos,
-          map,
-          title: listing.title,
-        });
+        for (const { listing, pos } of positions) {
+          // @ts-expect-error google is provided by Maps JS API
+          const marker = new google.maps.Marker({
+            position: pos,
+            map,
+            title: listing.title,
+          });
 
-        // Track marker so we can remove it on next update
-        markersRef.current.push(marker);
+          // Track marker so we can remove it on next update
+          markersRef.current.push(marker);
 
-        const detailUrl = `/properties/${listing.slug}`;
-        const content = `
-          <div style="min-width:200px">
-            <div style="font-weight:600;margin-bottom:4px">${listing.title}</div>
-            <a href="${detailUrl}" style="color:#2563eb;text-decoration:underline">View details</a>
-          </div>
-        `;
-        marker.addListener("click", () => {
-          infoWindow.setContent(content);
-          infoWindow.open({ map, anchor: marker });
-        });
+          const detailUrl = `/properties/${listing.slug}`;
+          const content = `
+            <div style="min-width:200px">
+              <div style="font-weight:600;margin-bottom:4px">${listing.title}</div>
+              <a href="${detailUrl}" style="color:#2563eb;text-decoration:underline">View details</a>
+            </div>
+          `;
+          marker.addListener("click", () => {
+            infoWindow.setContent(content);
+            infoWindow.open({ map, anchor: marker });
+          });
+        }
+      } catch (error) {
+        console.error("Error setting up map markers:", error);
       }
     })();
   }, [ready, center, listings, apiKey]);

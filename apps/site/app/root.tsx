@@ -6,8 +6,10 @@ import {
   ScrollRestoration,
   useRouteError,
   isRouteErrorResponse,
+  useRouteLoaderData,
 } from "@remix-run/react";
-import type { LinksFunction, MetaFunction } from "@remix-run/node";
+import type { LinksFunction, MetaFunction, LoaderFunctionArgs } from "@remix-run/cloudflare";
+import { json } from "@remix-run/cloudflare";
 
 import "./tailwind.css";
 
@@ -19,6 +21,7 @@ export const meta: MetaFunction = () => {
 };
 
 export const links: LinksFunction = () => [
+  { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
   {
     rel: "preconnect",
@@ -31,7 +34,17 @@ export const links: LinksFunction = () => [
   },
 ];
 
+export async function loader({ context }: LoaderFunctionArgs) {
+  const env = (context as any).cloudflare?.env || (typeof process !== "undefined" ? process.env : {});
+  return json({
+    GOOGLE_MAPS_API_KEY: env.GOOGLE_MAPS_API_KEY,
+  });
+}
+
 export function Layout({ children }: { children: React.ReactNode }) {
+  const data = useRouteLoaderData<typeof loader>("root");
+  const apiKey = data?.GOOGLE_MAPS_API_KEY;
+
   return (
     <html lang="en">
       <head>
@@ -40,10 +53,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Meta />
         <Links />
         {/* Google Maps JS API loader (only if key is present) */}
-        {typeof window === "undefined" ? null : null}
-        {process.env.GOOGLE_MAPS_API_KEY ? (
+        {apiKey ? (
           <script
-            src={`https://maps.googleapis.com/maps/api/js?key=${process.env.GOOGLE_MAPS_API_KEY}`}
+            src={`https://maps.googleapis.com/maps/api/js?key=${apiKey}`}
             defer
           />
         ) : null}

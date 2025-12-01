@@ -11,6 +11,8 @@ LeaseLab is a comprehensive property management platform built on Cloudflare's e
 - **Secure authentication** with PBKDF2-SHA256 password hashing
 - **Centralized API** for all database and storage operations
 - **Real-time operations** for property, unit, and lease management
+- **Secure file upload/download** with multi-layer validation (5MB limit)
+- **CDN-optimized image delivery** for property/unit photos
 
 ## Project Structure
 
@@ -321,6 +323,62 @@ const isValid = await verifyPassword('plaintext', storedHash);
 
 All tables include `site_id` for multi-tenancy (except shared tables like `users`, `sessions`).
 
+## File Upload/Download System
+
+### Overview
+
+The platform implements a secure file upload/download system with multi-layer validation:
+
+**Download Workflow (Property Images):**
+- Direct public URLs from R2 for SEO and CDN performance
+- Images organized by property/unit with automatic URL generation
+- Combined gallery: property images first, then unit images
+
+**Upload Workflow (Applicant Files):**
+- Multi-layer validation (5MB max per file, 10 files per application)
+- Temporary storage before lead submission
+- Automatic file association after lead creation
+- Supported formats: PDF, JPG, PNG, HEIC, DOC, DOCX
+
+### File Organization (R2)
+
+```
+PUBLIC_BUCKET (leaselab-pub):
+  {siteId}/properties/{propertyId}/{imageId}.jpg    # Property photos
+  {siteId}/units/{unitId}/{imageId}.jpg             # Unit photos
+
+PRIVATE_BUCKET (leaselab-pri):
+  {siteId}/leads/temp/{fileId}-{filename}           # Temporary uploads
+  {siteId}/leads/{leadId}/{fileId}-{filename}       # Associated files
+```
+
+### File Upload Constraints
+
+```typescript
+FILE_UPLOAD_CONSTRAINTS = {
+  maxFileSize: 5 * 1024 * 1024,    // 5MB per file
+  maxFilesPerLead: 10,              // 10 files max per application
+  allowedMimeTypes: [
+    'application/pdf',
+    'image/jpeg',
+    'image/png',
+    'image/heic',
+    'image/heif',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  ],
+};
+```
+
+### Multi-Layer Validation
+
+1. **Layer 1:** Content-Length header check (before reading body)
+2. **Layer 2:** MIME type whitelist validation
+3. **Layer 3:** File object size check
+4. **Layer 4:** Post-upload verification from R2
+
+All layers enforce the 5MB limit to prevent oversized uploads.
+
 ## API Documentation
 
 ### Worker API Endpoints
@@ -332,27 +390,137 @@ GET /
 
 **Public API** (for storefront):
 ```
-POST /api/public/properties      # List properties
-POST /api/public/properties/:id  # Get property details
-POST /api/public/leads           # Submit lead application
+GET  /api/public/properties              # List properties
+GET  /api/public/properties/:id          # Get property with images (direct CDN URLs)
+GET  /api/public/units/:id               # Get unit with combined gallery (property + unit images)
+POST /api/public/leads/files/upload      # Upload applicant file (5MB limit)
+POST /api/public/leads                   # Submit lead application (with optional fileIds)
 ```
 
 **Ops API** (for admin dashboard):
 ```
-POST /api/ops/properties         # Property management
-POST /api/ops/units              # Unit management
-POST /api/ops/leads              # Lead management
-POST /api/ops/leads/:id/ai       # Run AI evaluation
-POST /api/ops/tenants            # Tenant management
-POST /api/ops/leases             # Lease management
-POST /api/ops/work-orders        # Work order management
-POST /api/ops/images             # Image management
+POST /api/ops/properties                 # Property management
+POST /api/ops/units                      # Unit management
+POST /api/ops/leads                      # Lead management
+GET  /api/ops/leads/:id/files            # Get lead files with signed URLs (24h expiry)
+POST /api/ops/leads/:id/files            # Upload file for existing lead
+POST /api/ops/leads/:id/ai               # Run AI evaluation
+POST /api/ops/tenants                    # Tenant management
+POST /api/ops/leases                     # Lease management
+POST /api/ops/work-orders                # Work order management
+POST /api/ops/images                     # Image management
 ```
 
 All Ops API requests require:
 - `Authorization: Bearer <token>` header
 - `X-Site-Id: <site_id>` header
 - `X-User-Id: <user_id>` header
+
+### Example: File Upload Workflow
+
+**1. Upload file (before lead submission):**
+```bash
+curl -X POST http://localhost:8787/api/public/leads/files/upload \
+  -H "Authorization: Bearer <token>" \
+  -H "X-Site-Id: site_123" \
+  -F "file=@paystub.pdf" \
+  -F "fileType=paystub"
+```
+
+Response:
+```json
+{
+  "success": true,
+  "data": {
+    "fileId": "file_abc123",
+    "fileName": "paystub.pdf",
+    "fileSize": 245839,
+    "fileType": "paystub",
+    "uploadedAt": "2025-11-28T12:34:56Z"
+  }
+}
+```
+
+**2. Submit lead with uploaded files:**
+```bash
+curl -X POST http://localhost:8787/api/public/leads \
+  -H "Authorization: Bearer <token>" \
+  -H "X-Site-Id: site_123" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "propertyId": "prop_123",
+    "firstName": "John",
+    "lastName": "Doe",
+    "email": "john@example.com",
+    "phone": "555-1234",
+    "employmentStatus": "employed",
+    "moveInDate": "2025-12-01",
+    "fileIds": ["file_abc123", "file_def456"]
+  }'
+```
+
+**3. View files as ops admin (with signed URLs):**
+```bash
+curl http://localhost:8787/api/ops/leads/lead_123/files \
+  -H "Authorization: Bearer <token>" \
+  -H "X-Site-Id: site_123" \
+  -H "X-User-Id: user_456"
+```
+
+Response:
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "file_abc123",
+      "fileName": "paystub.pdf",
+      "fileType": "paystub",
+      "fileSize": 245839,
+      "signedUrl": "https://leaselab-pri.r2.dev/...?X-Amz-Signature=...",
+      "expiresAt": "2025-11-29T12:34:56Z"
+    }
+  ]
+}
+```
+
+### Example: Property Images
+
+**Get property with images:**
+```bash
+curl http://localhost:8787/api/public/properties/prop_123 \
+  -H "Authorization: Bearer <token>" \
+  -H "X-Site-Id: site_123"
+```
+
+Response:
+```json
+{
+  "success": true,
+  "data": {
+    "id": "prop_123",
+    "name": "Sunset Apartments",
+    "images": [
+      {
+        "id": "img_1",
+        "url": "https://pub-abc.r2.dev/site1/properties/prop_123/img_1.jpg",
+        "sortOrder": 0,
+        "isCover": true,
+        "altText": "Building exterior"
+      }
+    ]
+  }
+}
+```
+
+**Get unit with combined gallery (property + unit images):**
+```bash
+curl http://localhost:8787/api/public/units/unit_456 \
+  -H "Authorization: Bearer <token>" \
+  -H "X-Site-Id: site_123"
+```
+
+Response includes property images first, then unit images, all with direct CDN URLs.
 
 ## Troubleshooting
 
@@ -440,6 +608,9 @@ npx wrangler d1 execute leaselab-db --local --file=migrations/0001_test_data.sql
 - Filter all queries by `site_id`
 - Validate all user input with Zod schemas
 - Use parameterized queries to prevent SQL injection
+- Enforce file upload limits (5MB max, MIME type whitelist)
+- Use signed URLs for private file access (24-hour expiry)
+- Store sensitive files in PRIVATE_BUCKET, never PUBLIC_BUCKET
 
 ### Testing
 
@@ -468,4 +639,8 @@ For issues or questions:
 
 **Built with ❤️ using Cloudflare's edge platform**
 
-Last updated: 2024-11-28
+Last updated: 2025-11-28
+
+## Documentation
+
+- [PRD: File Upload/Download Workflow](docs/PRD-File-Upload-Download.md) - Detailed design and implementation guide

@@ -8,7 +8,6 @@ declare module "@remix-run/cloudflare" {
       env: {
         // Worker API configuration
         WORKER_URL?: string;
-        OPS_API_URL?: string;
         SITE_API_TOKEN?: string;
 
         // Other environment variables
@@ -16,7 +15,7 @@ declare module "@remix-run/cloudflare" {
         ENVIRONMENT?: string;
 
         // NO D1, KV, or R2 bindings!
-        // All data access goes through worker API
+        // All data access goes through Worker API
       };
       cf: CfProperties;
       ctx: ExecutionContext;

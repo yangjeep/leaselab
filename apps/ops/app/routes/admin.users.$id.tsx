@@ -1,9 +1,19 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs } from '@remix-run/cloudflare';
 import { json, redirect } from '@remix-run/cloudflare';
 import { useLoaderData, Form, useNavigation } from '@remix-run/react';
+import { useState } from 'react';
 import { requireAuth } from '~/lib/auth.server';
-import { fetchUserFromWorker, fetchUserSitesFromWorker, grantSiteAccessToWorker, revokeSiteAccessToWorker, setSuperAdminStatusToWorker } from '~/lib/worker-client';
+import {
+    fetchUserFromWorker,
+    fetchUserSitesFromWorker,
+    grantSiteAccessToWorker,
+    revokeSiteAccessToWorker,
+    setSuperAdminStatusToWorker,
+    updateUserRoleToWorker,
+    updateUserPasswordToWorker
+} from '~/lib/worker-client';
 import { getSiteId } from '~/lib/site.server';
+import { hashPassword } from '~/shared/utils';
 
 export async function loader({ params, request, context }: LoaderFunctionArgs) {
     const { id } = params;
@@ -30,7 +40,7 @@ export async function loader({ params, request, context }: LoaderFunctionArgs) {
 
     const siteAccess = await fetchUserSitesFromWorker(workerEnv, id);
 
-    return json({ user, siteAccess });
+    return json({ user, siteAccess, currentUser });
 }
 
 export async function action({ params, request, context }: ActionFunctionArgs) {
@@ -57,9 +67,31 @@ export async function action({ params, request, context }: ActionFunctionArgs) {
     if (action === 'toggle_super_admin') {
         const isSuperAdmin = formData.get('is_super_admin') === 'true';
         await setSuperAdminStatusToWorker(workerEnv, id, isSuperAdmin);
+    } else if (action === 'update_role') {
+        const role = formData.get('role') as string;
+        await updateUserRoleToWorker(workerEnv, id, role);
+    } else if (action === 'reset_password') {
+        const password = formData.get('password') as string;
+
+        // Password reset authorization rules:
+        // - Super Admins can reset passwords for anyone
+        // - Admins can reset passwords for non-admin users only
+        const targetUser = await fetchUserFromWorker(workerEnv, siteId, id);
+
+        if (!currentUser.isSuperAdmin) {
+            // If current user is not super admin, check if target is admin
+            if (targetUser.role === 'admin') {
+                return json({ error: 'Only super admins can reset admin passwords' }, { status: 403 });
+            }
+        }
+
+        const passwordHash = await hashPassword(password);
+        await updateUserPasswordToWorker(workerEnv, siteId, id, passwordHash);
     } else if (action === 'grant_site_access') {
         const targetSiteId = formData.get('site_id') as string;
-        await grantSiteAccessToWorker(workerEnv, id, targetSiteId, 'admin', currentUser.id);
+        // Default to 'viewer' role for least-privilege security
+        const role = formData.get('access_role') as string || 'viewer';
+        await grantSiteAccessToWorker(workerEnv, id, targetSiteId, role, currentUser.id);
     } else if (action === 'revoke_site_access') {
         const targetSiteId = formData.get('site_id') as string;
         await revokeSiteAccessToWorker(workerEnv, id, targetSiteId);
@@ -69,9 +101,14 @@ export async function action({ params, request, context }: ActionFunctionArgs) {
 }
 
 export default function UserEdit() {
-    const { user, siteAccess } = useLoaderData<typeof loader>();
+    const { user, siteAccess, currentUser } = useLoaderData<typeof loader>();
     const navigation = useNavigation();
     const isSubmitting = navigation.state === 'submitting';
+    const [showPasswordReset, setShowPasswordReset] = useState(false);
+
+    // Determine if current user can reset this user's password
+    const canResetPassword = currentUser.isSuperAdmin ||
+                            (user.role !== 'admin' && !user.isSuperAdmin);
 
     return (
         <div className="p-8">
@@ -81,7 +118,7 @@ export default function UserEdit() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* User Info */}
+                {/* User Info & Role */}
                 <div className="bg-white rounded-xl shadow-sm p-6">
                     <h2 className="text-lg font-semibold text-gray-900 mb-4">User Information</h2>
                     <dl className="space-y-3">
@@ -94,8 +131,27 @@ export default function UserEdit() {
                             <dd className="text-sm font-medium text-gray-900">{user.email}</dd>
                         </div>
                         <div>
-                            <dt className="text-sm text-gray-500">Role</dt>
-                            <dd className="text-sm font-medium text-gray-900 capitalize">{user.role}</dd>
+                            <dt className="text-sm text-gray-500 mb-1">Role</dt>
+                            <Form method="post" className="flex items-center gap-2">
+                                <input type="hidden" name="_action" value="update_role" />
+                                <select
+                                    name="role"
+                                    defaultValue={user.role}
+                                    aria-label="User role"
+                                    className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
+                                >
+                                    <option value="admin">Admin</option>
+                                    <option value="maintenance">Maintenance</option>
+                                    <option value="viewer">Viewer</option>
+                                </select>
+                                <button
+                                    type="submit"
+                                    disabled={isSubmitting}
+                                    className="px-3 py-1.5 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+                                >
+                                    Update
+                                </button>
+                            </Form>
                         </div>
                         <div>
                             <dt className="text-sm text-gray-500">Primary Site</dt>
@@ -108,6 +164,58 @@ export default function UserEdit() {
                             </dd>
                         </div>
                     </dl>
+
+                    {/* Password Reset */}
+                    <div className="mt-6 pt-6 border-t border-gray-200">
+                        <h3 className="text-sm font-medium text-gray-700 mb-3">Password Reset</h3>
+                        {canResetPassword ? (
+                            !showPasswordReset ? (
+                                <button
+                                    onClick={() => setShowPasswordReset(true)}
+                                    className="px-4 py-2 bg-yellow-600 text-white text-sm rounded-lg hover:bg-yellow-700"
+                                >
+                                    Reset Password
+                                </button>
+                            ) : (
+                                <Form method="post" className="space-y-3">
+                                    <input type="hidden" name="_action" value="reset_password" />
+                                    <div>
+                                        <label htmlFor="password" className="block text-sm text-gray-600 mb-1">
+                                            New Password
+                                        </label>
+                                        <input
+                                            type="password"
+                                            id="password"
+                                            name="password"
+                                            required
+                                            minLength={8}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
+                                        />
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <button
+                                            type="submit"
+                                            disabled={isSubmitting}
+                                            className="px-4 py-2 bg-yellow-600 text-white text-sm rounded-lg hover:bg-yellow-700 disabled:opacity-50"
+                                        >
+                                            {isSubmitting ? 'Resetting...' : 'Confirm Reset'}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPasswordReset(false)}
+                                            className="px-4 py-2 bg-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-300"
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </Form>
+                            )
+                        ) : (
+                            <p className="text-sm text-gray-500">
+                                Only super admins can reset admin passwords
+                            </p>
+                        )}
+                    </div>
                 </div>
 
                 {/* Permissions */}
@@ -179,21 +287,33 @@ export default function UserEdit() {
                         {/* Grant Access Form */}
                         <Form method="post" className="mt-4">
                             <input type="hidden" name="_action" value="grant_site_access" />
-                            <div className="flex gap-2">
+                            <div className="space-y-2">
                                 <input
                                     type="text"
                                     name="site_id"
                                     placeholder="Site ID"
-                                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                                     required
                                 />
-                                <button
-                                    type="submit"
-                                    disabled={isSubmitting}
-                                    className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50"
-                                >
-                                    Grant Access
-                                </button>
+                                <div className="flex gap-2">
+                                    <select
+                                        name="access_role"
+                                        defaultValue="viewer"
+                                        aria-label="Site access role"
+                                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
+                                    >
+                                        <option value="viewer">Viewer</option>
+                                        <option value="maintenance">Maintenance</option>
+                                        <option value="admin">Admin</option>
+                                    </select>
+                                    <button
+                                        type="submit"
+                                        disabled={isSubmitting}
+                                        className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+                                    >
+                                        Grant Access
+                                    </button>
+                                </div>
                             </div>
                         </Form>
                     </div>

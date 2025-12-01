@@ -1,0 +1,131 @@
+name: Deploy Preview (Main Branch)
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+  deploy-worker:
+    name: Deploy Worker Preview (Main)
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Deploy Worker Preview
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: apps/worker
+          command: deploy --env preview
+
+  deploy-ops:
+    name: Deploy Ops Preview (Main)
+    needs: deploy-worker
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Ops
+        working-directory: apps/ops
+        run: npm run build
+
+      - name: Deploy to Cloudflare Pages Preview (Main)
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: apps/ops
+          command: pages deploy build/client --project-name=leaselab-ops --branch=preview-main
+
+  deploy-site:
+    name: Deploy Site Preview (Main)
+    needs: deploy-worker
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Site
+        working-directory: apps/site
+        run: npm run build
+
+      - name: Deploy to Cloudflare Pages Preview (Main)
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: apps/site
+          command: pages deploy build/client --project-name=leaselab-site --branch=preview-main
+
+  notify:
+    name: Notify Preview Deployment
+    needs: [deploy-worker, deploy-ops, deploy-site]
+    runs-on: ubuntu-latest
+    if: success()
+    steps:
+      - name: Deployment Summary
+        run: |
+          echo "✅ Main branch preview deployment completed!"
+          echo "Commit: ${{ github.sha }}"
+          echo ""
+          echo "Preview URLs (Main Branch):"
+          echo "- Worker: https://leaselab-worker-preview.yangjeep.workers.dev"
+          echo "- Ops: https://preview-main.leaselab-ops.pages.dev"
+          echo "- Site: https://preview-main.leaselab-site.pages.dev"
+          echo ""
+          echo "Test these environments before creating a production release."
+

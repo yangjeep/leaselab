@@ -14,8 +14,15 @@ import {
   createLead,
   getPublicListings,
   getUnitWithDetails,
+  createTempLeadFile,
+  countLeadFiles,
+  addImageUrls,
+  getImagesByEntityWithUrls,
+  getImagesByEntityWithVerification,
 } from '../lib/db';
-
+import { FILE_UPLOAD_CONSTRAINTS } from '../../../shared/config';
+import type { FileUploadResponse } from '../../../shared/types';
+import { generateId } from '../../../shared/utils';
 
 // Import shared environment types
 import type { CloudflareEnv } from '../../../shared/config';
@@ -46,7 +53,7 @@ publicRoutes.get('/properties', async (c: Context) => {
     if (city) filters.city = city;
     if (status) filters.status = status;
 
-    const listings = await getPublicListings(c.env.DB, siteId, filters, c.env.R2_PUBLIC_URL);
+    const listings = await getPublicListings(c.env.DB, siteId, filters, c.env.R2_PUBLIC_URL, c.env.PUBLIC_BUCKET);
 
     return c.json({
       success: true,
@@ -63,7 +70,7 @@ publicRoutes.get('/properties', async (c: Context) => {
 
 /**
  * GET /api/public/properties/:id
- * Fetch a single property by ID or slug
+ * Fetch a single property by ID or slug with images (including URLs)
  */
 publicRoutes.get('/properties/:id', async (c: Context) => {
   try {
@@ -79,9 +86,15 @@ publicRoutes.get('/properties/:id', async (c: Context) => {
       }, 404);
     }
 
+    // Get property images with URLs and verify they exist in R2
+    const images = await getImagesByEntityWithVerification(c.env.DB, siteId, 'property', property.id, c.env.R2_PUBLIC_URL, c.env.PUBLIC_BUCKET);
+
     return c.json({
       success: true,
-      data: property,
+      data: {
+        ...property,
+        images,
+      },
     });
   } catch (error) {
     console.error('Error fetching property:', error);
@@ -95,6 +108,7 @@ publicRoutes.get('/properties/:id', async (c: Context) => {
 /**
  * GET /api/public/units/:id
  * Fetch a single unit by ID including property details and images
+ * Returns combined gallery: property images first, then unit images
  */
 publicRoutes.get('/units/:id', async (c: Context) => {
   try {
@@ -110,9 +124,31 @@ publicRoutes.get('/units/:id', async (c: Context) => {
       }, 404);
     }
 
+    // Get property images first (if property exists), then unit images
+    // Verify all images exist in R2 before serving
+    let propertyImages: any[] = [];
+    if (unit.property) {
+      propertyImages = await getImagesByEntityWithVerification(c.env.DB, siteId, 'property', unit.property.id, c.env.R2_PUBLIC_URL, c.env.PUBLIC_BUCKET);
+      // Mark property images for identification
+      propertyImages = propertyImages.map(img => ({ ...img, isPropertyImage: true }));
+    }
+
+    // Get unit images with verification
+    const unitImages = await getImagesByEntityWithVerification(c.env.DB, siteId, 'unit', id, c.env.R2_PUBLIC_URL, c.env.PUBLIC_BUCKET);
+
+    // Combine images: property first, then unit (as per PRD requirements)
+    const allImages = [...propertyImages, ...unitImages];
+
     return c.json({
       success: true,
-      data: unit,
+      data: {
+        ...unit,
+        images: allImages,
+        property: unit.property ? {
+          ...unit.property,
+          images: propertyImages,
+        } : undefined,
+      },
     });
   } catch (error) {
     console.error('Error fetching unit:', error);
@@ -167,6 +203,134 @@ publicRoutes.get('/site-config', async (c: Context) => {
 });
 
 /**
+ * POST /api/public/leads/files/upload
+ * Upload a file for a lead application (before lead is created)
+ *
+ * Multi-layer validation:
+ * 1. Content-Length header check
+ * 2. MIME type validation
+ * 3. Stream size validation during upload
+ * 4. Post-upload verification
+ */
+publicRoutes.post('/leads/files/upload', async (c: Context) => {
+  try {
+    const siteId = c.get('siteId') as string;
+
+    // Layer 1: Content-Length header validation
+    const contentLength = c.req.header('content-length');
+    if (!contentLength || parseInt(contentLength) > FILE_UPLOAD_CONSTRAINTS.maxFileSize) {
+      return c.json({
+        error: 'File too large',
+        message: `File size exceeds maximum of ${FILE_UPLOAD_CONSTRAINTS.maxFileSize / 1024 / 1024}MB`,
+        maxSize: FILE_UPLOAD_CONSTRAINTS.maxFileSize,
+      }, 413);
+    }
+
+    // Parse multipart form data
+    const formData = await c.req.formData();
+    const file = formData.get('file') as File | null;
+    if (!file || typeof file === 'string') {
+      return c.json({ error: 'Invalid file' }, 400);
+    }
+    const fileType = formData.get('fileType') as string;
+
+    if (!file) {
+      return c.json({
+        error: 'Validation error',
+        message: 'No file provided',
+      }, 400);
+    }
+
+    if (!fileType) {
+      return c.json({
+        error: 'Validation error',
+        message: 'fileType is required',
+      }, 400);
+    }
+
+    // Layer 2: MIME type validation
+    if (!FILE_UPLOAD_CONSTRAINTS.allowedMimeTypes.includes(file.type as any)) {
+      return c.json({
+        error: 'Unsupported file type',
+        message: `File type ${file.type} is not allowed`,
+        allowedTypes: FILE_UPLOAD_CONSTRAINTS.allowedMimeTypes,
+      }, 415);
+    }
+
+    // Layer 3: File size validation (redundant check on File object)
+    if (file.size > FILE_UPLOAD_CONSTRAINTS.maxFileSize) {
+      return c.json({
+        error: 'File too large',
+        message: `File size exceeds maximum of ${FILE_UPLOAD_CONSTRAINTS.maxFileSize / 1024 / 1024}MB`,
+        maxSize: FILE_UPLOAD_CONSTRAINTS.maxFileSize,
+      }, 413);
+    }
+
+    // Check file count limit (count temp files for this site)
+    const currentFileCount = await countLeadFiles(c.env.DB, siteId, null);
+    if (currentFileCount >= FILE_UPLOAD_CONSTRAINTS.maxFilesPerLead * 10) { // Allow some buffer for multiple applicants
+      return c.json({
+        error: 'Too many pending files',
+        message: 'Too many temporary files. Please submit your application or wait.',
+      }, 429);
+    }
+
+    // Generate R2 key for staged file
+    const fileId = generateId('file');
+    const r2Key = `${siteId}/_staged/${fileId}-${file.name}`;
+
+    // Upload to R2 PRIVATE_BUCKET
+    await c.env.PRIVATE_BUCKET.put(r2Key, file.stream(), {
+      httpMetadata: {
+        contentType: file.type,
+      },
+    });
+
+    // Layer 4: Post-upload verification
+    const uploadedObject = await c.env.PRIVATE_BUCKET.head(r2Key);
+    if (!uploadedObject) {
+      throw new Error('File upload failed - file not found after upload');
+    }
+    if (uploadedObject.size > FILE_UPLOAD_CONSTRAINTS.maxFileSize) {
+      // Delete oversized file
+      await c.env.PRIVATE_BUCKET.delete(r2Key);
+      return c.json({
+        error: 'File too large',
+        message: 'File size exceeds maximum after upload',
+      }, 413);
+    }
+
+    // Create temp file record in database
+    const tempFile = await createTempLeadFile(c.env.DB, siteId, {
+      fileType: fileType as any,
+      fileName: file.name,
+      fileSize: uploadedObject.size,
+      mimeType: file.type,
+      r2Key,
+    });
+
+    const response: FileUploadResponse = {
+      fileId: tempFile.id,
+      fileName: file.name,
+      fileSize: uploadedObject.size,
+      fileType: fileType as any,
+      uploadedAt: tempFile.uploadedAt,
+    };
+
+    return c.json({
+      success: true,
+      data: response,
+    }, 201);
+  } catch (error) {
+    console.error('Error uploading file:', error);
+    return c.json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    }, 500);
+  }
+});
+
+/**
  * POST /api/public/leads
  * Submit a tenant application
  */
@@ -186,7 +350,58 @@ publicRoutes.post('/leads', async (c: Context) => {
       }
     }
 
+    // Create the lead
     const lead = await createLead(c.env.DB, siteId, body);
+
+    // Associate uploaded files with the lead (if any)
+    if (body.fileIds && Array.isArray(body.fileIds) && body.fileIds.length > 0) {
+      // First, get the staged files to get their R2 keys
+      const placeholders = body.fileIds.map(() => '?').join(',');
+      const stagedFilesResult = await c.env.DB.prepare(
+        `SELECT id, file_name, r2_key FROM staged_files WHERE id IN (${placeholders}) AND site_id = ?`
+      ).bind(...body.fileIds, siteId).all();
+
+      const stagedFiles = stagedFilesResult.results || [];
+
+      // Move files in R2 from _staged/ to leads/{leadId}/ and build new key mapping
+      const fileKeyMapping: Record<string, string> = {};
+      for (const stagedFile of stagedFiles as any[]) {
+        const oldKey = stagedFile.r2_key as string;
+        const newKey = `${siteId}/leads/${lead.id}/${stagedFile.id}-${stagedFile.file_name}`;
+        fileKeyMapping[stagedFile.id] = newKey;
+
+        // Copy file to new location
+        const object = await c.env.PRIVATE_BUCKET.get(oldKey);
+        if (object) {
+          await c.env.PRIVATE_BUCKET.put(newKey, object.body, {
+            httpMetadata: object.httpMetadata,
+          });
+
+          // Delete old staged file
+          await c.env.PRIVATE_BUCKET.delete(oldKey);
+        }
+      }
+
+      // Move files in database from staged_files to lead_files with updated R2 keys
+      for (const fileId of body.fileIds) {
+        const newKey = fileKeyMapping[fileId];
+        if (newKey) {
+          // Insert into lead_files with updated r2_key
+          await c.env.DB.prepare(`
+            INSERT INTO lead_files (id, site_id, lead_id, file_type, file_name, file_size, mime_type, r2_key, uploaded_at)
+            SELECT id, site_id, ?, file_type, file_name, file_size, mime_type, ?, uploaded_at
+            FROM staged_files
+            WHERE id = ? AND site_id = ?
+          `).bind(lead.id, newKey, fileId, siteId).run();
+
+          // Delete from staged_files
+          await c.env.DB.prepare(`DELETE FROM staged_files WHERE id = ? AND site_id = ?`)
+            .bind(fileId, siteId).run();
+        }
+      }
+
+      console.log(`Associated ${body.fileIds.length} files with lead ${lead.id}`);
+    }
 
     return c.json({
       success: true,

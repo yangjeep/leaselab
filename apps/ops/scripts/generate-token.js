@@ -5,10 +5,16 @@
  * Usage: node generate-token.js <site-id> [token-name]
  */
 
-const crypto = require('crypto');
+import crypto from 'crypto';
+
+// Fixed salt matching shared/constants.ts
+const API_TOKEN_SALT = new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]);
 
 function hashToken(token) {
-    return crypto.createHash('sha256').update(token).digest('hex');
+    // Use PBKDF2-SHA256 with 100,000 iterations to match application logic
+    // Key length 32 bytes (256 bits)
+    const derivedKey = crypto.pbkdf2Sync(token, API_TOKEN_SALT, 100000, 32, 'sha256');
+    return derivedKey.toString('hex');
 }
 
 function generateApiToken() {

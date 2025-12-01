@@ -6,7 +6,7 @@
  */
 import { Hono } from 'hono';
 import { internalAuthMiddleware } from '../middleware/internal';
-import { getProperties, getPropertyById, getPropertyBySlug, getPropertyWithUnits, createProperty, updateProperty, deleteProperty, getUnits, getUnitById, getUnitWithDetails, createUnit, updateUnit, deleteUnit, getUnitHistory, createUnitHistory, getLeads, getLeadById, createLead, updateLead, getLeadFiles, createLeadFile, getAIEvaluation, createAIEvaluation, getLeadHistory, recordLeadHistory, getWorkOrders, getWorkOrderById, createWorkOrder, updateWorkOrder, deleteWorkOrder, getTenants, getTenantById, getUsers, getUserById, getUserByEmail, updateUserPassword, updateUserProfile, getUserAccessibleSites, userHasAccessToSite, grantSiteAccess, revokeSiteAccess, setSuperAdminStatus, getImagesByEntity, getImageById, createImage, updateImage, deleteImage, setCoverImage, getSiteApiTokens, getSiteApiTokenById, createSiteApiToken, updateSiteApiToken, deleteSiteApiToken, } from '../lib/db';
+import { getProperties, getPropertyById, getPropertyBySlug, getPropertyWithUnits, createProperty, updateProperty, deleteProperty, getUnits, getUnitById, getUnitWithDetails, createUnit, updateUnit, deleteUnit, getUnitHistory, createUnitHistory, getLeads, getLeadById, createLead, updateLead, getLeadFiles, createLeadFile, getAIEvaluation, createAIEvaluation, getLeadHistory, recordLeadHistory, getWorkOrders, getWorkOrderById, createWorkOrder, updateWorkOrder, deleteWorkOrder, getTenants, getTenantById, getUsers, getUserById, getUserByEmail, createUser, updateUserPassword, updateUserProfile, updateUserRole, getUserAccessibleSites, userHasAccessToSite, grantSiteAccess, revokeSiteAccess, setSuperAdminStatus, getImagesByEntity, getImageById, createImage, updateImage, deleteImage, setCoverImage, getSiteApiTokens, getSiteApiTokenById, createSiteApiToken, updateSiteApiToken, deleteSiteApiToken, } from '../lib/db';
 const opsRoutes = new Hono();
 // Apply internal auth middleware to all ops routes
 opsRoutes.use('*', internalAuthMiddleware);
@@ -347,7 +347,17 @@ opsRoutes.get('/work-orders', async (c) => {
         if (!siteId) {
             return c.json({ error: 'Missing X-Site-Id header' }, 400);
         }
-        const workOrders = await getWorkOrders(c.env.DB, siteId);
+        // Get query parameters
+        const status = c.req.query('status');
+        const propertyId = c.req.query('propertyId');
+        const sortBy = c.req.query('sortBy');
+        const sortOrder = c.req.query('sortOrder');
+        const workOrders = await getWorkOrders(c.env.DB, siteId, {
+            status,
+            propertyId,
+            sortBy,
+            sortOrder,
+        });
         return c.json({
             success: true,
             data: workOrders,
@@ -407,6 +417,45 @@ opsRoutes.get('/users', async (c) => {
     }
     catch (error) {
         console.error('Error fetching users:', error);
+        return c.json({
+            error: 'Internal server error',
+            message: error instanceof Error ? error.message : 'Unknown error',
+        }, 500);
+    }
+});
+/**
+ * POST /api/ops/users
+ * Create a new user
+ */
+opsRoutes.post('/users', async (c) => {
+    try {
+        const body = await c.req.json();
+        // Validate required fields
+        if (!body.email || !body.name || !body.password || !body.role || !body.siteId) {
+            return c.json({
+                error: 'Bad request',
+                message: 'Missing required fields: email, name, password, role, siteId',
+            }, 400);
+        }
+        // Import hashPassword from shared utils
+        const { hashPassword } = await import('../../../shared/utils/crypto');
+        // Hash password server-side to prevent hash interception attacks
+        const passwordHash = await hashPassword(body.password);
+        const user = await createUser(c.env.DB, {
+            email: body.email,
+            name: body.name,
+            passwordHash,
+            role: body.role,
+            siteId: body.siteId,
+            isSuperAdmin: body.isSuperAdmin || false,
+        });
+        return c.json({
+            success: true,
+            data: user,
+        }, 201);
+    }
+    catch (error) {
+        console.error('Error creating user:', error);
         return c.json({
             error: 'Internal server error',
             message: error instanceof Error ? error.message : 'Unknown error',
@@ -498,10 +547,10 @@ opsRoutes.post('/users/:id/update-login', async (c) => {
     }
 });
 /**
- * PUT /api/ops/users/:id/password
+ * POST /api/ops/users/:id/password
  * Update user password
  */
-opsRoutes.put('/users/:id/password', async (c) => {
+opsRoutes.post('/users/:id/password', async (c) => {
     try {
         const siteId = c.req.header('X-Site-Id');
         if (!siteId) {
@@ -523,10 +572,10 @@ opsRoutes.put('/users/:id/password', async (c) => {
     }
 });
 /**
- * PUT /api/ops/users/:id/profile
+ * POST /api/ops/users/:id/profile
  * Update user profile (name, email)
  */
-opsRoutes.put('/users/:id/profile', async (c) => {
+opsRoutes.post('/users/:id/profile', async (c) => {
     try {
         const siteId = c.req.header('X-Site-Id');
         if (!siteId) {
@@ -548,10 +597,10 @@ opsRoutes.put('/users/:id/profile', async (c) => {
     }
 });
 /**
- * PUT /api/ops/users/:id/super-admin
+ * POST /api/ops/users/:id/super-admin
  * Toggle super admin status
  */
-opsRoutes.put('/users/:id/super-admin', async (c) => {
+opsRoutes.post('/users/:id/super-admin', async (c) => {
     try {
         const id = c.req.param('id');
         const body = await c.req.json();
@@ -563,6 +612,37 @@ opsRoutes.put('/users/:id/super-admin', async (c) => {
     }
     catch (error) {
         console.error('Error updating super admin status:', error);
+        return c.json({
+            error: 'Internal server error',
+            message: error instanceof Error ? error.message : 'Unknown error',
+        }, 500);
+    }
+});
+/**
+ * PUT /api/ops/users/:id/role
+ * Update user role
+ */
+opsRoutes.put('/users/:id/role', async (c) => {
+    try {
+        const siteId = c.req.header('X-Site-Id');
+        if (!siteId) {
+            return c.json({ error: 'Missing X-Site-Id header' }, 400);
+        }
+        const id = c.req.param('id');
+        const body = await c.req.json();
+        if (!body.role) {
+            return c.json({
+                error: 'Bad request',
+                message: 'Missing required field: role',
+            }, 400);
+        }
+        await updateUserRole(c.env.DB, siteId, id, body.role);
+        return c.json({
+            success: true,
+        });
+    }
+    catch (error) {
+        console.error('Error updating user role:', error);
         return c.json({
             error: 'Internal server error',
             message: error instanceof Error ? error.message : 'Unknown error',
@@ -605,7 +685,7 @@ opsRoutes.post('/users/:id/site-access', async (c) => {
     try {
         const userId = c.req.param('id');
         const body = await c.req.json();
-        await grantSiteAccess(c.env.DB, userId, body.siteId, body.role || 'admin', body.grantedBy);
+        await grantSiteAccess(c.env.DB, userId, body.siteId, body.role || 'admin');
         return c.json({
             success: true,
         });
@@ -619,10 +699,10 @@ opsRoutes.post('/users/:id/site-access', async (c) => {
     }
 });
 /**
- * DELETE /api/ops/users/:id/site-access/:siteId
+ * POST /api/ops/users/:id/site-access/:siteId/delete
  * Revoke site access from a user
  */
-opsRoutes.delete('/users/:id/site-access/:siteId', async (c) => {
+opsRoutes.post('/users/:id/site-access/:siteId/delete', async (c) => {
     try {
         const userId = c.req.param('id');
         const siteId = c.req.param('siteId');
@@ -650,9 +730,17 @@ opsRoutes.get('/tenants', async (c) => {
         if (!siteId) {
             return c.json({ error: 'Missing X-Site-Id header' }, 400);
         }
+        // Get query parameters
         const status = c.req.query('status');
         const propertyId = c.req.query('propertyId');
-        const tenants = await getTenants(c.env.DB, siteId, { status, propertyId });
+        const sortBy = c.req.query('sortBy');
+        const sortOrder = c.req.query('sortOrder');
+        const tenants = await getTenants(c.env.DB, siteId, {
+            status,
+            propertyId,
+            sortBy,
+            sortOrder,
+        });
         return c.json({
             success: true,
             data: tenants,
@@ -698,10 +786,10 @@ opsRoutes.get('/tenants/:id', async (c) => {
     }
 });
 /**
- * PUT /api/ops/tenants/:id
+ * POST /api/ops/tenants/:id
  * Update tenant status
  */
-opsRoutes.put('/tenants/:id', async (c) => {
+opsRoutes.post('/tenants/:id', async (c) => {
     try {
         const siteId = c.req.header('X-Site-Id');
         if (!siteId) {
@@ -816,10 +904,10 @@ opsRoutes.post('/images', async (c) => {
     }
 });
 /**
- * PUT /api/ops/images/:id
+ * POST /api/ops/images/:id
  * Update an image record
  */
-opsRoutes.put('/images/:id', async (c) => {
+opsRoutes.post('/images/:id', async (c) => {
     try {
         const siteId = c.req.header('X-Site-Id');
         if (!siteId) {
@@ -841,10 +929,10 @@ opsRoutes.put('/images/:id', async (c) => {
     }
 });
 /**
- * DELETE /api/ops/images/:id
+ * POST /api/ops/images/:id/delete
  * Delete an image record and R2 file
  */
-opsRoutes.delete('/images/:id', async (c) => {
+opsRoutes.post('/images/:id/delete', async (c) => {
     try {
         const siteId = c.req.header('X-Site-Id');
         if (!siteId) {
@@ -988,6 +1076,9 @@ opsRoutes.post('/images/upload', async (c) => {
     try {
         const formData = await c.req.formData();
         const file = formData.get('file');
+        if (!file || typeof file === 'string') {
+            return c.json({ error: 'Invalid file' }, 400);
+        }
         const key = formData.get('key');
         if (!file || !key) {
             return c.json({
@@ -1015,10 +1106,10 @@ opsRoutes.post('/images/upload', async (c) => {
     }
 });
 /**
- * PUT /api/ops/images/reorder
+ * POST /api/ops/images/reorder
  * Reorder images for a property or unit
  */
-opsRoutes.put('/images/reorder', async (c) => {
+opsRoutes.post('/images/reorder', async (c) => {
     try {
         const siteId = c.req.header('X-Site-Id');
         if (!siteId) {
@@ -1051,7 +1142,7 @@ opsRoutes.put('/images/reorder', async (c) => {
 // ==================== LEAD FILES ====================
 /**
  * GET /api/ops/leads/:id/files
- * Get files for a lead
+ * Get files for a lead with signed URLs for downloading (valid for 24 hours)
  */
 opsRoutes.get('/leads/:id/files', async (c) => {
     try {
@@ -1061,9 +1152,22 @@ opsRoutes.get('/leads/:id/files', async (c) => {
         }
         const leadId = c.req.param('id');
         const files = await getLeadFiles(c.env.DB, siteId, leadId);
+        // Generate signed URLs for each file (valid for 24 hours)
+        const filesWithUrls = await Promise.all(files.map(async (file) => {
+            // Generate signed URL using R2's built-in signing
+            const signedUrl = await c.env.PRIVATE_BUCKET.sign(file.r2Key, {
+                expiresIn: 24 * 60 * 60, // 24 hours in seconds
+            });
+            const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+            return {
+                ...file,
+                signedUrl,
+                expiresAt,
+            };
+        }));
         return c.json({
             success: true,
-            data: files,
+            data: filesWithUrls,
         });
     }
     catch (error) {
@@ -1087,6 +1191,9 @@ opsRoutes.post('/leads/:id/files', async (c) => {
         const leadId = c.req.param('id');
         const formData = await c.req.formData();
         const file = formData.get('file');
+        if (!file || typeof file === 'string') {
+            return c.json({ error: 'Invalid file' }, 400);
+        }
         const fileType = formData.get('fileType');
         if (!file) {
             return c.json({
@@ -1194,10 +1301,10 @@ opsRoutes.get('/leads/:id/ai-evaluation', async (c) => {
 });
 // ==================== ADDITIONAL ENDPOINTS ====================
 /**
- * DELETE /api/ops/properties/:id
+ * POST /api/ops/properties/:id/delete
  * Delete a property
  */
-opsRoutes.delete('/properties/:id', async (c) => {
+opsRoutes.post('/properties/:id/delete', async (c) => {
     try {
         const siteId = c.req.header('X-Site-Id');
         if (!siteId) {
@@ -1218,10 +1325,10 @@ opsRoutes.delete('/properties/:id', async (c) => {
     }
 });
 /**
- * DELETE /api/ops/units/:id
+ * POST /api/ops/units/:id/delete
  * Delete a unit
  */
-opsRoutes.delete('/units/:id', async (c) => {
+opsRoutes.post('/units/:id/delete', async (c) => {
     try {
         const siteId = c.req.header('X-Site-Id');
         if (!siteId) {
@@ -1362,10 +1469,10 @@ opsRoutes.get('/work-orders/:id', async (c) => {
     }
 });
 /**
- * DELETE /api/ops/work-orders/:id
+ * POST /api/ops/work-orders/:id/delete
  * Delete a work order
  */
-opsRoutes.delete('/work-orders/:id', async (c) => {
+opsRoutes.post('/work-orders/:id/delete', async (c) => {
     try {
         const siteId = c.req.header('X-Site-Id');
         if (!siteId) {
@@ -1627,10 +1734,10 @@ opsRoutes.post('/site-api-tokens', async (c) => {
     }
 });
 /**
- * PATCH /api/ops/site-api-tokens/:id
+ * POST /api/ops/site-api-tokens/:id
  * Update an API token (activate/deactivate or change description)
  */
-opsRoutes.patch('/site-api-tokens/:id', async (c) => {
+opsRoutes.post('/site-api-tokens/:id', async (c) => {
     try {
         const siteId = c.req.header('X-Site-Id');
         if (!siteId) {
@@ -1656,10 +1763,10 @@ opsRoutes.patch('/site-api-tokens/:id', async (c) => {
     }
 });
 /**
- * DELETE /api/ops/site-api-tokens/:id
+ * POST /api/ops/site-api-tokens/:id/delete
  * Delete (revoke) an API token
  */
-opsRoutes.delete('/site-api-tokens/:id', async (c) => {
+opsRoutes.post('/site-api-tokens/:id/delete', async (c) => {
     try {
         const siteId = c.req.header('X-Site-Id');
         if (!siteId) {

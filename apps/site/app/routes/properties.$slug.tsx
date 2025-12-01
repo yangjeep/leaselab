@@ -1,5 +1,5 @@
-import type { LoaderFunctionArgs, MetaFunction } from "@remix-run/node";
-import { json } from "@remix-run/node";
+import type { LoaderFunctionArgs, MetaFunction } from "@remix-run/cloudflare";
+import { json } from "@remix-run/cloudflare";
 import { useLoaderData, useSearchParams, Link } from "@remix-run/react";
 import { useState } from "react";
 import { fetchPropertyById, fetchProperties, fetchSiteConfig } from "~/lib/api-client";
@@ -20,7 +20,7 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 
 export async function loader({ params, request, context }: LoaderFunctionArgs) {
   // Handle both Cloudflare Pages and Vite dev mode
-  const env = (context as any).cloudflare?.env || process.env;
+  const env = (context as any).cloudflare?.env || (typeof process !== "undefined" ? process.env : {});
   const { slug } = params;
 
   if (!slug) {
@@ -47,8 +47,13 @@ export default function PropertyDetail() {
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState("overview");
 
-  const gallery = listing.images && listing.images.length > 0
-    ? listing.images
+  // Extract valid image URLs from the images array
+  const imageUrls = listing.images
+    ?.map((img: any) => img.url)
+    .filter((url: string) => url && url.trim() !== '') || [];
+
+  const gallery = imageUrls.length > 0
+    ? imageUrls
     : [listing.imageUrl || "/placeholder1.jpg", "/placeholder2.jpg"];
 
   // Build back URL with preserved filters

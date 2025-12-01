@@ -4,6 +4,7 @@ import { useLoaderData, Link, useSearchParams } from '@remix-run/react';
 import { fetchTenantsFromWorker, fetchPropertiesFromWorker, fetchUnitsFromWorker } from '~/lib/worker-client';
 import { formatPhoneNumber } from '~/shared/utils';
 import { getSiteId } from '~/lib/site.server';
+import { SortableTableHeader, NonSortableTableHeader } from '~/components/SortableTableHeader';
 
 export const meta: MetaFunction = () => {
   return [{ title: 'Tenants - LeaseLab.io' }];
@@ -21,7 +22,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
   const sortOrder = (url.searchParams.get('sortOrder') || 'desc') as 'asc' | 'desc';
 
   const [tenants, properties, units] = await Promise.all([
-    fetchTenantsFromWorker(env, siteId, { status, propertyId }),
+    fetchTenantsFromWorker(env, siteId, { status, propertyId, sortBy, sortOrder }),
     fetchPropertiesFromWorker(env, siteId),
     fetchUnitsFromWorker(env, siteId, propertyId),
   ]);
@@ -173,14 +174,14 @@ export default function TenantsIndex() {
         ) : (
           <table className="w-full">
             <thead className="bg-gray-50">
-              <tr className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                <th className="px-6 py-3">Name</th>
-                <th className="px-6 py-3">Property / Unit</th>
-                <th className="px-6 py-3">Contact</th>
-                <th className="px-6 py-3">Status</th>
-                <th className="px-6 py-3">Work Orders</th>
-                <th className="px-6 py-3">Since</th>
-                <th className="px-6 py-3"></th>
+              <tr>
+                <SortableTableHeader column="firstName" label="Name" />
+                <SortableTableHeader column="propertyName" label="Property / Unit" />
+                <SortableTableHeader column="email" label="Contact" />
+                <SortableTableHeader column="status" label="Status" />
+                <SortableTableHeader column="activeWorkOrderCount" label="Work Orders" defaultSortOrder="desc" />
+                <SortableTableHeader column="createdAt" label="Since" defaultSortOrder="desc" />
+                <NonSortableTableHeader label="" />
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">

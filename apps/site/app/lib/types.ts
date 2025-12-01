@@ -1,5 +1,6 @@
 export type Listing = {
-  id: string;
+  id: string; // Unit ID
+  propertyId?: string; // Property ID (for lead submissions)
   title: string;
   slug: string;
   price: number;
@@ -12,7 +13,7 @@ export type Listing = {
   pets?: "Allowed" | "Not Allowed" | "Conditional" | string;
   description?: string;
   imageUrl?: string;
-  images?: string[];
+  images?: Array<{ url?: string; [key: string]: any }> | string[];
   imageFolderUrl?: string;
   lat?: number;
   lng?: number;

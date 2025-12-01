@@ -114,8 +114,25 @@ export interface LeadFile {
     mimeType: string;
     r2Key: string;
     uploadedAt: string;
+    signedUrl?: string;
+    expiresAt?: string;
 }
 export type LeadFileType = 'government_id' | 'paystub' | 'bank_statement' | 'tax_return' | 'employment_letter' | 'other';
+export interface FileUploadResponse {
+    fileId: string;
+    fileName: string;
+    fileSize: number;
+    fileType: LeadFileType;
+    uploadedAt: string;
+}
+export interface PropertyWithImagesResponse {
+    property: Property & {
+        images: PropertyImage[];
+    };
+    unit?: Unit & {
+        images: PropertyImage[];
+    };
+}
 export interface LeadAIResult {
     id: string;
     leadId: string;

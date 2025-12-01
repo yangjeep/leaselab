@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(curl:*)",
+      "Bash(npx wrangler deploy)",
+      "Bash(npx wrangler d1 execute:*)",
+      "Bash(node scripts/generate-token.js:*)",
+      "Bash(npx tsx:*)",
+      "Bash(npm run dev:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx wrangler:*)",
+      "Bash(find:*)",
+      "Bash(git -C /Users/yangjeep/ws/yangjeep/leaselab2 status --short)",
+      "Bash(npm run build:*)",
+      "Bash(npm run typecheck:*)",
+      "Bash(git -C /Users/yangjeep/ws/yangjeep/leaselab2 log --oneline -10)",
+      "Bash(cat:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
+

@@ -174,11 +174,14 @@ export function getOptimalImageFormat(userAgent?: string): 'auto' | 'webp' | 'av
  */
 export function getImageDimensions(file: File): Promise<{ width: number; height: number }> {
     return new Promise((resolve, reject) => {
+        // @ts-ignore - Image and URL.createObjectURL are browser APIs, not available in Workers
         const img = new Image();
+        // @ts-ignore
         const url = URL.createObjectURL(file);
 
-        img.onload = () => {
-            URL.revokeObjectURL(url);
+    img.onload = () => {
+      // @ts-ignore
+      URL.revokeObjectURL(url);
             resolve({
                 width: img.naturalWidth,
                 height: img.naturalHeight,
@@ -186,6 +189,7 @@ export function getImageDimensions(file: File): Promise<{ width: number; height:
         };
 
         img.onerror = () => {
+            // @ts-ignore
             URL.revokeObjectURL(url);
             reject(new Error('Failed to load image'));
         };
@@ -275,6 +279,7 @@ export async function validateImageFile(
     }
 
     // Check dimensions (browser only)
+    // @ts-ignore - window is not available in Workers
     if (typeof window !== 'undefined' && (minWidth || minHeight || maxWidth || maxHeight)) {
         try {
             const dimensions = await getImageDimensions(file);

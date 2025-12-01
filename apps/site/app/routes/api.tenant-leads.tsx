@@ -1,5 +1,5 @@
-import type { ActionFunctionArgs } from "@remix-run/node";
-import { json, redirect } from "@remix-run/node";
+import type { ActionFunctionArgs } from "@remix-run/cloudflare";
+import { json, redirect } from "@remix-run/cloudflare";
 
 export async function action({ request, context }: ActionFunctionArgs) {
   if (request.method !== "POST") {
@@ -9,6 +9,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
   const formData = await request.formData();
 
   const propertyId = formData.get("propertyId") as string;
+  const unitId = formData.get("unitId") as string | null;
   const firstName = formData.get("firstName") as string;
   const lastName = formData.get("lastName") as string;
   const email = formData.get("email") as string;
@@ -17,6 +18,17 @@ export async function action({ request, context }: ActionFunctionArgs) {
   const employmentStatus = formData.get("employmentStatus") as string;
   // monthlyIncome removed from public submission
   const message = formData.get("message") as string;
+  const fileIdsJson = formData.get("fileIds") as string;
+
+  // Parse fileIds from JSON
+  let fileIds: string[] = [];
+  if (fileIdsJson) {
+    try {
+      fileIds = JSON.parse(fileIdsJson);
+    } catch (e) {
+      console.error("Failed to parse fileIds:", e);
+    }
+  }
 
   // Validate required fields
   if (!propertyId || !firstName || !lastName || !email || !phone) {
@@ -33,23 +45,31 @@ export async function action({ request, context }: ActionFunctionArgs) {
   }
 
   // Handle both Cloudflare Pages and Vite dev mode
-  const env = (context as any).cloudflare?.env || process.env;
-  const opsApiUrl = env.OPS_API_URL;
+  const env = (context as any).cloudflare?.env || (typeof process !== "undefined" ? process.env : {});
+  const workerUrl = env.WORKER_URL;
+  const siteApiToken = env.SITE_API_TOKEN;
 
-  if (!opsApiUrl) {
-    console.error("OPS_API_URL not configured");
+  if (!workerUrl) {
+    console.error("WORKER_URL not configured");
     return json({ error: "Server configuration error" }, { status: 500 });
   }
 
+  if (!siteApiToken) {
+    console.error("SITE_API_TOKEN not configured");
+    return json({ error: "Authentication not configured" }, { status: 500 });
+  }
+
   try {
-    // Submit to Ops API
-    const response = await fetch(`${opsApiUrl}/api/public/leads`, {
+    // Submit to Worker API
+    const response = await fetch(`${workerUrl}/api/public/leads`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "Authorization": `Bearer ${siteApiToken}`,
       },
       body: JSON.stringify({
-        propertyId: propertyId === "other" ? "general" : propertyId,
+        propertyId,
+        unitId: unitId || undefined,
         firstName,
         lastName,
         email,
@@ -58,6 +78,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
         // landlord/internal notes now handled in Ops; no monthlyIncome captured
         moveInDate: moveInDate || new Date().toISOString().split("T")[0],
         message,
+        fileIds: fileIds.length > 0 ? fileIds : undefined,
       }),
     });
 
@@ -70,8 +91,8 @@ export async function action({ request, context }: ActionFunctionArgs) {
       );
     }
 
-    // Redirect to thank you page on success
-    return redirect("/thank-you");
+    // Return success (fetcher will handle navigation)
+    return json({ success: true });
   } catch (error) {
     console.error("Form submission error:", error);
     return json(
@@ -81,7 +102,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
   }
 }
 
-// Handle GET requests (not allowed for this route)
+// Handle GET requests (Remix may fetch this route after redirect)
 export async function loader() {
-  return json({ error: "Method not allowed" }, { status: 405 });
+  return json({ success: true });
 }

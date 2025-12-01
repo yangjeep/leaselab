@@ -25,7 +25,7 @@ export function normalizeDb(db) {
             const result = await bound.run();
             return {
                 success: result.success,
-                changes: result.meta.changes,
+                changes: (result.meta.rows_written || 0),
                 lastRowId: result.meta.last_row_id,
             };
         },
@@ -40,7 +40,7 @@ export function normalizeDb(db) {
             const results = await d1.batch(stmts);
             return results.map((result) => ({
                 success: result.success,
-                changes: result.meta.changes,
+                changes: (result.meta.rows_written || 0),
                 lastRowId: result.meta.last_row_id,
             }));
         },

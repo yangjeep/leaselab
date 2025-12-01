@@ -23,7 +23,7 @@ export const meta = ({ data }: any) => {
 };
 
 export async function loader({ params, context }: any) {
-  const env = (context as any)?.cloudflare?.env || process.env;
+  const env = (context as any)?.cloudflare?.env || (typeof process !== "undefined" ? process.env : {});
   const { id } = params;
 
   if (!id) {
@@ -49,9 +49,13 @@ export default function UnitDetail() {
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState("overview");
 
-  const images = Array.isArray(unit.images) && unit.images.length > 0 ? unit.images : [];
-  const fallbackImage = unit.property?.images && unit.property.images[0] ? unit.property.images[0] : "/placeholder1.jpg";
-  const gallery = images.length > 0 ? images : [fallbackImage, "/placeholder2.jpg"]; 
+  // Extract valid image URLs from the images array
+  const imageUrls = Array.isArray(unit.images)
+    ? unit.images.map((img: any) => img.url).filter((url: string) => url && url.trim() !== '')
+    : [];
+
+  const fallbackImage = unit.property?.images?.[0]?.url || "/placeholder1.jpg";
+  const gallery = imageUrls.length > 0 ? imageUrls : [fallbackImage, "/placeholder2.jpg"];
 
   const backUrl = searchParams.toString() ? `/?${searchParams.toString()}` : "/";
 

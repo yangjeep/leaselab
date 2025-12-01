@@ -42,8 +42,8 @@ export async function getUserById(dbInput, siteId, id) {
 export async function getUsers(dbInput) {
     const db = normalizeDb(dbInput);
     const results = await db.query(`
-    SELECT id, email, name, role, password_hash, site_id, is_super_admin, created_at, updated_at 
-    FROM users 
+    SELECT id, email, name, role, password_hash, site_id, is_super_admin, created_at, updated_at
+    FROM users
     ORDER BY created_at DESC
   `);
     return results.map((row) => ({
@@ -57,6 +57,39 @@ export async function getUsers(dbInput) {
         createdAt: row.created_at,
         updatedAt: row.updated_at,
     }));
+}
+export async function createUser(dbInput, data) {
+    const db = normalizeDb(dbInput);
+    // Check if user with this email already exists
+    const existingUser = await db.queryOne('SELECT id FROM users WHERE email = ?', [data.email]);
+    if (existingUser) {
+        throw new Error('A user with this email already exists');
+    }
+    const id = `usr_${crypto.randomUUID().replace(/-/g, '').slice(0, 16)}`;
+    const now = new Date().toISOString();
+    await db.execute(`INSERT INTO users (id, email, name, password_hash, role, site_id, is_super_admin, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, [
+        id,
+        data.email,
+        data.name,
+        data.passwordHash,
+        data.role,
+        data.siteId,
+        data.isSuperAdmin ? 1 : 0,
+        now,
+        now,
+    ]);
+    return {
+        id,
+        email: data.email,
+        name: data.name,
+        passwordHash: data.passwordHash,
+        role: data.role,
+        siteId: data.siteId,
+        isSuperAdmin: data.isSuperAdmin || false,
+        createdAt: now,
+        updatedAt: now,
+    };
 }
 export async function updateUserPassword(dbInput, siteId, userId, passwordHash) {
     const db = normalizeDb(dbInput);
@@ -86,12 +119,17 @@ export async function updateUserProfile(dbInput, siteId, userId, data) {
     params.push(userId);
     await db.execute(`UPDATE users SET ${updates.join(', ')} WHERE id = ? AND site_id = ?`, [...params, siteId]);
 }
+export async function updateUserRole(dbInput, siteId, userId, role) {
+    const db = normalizeDb(dbInput);
+    // Enforce site isolation - only allow role updates for users in the requesting site
+    await db.execute('UPDATE users SET role = ? WHERE id = ? AND site_id = ?', [role, userId, siteId]);
+}
 /**
  * Get site access records for a user
  */
 export async function getUserSiteAccess(dbInput, userId) {
     const db = normalizeDb(dbInput);
-    const results = await db.query(`SELECT site_id as siteId, role
+    const results = await db.query(`SELECT site_id as siteId, role, granted_at as grantedAt
      FROM user_access
      WHERE user_id = ?`, [userId]);
     return results;
@@ -104,12 +142,18 @@ export async function getUserAccessibleSites(dbInput, userId) {
     // Check if user is super admin
     const user = await db.queryOne(`SELECT is_super_admin FROM users WHERE id = ?`, [userId]);
     if (user?.is_super_admin) {
-        // Super admins have access to all sites - return a special marker
-        // The actual site list should be fetched from the sites table
-        return [{ siteId: '*', role: 'super_admin' }];
+        // Super admins have access to all sites
+        // There is no dedicated sites table in the current schema.
+        // Use active site API tokens to enumerate available site IDs.
+        const allSites = await db.query(`SELECT DISTINCT site_id FROM site_api_tokens WHERE is_active = 1`);
+        return allSites.map(site => ({
+            siteId: site.site_id,
+            role: 'super_admin',
+            grantedAt: new Date().toISOString() // Dynamic access
+        }));
     }
     // Return user's explicitly granted site access
-    const access = await db.query(`SELECT site_id as siteId, role
+    const access = await db.query(`SELECT site_id as siteId, role, granted_at as grantedAt
      FROM user_access
      WHERE user_id = ?`, [userId]);
     return access;
@@ -131,7 +175,7 @@ export async function userHasAccessToSite(dbInput, userId, siteId) {
 /**
  * Grant site access to a user
  */
-export async function grantSiteAccess(dbInput, userId, siteId, role = 'admin') {
+export async function grantSiteAccess(dbInput, userId, siteId, role = 'admin', grantedBy) {
     const db = normalizeDb(dbInput);
     // Check if access already exists
     const existing = await db.queryOne(`SELECT 1 FROM user_access WHERE user_id = ? AND site_id = ?`, [userId, siteId]);
@@ -142,8 +186,8 @@ export async function grantSiteAccess(dbInput, userId, siteId, role = 'admin') {
     else {
         // Insert new access
         const id = `ua_${crypto.randomUUID().replace(/-/g, '').slice(0, 16)}`;
-        await db.execute(`INSERT INTO user_access (id, user_id, site_id, role, created_at)
-       VALUES (?, ?, ?, ?, ?)`, [id, userId, siteId, role, new Date().toISOString()]);
+        await db.execute(`INSERT INTO user_access (id, user_id, site_id, role, granted_by, created_at, granted_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`, [id, userId, siteId, role, grantedBy || null, new Date().toISOString(), new Date().toISOString()]);
     }
 }
 /**

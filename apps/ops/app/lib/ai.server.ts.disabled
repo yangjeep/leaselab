@@ -1,3 +1,7 @@
+// TEMPORARILY DISABLED - OpenAI SDK removed for redesign
+// This file will be reimplemented with the new AI architecture
+
+/*
 import OpenAI from 'openai';
 import type { Lead, LeadFile, LeadAIResult } from '~/shared/types';
 import type { AIEvaluationResultInput } from '~/shared/config';
@@ -152,3 +156,5 @@ export async function generateSignedUrls(
 
   return urls;
 }
+*/
+

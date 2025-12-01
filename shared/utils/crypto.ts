@@ -3,6 +3,7 @@
  */
 
 // Use global crypto if available (Node 19+, Cloudflare Workers), otherwise fallback
+// @ts-ignore - globalThis.crypto is available in Cloudflare Workers and Node 19+
 const cryptoAPI = globalThis.crypto;
 
 /**
@@ -31,8 +32,8 @@ export async function hashPassword(password: string): Promise<string> {
         256
     );
 
-    const saltHex = Array.from(salt).map(b => b.toString(16).padStart(2, '0')).join('');
-    const hashHex = Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+    const saltHex = Array.from(salt).map((b) => (b as number).toString(16).padStart(2, '0')).join('');
+    const hashHex = Array.from(new Uint8Array(hash)).map((b) => (b as number).toString(16).padStart(2, '0')).join('');
 
     return `${saltHex}:${hashHex}`;
 }

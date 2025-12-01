@@ -1,3 +1,7 @@
+// TEMPORARILY DISABLED - OpenAI SDK removed for redesign
+// This route will be reimplemented with the new AI architecture
+
+/*
 import type { ActionFunctionArgs } from '@remix-run/cloudflare';
 import { json } from '@remix-run/cloudflare';
 import { fetchLeadFromWorker, fetchLeadFilesFromWorker, fetchPropertyFromWorker, fetchUnitsFromWorker, runAIEvaluationToWorker, updateLeadToWorker } from '~/lib/worker-client';
@@ -104,3 +108,5 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
     );
   }
 }
+*/
+

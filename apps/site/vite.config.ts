@@ -12,6 +12,15 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./app"),
     },
   },
+  build: {
+    // Enable tree-shaking and minification
+    minify: 'esbuild',
+    rollupOptions: {
+      output: {
+        manualChunks: undefined, // Let Remix handle chunking
+      },
+    },
+  },
   plugins: [
     remix({
       future: {
@@ -22,6 +31,7 @@ export default defineConfig({
         v3_lazyRouteDiscovery: true,
       },
     }),
+    // @ts-expect-error - vite-tsconfig-paths uses vite 7.x types but apps use vite 5.x
     tsconfigPaths({ root: __dirname }),
   ],
 });

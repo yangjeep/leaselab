@@ -8,7 +8,7 @@
  * npx tsx scripts/generate-test-tenants-wrangler.ts
  */
 
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import { generateId } from '../shared/utils/index.js';
 
 // Test tenant data
@@ -121,9 +121,15 @@ const workOrderTemplates = [
 
 function executeD1Query(sql: string): string {
   try {
-    const result = execSync(
-      `cd apps/ops && npx wrangler d1 execute leaselab-db --remote --command "${sql.replace(/"/g, '\\"')}"`,
-      { encoding: 'utf-8', stdio: 'pipe' }
+    // Use execFileSync to avoid shell escaping issues
+    const result = execFileSync(
+      'npx',
+      ['wrangler', 'd1', 'execute', 'leaselab-db', '--remote', '--command', sql],
+      {
+        encoding: 'utf-8',
+        stdio: 'pipe',
+        cwd: 'apps/ops' // Run from apps/ops directory
+      }
     );
     return result;
   } catch (error: any) {
@@ -134,9 +140,14 @@ function executeD1Query(sql: string): string {
 
 function queryD1(sql: string): any[] {
   try {
-    const result = execSync(
-      `cd apps/ops && npx wrangler d1 execute leaselab-db --remote --json --command "${sql.replace(/"/g, '\\"')}"`,
-      { encoding: 'utf-8', stdio: 'pipe' }
+    const result = execFileSync(
+      'npx',
+      ['wrangler', 'd1', 'execute', 'leaselab-db', '--remote', '--json', '--command', sql],
+      {
+        encoding: 'utf-8',
+        stdio: 'pipe',
+        cwd: 'apps/ops'
+      }
     );
     const parsed = JSON.parse(result);
     return parsed[0]?.results || [];

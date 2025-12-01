@@ -25,12 +25,11 @@ export interface SiteConfig {
 
 /**
  * Get the API base URL from environment
- * Prefers WORKER_URL for CRUD operations, falls back to OPS_API_URL
  */
-function getApiUrl(env: { WORKER_URL?: string; OPS_API_URL?: string }): string {
-    const url = env.WORKER_URL || env.OPS_API_URL;
+function getApiUrl(env: { WORKER_URL?: string }): string {
+    const url = env.WORKER_URL;
     if (!url) {
-        throw new Error('WORKER_URL or OPS_API_URL environment variable must be configured');
+        throw new Error('WORKER_URL environment variable must be configured');
     }
     return url;
 }
@@ -50,7 +49,7 @@ function getApiToken(env: { SITE_API_TOKEN?: string }): string {
  * Make an authenticated API request
  */
 async function apiRequest<T>(
-    env: { WORKER_URL?: string; OPS_API_URL?: string; SITE_API_TOKEN?: string },
+    env: { WORKER_URL?: string; SITE_API_TOKEN?: string },
     endpoint: string,
     options?: RequestInit
 ): Promise<T> {
@@ -84,7 +83,7 @@ async function apiRequest<T>(
  * Fetch all properties with optional filters
  */
 export async function fetchProperties(
-    env: { WORKER_URL?: string; OPS_API_URL?: string; SITE_API_TOKEN?: string },
+    env: { WORKER_URL?: string; SITE_API_TOKEN?: string },
     filters?: {
         city?: string;
         bedrooms?: string;
@@ -106,7 +105,7 @@ export async function fetchProperties(
  * Fetch a single property by ID
  */
 export async function fetchPropertyById(
-    env: { WORKER_URL?: string; OPS_API_URL?: string; SITE_API_TOKEN?: string },
+    env: { WORKER_URL?: string; SITE_API_TOKEN?: string },
     id: string
 ): Promise<Listing> {
     return apiRequest<Listing>(env, `/api/public/properties/${id}`);
@@ -116,7 +115,7 @@ export async function fetchPropertyById(
  * Fetch site configuration
  */
 export async function fetchSiteConfig(
-    env: { WORKER_URL?: string; OPS_API_URL?: string; SITE_API_TOKEN?: string }
+    env: { WORKER_URL?: string; SITE_API_TOKEN?: string }
 ): Promise<SiteConfig> {
     return apiRequest<SiteConfig>(env, '/api/public/site-config');
 }
@@ -125,7 +124,7 @@ export async function fetchSiteConfig(
  * Fetch a single unit by ID (includes property details)
  */
 export async function fetchUnitById(
-    env: { WORKER_URL?: string; OPS_API_URL?: string; SITE_API_TOKEN?: string },
+    env: { WORKER_URL?: string; SITE_API_TOKEN?: string },
     id: string
 ): Promise<any> {
     return apiRequest<any>(env, `/api/public/units/${id}`);
@@ -135,7 +134,7 @@ export async function fetchUnitById(
  * Submit an application with optional file uploads
  */
 export async function submitApplication(
-    env: { WORKER_URL?: string; OPS_API_URL?: string; SITE_API_TOKEN?: string },
+    env: { WORKER_URL?: string; SITE_API_TOKEN?: string },
     data: {
         propertyId: string;
         firstName: string;

@@ -46,8 +46,10 @@ import {
   getUsers,
   getUserById,
   getUserByEmail,
+  createUser,
   updateUserPassword,
   updateUserProfile,
+  updateUserRole,
   getUserSiteAccess,
   getUserAccessibleSites,
   userHasAccessToSite,
@@ -445,7 +447,19 @@ opsRoutes.get('/work-orders', async (c: Context) => {
   try {
     const siteId = c.req.header('X-Site-Id');
     if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
-    const workOrders = await getWorkOrders(c.env.DB, siteId);
+
+    // Get query parameters
+    const status = c.req.query('status');
+    const propertyId = c.req.query('propertyId');
+    const sortBy = c.req.query('sortBy');
+    const sortOrder = c.req.query('sortOrder') as 'asc' | 'desc' | undefined;
+
+    const workOrders = await getWorkOrders(c.env.DB, siteId, {
+      status,
+      propertyId,
+      sortBy,
+      sortOrder,
+    });
 
     return c.json({
       success: true,
@@ -507,6 +521,50 @@ opsRoutes.get('/users', async (c: Context) => {
     });
   } catch (error) {
     console.error('Error fetching users:', error);
+    return c.json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    }, 500);
+  }
+});
+
+/**
+ * POST /api/ops/users
+ * Create a new user
+ */
+opsRoutes.post('/users', async (c: Context) => {
+  try {
+    const body = await c.req.json();
+
+    // Validate required fields
+    if (!body.email || !body.name || !body.password || !body.role || !body.siteId) {
+      return c.json({
+        error: 'Bad request',
+        message: 'Missing required fields: email, name, password, role, siteId',
+      }, 400);
+    }
+
+    // Import hashPassword from shared utils
+    const { hashPassword } = await import('../../../shared/utils/crypto');
+
+    // Hash password server-side to prevent hash interception attacks
+    const passwordHash = await hashPassword(body.password);
+
+    const user = await createUser(c.env.DB, {
+      email: body.email,
+      name: body.name,
+      passwordHash,
+      role: body.role,
+      siteId: body.siteId,
+      isSuperAdmin: body.isSuperAdmin || false,
+    });
+
+    return c.json({
+      success: true,
+      data: user,
+    }, 201);
+  } catch (error) {
+    console.error('Error creating user:', error);
     return c.json({
       error: 'Internal server error',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -677,6 +735,40 @@ opsRoutes.post('/users/:id/super-admin', async (c: Context) => {
 });
 
 /**
+ * PUT /api/ops/users/:id/role
+ * Update user role
+ */
+opsRoutes.put('/users/:id/role', async (c: Context) => {
+  try {
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) {
+      return c.json({ error: 'Missing X-Site-Id header' }, 400);
+    }
+    const id = c.req.param('id');
+    const body = await c.req.json();
+
+    if (!body.role) {
+      return c.json({
+        error: 'Bad request',
+        message: 'Missing required field: role',
+      }, 400);
+    }
+
+    await updateUserRole(c.env.DB, siteId, id, body.role);
+
+    return c.json({
+      success: true,
+    });
+  } catch (error) {
+    console.error('Error updating user role:', error);
+    return c.json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    }, 500);
+  }
+});
+
+/**
  * GET /api/ops/users/:id/sites
  * Get accessible sites for a user
  */
@@ -760,10 +852,19 @@ opsRoutes.get('/tenants', async (c: Context) => {
   try {
     const siteId = c.req.header('X-Site-Id');
     if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
+
+    // Get query parameters
     const status = c.req.query('status');
     const propertyId = c.req.query('propertyId');
+    const sortBy = c.req.query('sortBy');
+    const sortOrder = c.req.query('sortOrder') as 'asc' | 'desc' | undefined;
 
-    const tenants = await getTenants(c.env.DB, siteId, { status, propertyId });
+    const tenants = await getTenants(c.env.DB, siteId, {
+      status,
+      propertyId,
+      sortBy,
+      sortOrder,
+    });
 
     return c.json({
       success: true,
@@ -1112,7 +1213,10 @@ opsRoutes.post('/images/presign', async (c: Context) => {
 opsRoutes.post('/images/upload', async (c: Context) => {
   try {
     const formData = await c.req.formData();
-    const file = formData.get('file') as File;
+    const file = formData.get('file') as File | null;
+    if (!file || typeof file === 'string') {
+      return c.json({ error: 'Invalid file' }, 400);
+    }
     const key = formData.get('key') as string;
 
     if (!file || !key) {
@@ -1181,7 +1285,7 @@ opsRoutes.post('/images/reorder', async (c: Context) => {
 
 /**
  * GET /api/ops/leads/:id/files
- * Get files for a lead
+ * Get files for a lead with signed URLs for downloading (valid for 24 hours)
  */
 opsRoutes.get('/leads/:id/files', async (c: Context) => {
   try {
@@ -1191,9 +1295,25 @@ opsRoutes.get('/leads/:id/files', async (c: Context) => {
 
     const files = await getLeadFiles(c.env.DB, siteId, leadId);
 
+    // Generate signed URLs for each file (valid for 24 hours)
+    const filesWithUrls = await Promise.all(files.map(async (file) => {
+      // Generate signed URL using R2's built-in signing
+      const signedUrl = await c.env.PRIVATE_BUCKET.sign(file.r2Key, {
+        expiresIn: 24 * 60 * 60, // 24 hours in seconds
+      });
+
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+
+      return {
+        ...file,
+        signedUrl,
+        expiresAt,
+      };
+    }));
+
     return c.json({
       success: true,
-      data: files,
+      data: filesWithUrls,
     });
   } catch (error) {
     console.error('Error fetching lead files:', error);
@@ -1214,7 +1334,10 @@ opsRoutes.post('/leads/:id/files', async (c: Context) => {
     if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
     const leadId = c.req.param('id');
     const formData = await c.req.formData();
-    const file = formData.get('file') as File;
+    const file = formData.get('file') as File | null;
+    if (!file || typeof file === 'string') {
+      return c.json({ error: 'Invalid file' }, 400);
+    }
     const fileType = formData.get('fileType') as string;
 
     if (!file) {

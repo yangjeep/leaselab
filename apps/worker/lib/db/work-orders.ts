@@ -3,6 +3,12 @@ import { generateId } from '../../../../shared/utils';
 import type { DatabaseInput } from './helpers';
 import { normalizeDb } from './helpers';
 
+// Extended type for work orders with property and unit info
+export type WorkOrderWithDetails = WorkOrder & {
+    propertyName?: string;
+    unitNumber?: string;
+};
+
 // Mapper function
 function mapWorkOrderFromDb(row: unknown): WorkOrder {
     const r = row as Record<string, unknown>;
@@ -24,24 +30,76 @@ function mapWorkOrderFromDb(row: unknown): WorkOrder {
     };
 }
 
-export async function getWorkOrders(dbInput: DatabaseInput, siteId: string, options?: { status?: string; propertyId?: string }): Promise<WorkOrder[]> {
+// Mapper function for work orders with details
+function mapWorkOrderWithDetailsFromDb(row: unknown): WorkOrderWithDetails {
+    const r = row as Record<string, unknown>;
+    return {
+        ...mapWorkOrderFromDb(row),
+        propertyName: r.property_name as string | undefined,
+        unitNumber: r.unit_number as string | undefined,
+    };
+}
+
+export async function getWorkOrders(
+    dbInput: DatabaseInput,
+    siteId: string,
+    options?: {
+        status?: string;
+        propertyId?: string;
+        sortBy?: string;
+        sortOrder?: 'asc' | 'desc';
+    }
+): Promise<WorkOrderWithDetails[]> {
     const db = normalizeDb(dbInput);
-    let query = 'SELECT * FROM work_orders WHERE site_id = ?';
+
+    // Join with properties to get property name
+    // Left join with leases to get unit info (if work order has a tenant)
+    let query = `
+        SELECT
+            wo.*,
+            p.name as property_name,
+            u.unit_number as unit_number
+        FROM work_orders wo
+        INNER JOIN properties p ON wo.property_id = p.id
+        LEFT JOIN tenants t ON wo.tenant_id = t.id
+        LEFT JOIN leases l ON t.id = l.tenant_id AND l.status IN ('active', 'signed')
+        LEFT JOIN units u ON l.unit_id = u.id
+        WHERE wo.site_id = ?
+    `;
     const params: string[] = [siteId];
 
     if (options?.status) {
-        query += ' AND status = ?';
+        query += ' AND wo.status = ?';
         params.push(options.status);
     }
     if (options?.propertyId) {
-        query += ' AND property_id = ?';
+        query += ' AND wo.property_id = ?';
         params.push(options.propertyId);
     }
 
-    query += ' ORDER BY created_at DESC';
+    // Add sorting
+    const sortBy = options?.sortBy || 'created_at';
+    const sortOrder = options?.sortOrder || 'desc';
+
+    // Map frontend sort fields to database columns
+    const sortFieldMap: Record<string, string> = {
+        'title': 'wo.title',
+        'category': 'wo.category',
+        'priority': 'wo.priority',
+        'status': 'wo.status',
+        'createdAt': 'wo.created_at',
+        'created_at': 'wo.created_at',
+        'propertyName': 'p.name',
+        'property_name': 'p.name',
+        'unitNumber': 'u.unit_number',
+        'unit_number': 'u.unit_number',
+    };
+
+    const dbSortField = sortFieldMap[sortBy] || 'wo.created_at';
+    query += ` ORDER BY ${dbSortField} ${sortOrder.toUpperCase()}`;
 
     const results = await db.query(query, params);
-    return results.map(mapWorkOrderFromDb);
+    return results.map(mapWorkOrderWithDetailsFromDb);
 }
 
 export async function getWorkOrderById(dbInput: DatabaseInput, siteId: string, id: string): Promise<WorkOrder | null> {

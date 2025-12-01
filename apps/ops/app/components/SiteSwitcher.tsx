@@ -22,10 +22,12 @@ export function SiteSwitcher({ currentSite, availableSites }: SiteSwitcherProps)
     }
 
     const handleSiteChange = (siteId: string) => {
-        fetcher.submit(
-            { siteId },
-            { method: 'POST', action: '/api/site/switch', encType: 'application/json' }
-        );
+        const formData = new FormData();
+        formData.append('siteId', siteId);
+        fetcher.submit(formData, { 
+            method: 'POST', 
+            action: '/api/site/switch'
+        });
     };
 
     return (

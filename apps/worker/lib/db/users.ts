@@ -52,12 +52,12 @@ export async function getUserById(dbInput: DatabaseInput, siteId: string, id: st
 export async function getUsers(dbInput: DatabaseInput): Promise<User[]> {
     const db = normalizeDb(dbInput);
     const results = await db.query(`
-    SELECT id, email, name, role, password_hash, site_id, is_super_admin, created_at, updated_at 
-    FROM users 
+    SELECT id, email, name, role, password_hash, site_id, is_super_admin, created_at, updated_at
+    FROM users
     ORDER BY created_at DESC
   `);
 
-    return results.map((row: Record<string, unknown>) => ({
+    return (results as Array<Record<string, unknown>>).map((row) => ({
         id: row.id as string,
         email: row.email as string,
         name: row.name as string,
@@ -68,6 +68,61 @@ export async function getUsers(dbInput: DatabaseInput): Promise<User[]> {
         createdAt: row.created_at as string,
         updatedAt: row.updated_at as string,
     }));
+}
+
+export async function createUser(
+    dbInput: DatabaseInput,
+    data: {
+        email: string;
+        name: string;
+        passwordHash: string;
+        role: User['role'];
+        siteId: string;
+        isSuperAdmin?: boolean;
+    }
+): Promise<User> {
+    const db = normalizeDb(dbInput);
+
+    // Check if user with this email already exists
+    const existingUser = await db.queryOne(
+        'SELECT id FROM users WHERE email = ?',
+        [data.email]
+    );
+
+    if (existingUser) {
+        throw new Error('A user with this email already exists');
+    }
+
+    const id = `usr_${crypto.randomUUID().replace(/-/g, '').slice(0, 16)}`;
+    const now = new Date().toISOString();
+
+    await db.execute(
+        `INSERT INTO users (id, email, name, password_hash, role, site_id, is_super_admin, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+            id,
+            data.email,
+            data.name,
+            data.passwordHash,
+            data.role,
+            data.siteId,
+            data.isSuperAdmin ? 1 : 0,
+            now,
+            now,
+        ]
+    );
+
+    return {
+        id,
+        email: data.email,
+        name: data.name,
+        passwordHash: data.passwordHash,
+        role: data.role,
+        siteId: data.siteId,
+        isSuperAdmin: data.isSuperAdmin || false,
+        createdAt: now,
+        updatedAt: now,
+    };
 }
 
 export async function updateUserPassword(dbInput: DatabaseInput, siteId: string, userId: string, passwordHash: string): Promise<void> {
@@ -111,6 +166,17 @@ export async function updateUserProfile(
 
     params.push(userId);
     await db.execute(`UPDATE users SET ${updates.join(', ')} WHERE id = ? AND site_id = ?`, [...params, siteId]);
+}
+
+export async function updateUserRole(
+    dbInput: DatabaseInput,
+    siteId: string,
+    userId: string,
+    role: User['role']
+): Promise<void> {
+    const db = normalizeDb(dbInput);
+    // Enforce site isolation - only allow role updates for users in the requesting site
+    await db.execute('UPDATE users SET role = ? WHERE id = ? AND site_id = ?', [role, userId, siteId]);
 }
 
 /**

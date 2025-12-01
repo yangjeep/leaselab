@@ -1,5 +1,5 @@
-import type { LoaderFunctionArgs, MetaFunction } from "@remix-run/node";
-import { json } from "@remix-run/node";
+import type { LoaderFunctionArgs, MetaFunction } from "@remix-run/cloudflare";
+import { json } from "@remix-run/cloudflare";
 import { useLoaderData, useSearchParams, Link } from "@remix-run/react";
 import { useState } from "react";
 import PropertyMap from "~/components/PropertyMap";
@@ -20,7 +20,7 @@ export const meta: MetaFunction = () => {
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
   // Handle both Cloudflare Pages and Vite dev mode
-  const env = (context as any).cloudflare?.env || process.env;
+  const env = (context as any).cloudflare?.env || (typeof process !== "undefined" ? process.env : {});
   const url = new URL(request.url);
 
   // Get filter params

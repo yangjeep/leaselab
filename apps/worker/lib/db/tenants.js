@@ -108,9 +108,20 @@ export async function getTenants(dbInput, siteId, options) {
         query += ' AND l.unit_id = ?';
         params.push(unitId);
     }
-    const orderColumn = sortBy === 'propertyName' ? 'p.name' :
-        sortBy === 'unitNumber' ? 'u.unit_number' :
-            `t.${sortBy.replace(/([A-Z])/g, '_$1').toLowerCase()}`;
+    // Map sort fields to database columns
+    let orderColumn;
+    if (sortBy === 'propertyName' || sortBy === 'property_name') {
+        orderColumn = 'p.name';
+    }
+    else if (sortBy === 'unitNumber' || sortBy === 'unit_number') {
+        orderColumn = 'u.unit_number';
+    }
+    else if (sortBy === 'activeWorkOrderCount' || sortBy === 'active_work_order_count') {
+        orderColumn = 'active_work_order_count';
+    }
+    else {
+        orderColumn = `t.${sortBy.replace(/([A-Z])/g, '_$1').toLowerCase()}`;
+    }
     query += ` ORDER BY ${orderColumn} ${sortOrder.toUpperCase()}`;
     const results = await db.query(query, params);
     return results.map(mapTenantWithLeaseFromDb);

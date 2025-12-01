@@ -1,17 +1,16 @@
-name: Deploy to Production
+name: Deploy Production
 
 on:
-  push:
-    branches:
-      - main
+  release:
+    types: [published]
+
+permissions:
+  contents: read
 
 jobs:
-  deploy-worker:
-    name: Deploy Worker (Production)
+  test:
+    name: Run Tests
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: apps/worker
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -19,32 +18,44 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
-        working-directory: .
 
       - name: Run tests
         run: npm test
-        working-directory: .
 
-      - name: Deploy to Cloudflare Workers
+  deploy-worker:
+    name: Deploy Worker
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Deploy Worker
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: deploy
           workingDirectory: apps/worker
+          command: deploy --env production
 
   deploy-ops:
-    name: Deploy Ops (Production)
-    runs-on: ubuntu-latest
+    name: Deploy Ops
     needs: deploy-worker
-    defaults:
-      run:
-        working-directory: apps/ops
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -52,34 +63,28 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
-        working-directory: .
 
-      - name: Build application
-        run: npm run build
+      - name: Build Ops
         working-directory: apps/ops
+        run: npm run build
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy build/client --project-name=leaselab-ops --branch=main
           workingDirectory: apps/ops
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          command: pages deploy build/client --project-name=leaselab-ops --branch=main
 
   deploy-site:
-    name: Deploy Site (Production)
+    name: Deploy Site
+    needs: deploy-worker
     runs-on: ubuntu-latest
-    needs: [deploy-worker, deploy-ops]
-    defaults:
-      run:
-        working-directory: apps/site
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -87,23 +92,34 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
-        working-directory: .
 
-      - name: Build application
-        run: npm run build
+      - name: Build Site
         working-directory: apps/site
+        run: npm run build
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy build/client --project-name=leaselab-site --branch=main
           workingDirectory: apps/site
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          command: pages deploy build/client --project-name=leaselab-site --branch=main
+
+  notify:
+    name: Notify Deployment Success
+    needs: [deploy-worker, deploy-ops, deploy-site]
+    runs-on: ubuntu-latest
+    if: success()
+    steps:
+      - name: Deployment Summary
+        run: |
+          echo "✅ Production deployment completed successfully!"
+          echo "Release: ${{ github.event.release.tag_name }}"
+          echo "Worker: https://leaselab-worker.yangjeep.workers.dev"
+          echo "Ops: https://leaselab-ops.pages.dev"
+          echo "Site: https://leaselab-site.pages.dev"

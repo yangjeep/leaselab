@@ -1,4 +1,4 @@
-import type { AppLoadContext, EntryContext } from "@remix-run/node";
+import type { AppLoadContext, EntryContext } from "@remix-run/cloudflare";
 import { RemixServer } from "@remix-run/react";
 import { isbot } from "isbot";
 // @ts-expect-error - react-dom/server.browser doesn't have types but works in Cloudflare Pages
