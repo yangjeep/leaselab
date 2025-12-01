@@ -495,6 +495,20 @@ export async function updateTenantToWorker(
   }, siteId);
 }
 
+/**
+ * Delete tenant
+ */
+export async function deleteTenantToWorker(
+  env: WorkerEnv,
+  siteId: string,
+  tenantId: string
+): Promise<void> {
+  const url = `${env.WORKER_URL}/api/ops/tenants/${tenantId}`;
+  await workerFetch(url, env, {
+    method: 'DELETE',
+  }, siteId);
+}
+
 // ==================== IMAGES ====================
 
 /**

@@ -230,3 +230,12 @@ export async function updateTenant(
 
     await db.execute(`UPDATE tenants SET ${updates.join(', ')} WHERE id = ? AND site_id = ?`, params);
 }
+
+export async function deleteTenant(
+    dbInput: DatabaseInput,
+    siteId: string,
+    id: string
+): Promise<void> {
+    const db = normalizeDb(dbInput);
+    await db.execute('DELETE FROM tenants WHERE id = ? AND site_id = ?', [id, siteId]);
+}

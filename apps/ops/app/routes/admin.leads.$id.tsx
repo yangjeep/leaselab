@@ -1,9 +1,11 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs, MetaFunction } from '@remix-run/cloudflare';
 import { json, redirect } from '@remix-run/cloudflare';
-import { useLoaderData, useSubmit, useActionData } from '@remix-run/react';
+import { useLoaderData, useRouteLoaderData, useSubmit, useActionData } from '@remix-run/react';
 import { fetchLeadFromWorker, fetchPropertyFromWorker, updateLeadToWorker, fetchLeadHistoryFromWorker, fetchLeadFilesFromWorker } from '~/lib/worker-client';
 import { formatCurrency } from '~/shared/utils';
 import { getSiteId } from '~/lib/site.server';
+import { requireAuth } from '~/lib/auth.server';
+import { canDelete } from '~/lib/permissions';
 import { StageWorkflow, RENTAL_APPLICATION_STAGES } from '~/components/StageWorkflow';
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
@@ -86,6 +88,13 @@ export async function action({ params, request, context }: ActionFunctionArgs) {
   }
 
   if (action === 'archiveLead') {
+    // Check permissions
+    const secret = context.cloudflare.env.SESSION_SECRET as string;
+    const user = await requireAuth(request, workerEnv, secret, siteId);
+    if (!canDelete(user)) {
+      return json({ error: 'Insufficient permissions to archive applications' }, { status: 403 });
+    }
+
     const { archiveLeadToWorker } = await import('~/lib/worker-client');
     await archiveLeadToWorker(workerEnv, siteId, leadId);
     return redirect('/admin/leads');
@@ -96,7 +105,10 @@ export async function action({ params, request, context }: ActionFunctionArgs) {
 
 export default function LeadDetail() {
   const { lead, property, history, files } = useLoaderData<typeof loader>();
+  const adminData = useRouteLoaderData<typeof import('./admin').loader>('routes/admin');
+  const user = adminData?.user || null;
   const submit = useSubmit();
+  const userCanDelete = canDelete(user);
 
   const handleStageChange = (newStage: string) => {
     const formData = new FormData();
@@ -127,12 +139,22 @@ export default function LeadDetail() {
             Application ID: {lead.id}
           </p>
         </div>
-        <button
-          onClick={handleArchive}
-          className="px-4 py-2 text-sm font-medium text-red-700 bg-red-50 border border-red-300 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-500"
-        >
-          Archive Application
-        </button>
+        {userCanDelete ? (
+          <button
+            onClick={handleArchive}
+            className="px-4 py-2 text-sm font-medium text-red-700 bg-red-50 border border-red-300 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-500"
+          >
+            Archive Application
+          </button>
+        ) : (
+          <button
+            disabled
+            className="px-4 py-2 text-sm font-medium text-gray-400 bg-gray-100 border border-gray-300 rounded-lg cursor-not-allowed"
+            title="Admin permission required"
+          >
+            Archive Application
+          </button>
+        )}
       </div>
 
       {/* Stage Workflow */}

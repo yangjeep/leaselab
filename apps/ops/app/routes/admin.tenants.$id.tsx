@@ -1,9 +1,11 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs, MetaFunction } from '@remix-run/cloudflare';
-import { json } from '@remix-run/cloudflare';
-import { useLoaderData, Link, useSubmit } from '@remix-run/react';
-import { fetchTenantsFromWorker, fetchWorkOrdersFromWorker, updateTenantToWorker } from '~/lib/worker-client';
+import { json, redirect } from '@remix-run/cloudflare';
+import { useLoaderData, useRouteLoaderData, Link, useSubmit, Form } from '@remix-run/react';
+import { fetchTenantsFromWorker, fetchWorkOrdersFromWorker, updateTenantToWorker, deleteTenantToWorker } from '~/lib/worker-client';
 import { formatCurrency } from '~/shared/utils';
 import { getSiteId } from '~/lib/site.server';
+import { requireAuth } from '~/lib/auth.server';
+import { canDelete } from '~/lib/permissions';
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
   if (!data) return [{ title: 'Tenant Not Found' }];
@@ -43,6 +45,7 @@ export async function action({ params, request, context }: ActionFunctionArgs) {
     WORKER_URL: context.cloudflare.env.WORKER_URL,
     WORKER_INTERNAL_KEY: context.cloudflare.env.WORKER_INTERNAL_KEY,
   };
+  const secret = context.cloudflare.env.SESSION_SECRET as string;
   const tenantId = params.id;
 
   if (!tenantId) {
@@ -51,6 +54,17 @@ export async function action({ params, request, context }: ActionFunctionArgs) {
 
   const formData = await request.formData();
   const action = formData.get('_action');
+
+  if (action === 'delete') {
+    // Check permissions
+    const user = await requireAuth(request, workerEnv, secret, siteId);
+    if (!canDelete(user)) {
+      return json({ error: 'Insufficient permissions to delete tenants' }, { status: 403 });
+    }
+
+    await deleteTenantToWorker(workerEnv, siteId, tenantId);
+    return redirect('/admin/tenants');
+  }
 
   if (action === 'updateStatus') {
     const status = formData.get('status') as string;
@@ -63,7 +77,10 @@ export async function action({ params, request, context }: ActionFunctionArgs) {
 
 export default function TenantDetail() {
   const { tenant, workOrders } = useLoaderData<typeof loader>();
+  const adminData = useRouteLoaderData<typeof import('./admin').loader>('routes/admin');
+  const user = adminData?.user || null;
   const submit = useSubmit();
+  const userCanDelete = canDelete(user);
 
   const handleStatusChange = (newStatus: string) => {
     const formData = new FormData();
@@ -271,6 +288,29 @@ export default function TenantDetail() {
           )}
         </div>
       </div>
+
+      {/* Delete Section */}
+      {userCanDelete && (
+        <div className="mt-6 bg-white rounded-xl shadow-sm p-6 border-l-4 border-red-500">
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Danger Zone</h3>
+          <p className="text-sm text-gray-600 mb-4">
+            Delete this tenant permanently. This action cannot be undone.
+          </p>
+          <Form method="post" onSubmit={(e) => {
+            if (!confirm('Are you sure you want to delete this tenant? This action cannot be undone and will remove all associated data.')) {
+              e.preventDefault();
+            }
+          }}>
+            <input type="hidden" name="_action" value="delete" />
+            <button
+              type="submit"
+              className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700"
+            >
+              Delete Tenant
+            </button>
+          </Form>
+        </div>
+      )}
     </div>
   );
 }

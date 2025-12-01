@@ -1,8 +1,10 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs, MetaFunction } from '@remix-run/cloudflare';
-import { json } from '@remix-run/cloudflare';
-import { useLoaderData, Link, useSubmit, Form } from '@remix-run/react';
-import { fetchWorkOrderFromWorker, fetchTenantsFromWorker, fetchPropertyFromWorker, saveWorkOrderToWorker } from '~/lib/worker-client';
+import { json, redirect } from '@remix-run/cloudflare';
+import { useLoaderData, useRouteLoaderData, Link, useSubmit, Form } from '@remix-run/react';
+import { fetchWorkOrderFromWorker, fetchTenantsFromWorker, fetchPropertyFromWorker, saveWorkOrderToWorker, deleteWorkOrderToWorker } from '~/lib/worker-client';
 import { getSiteId } from '~/lib/site.server';
+import { requireAuth } from '~/lib/auth.server';
+import { canDelete } from '~/lib/permissions';
 import type { WorkOrder } from '~/shared/types';
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
@@ -48,6 +50,7 @@ export async function action({ params, request, context }: ActionFunctionArgs) {
     WORKER_URL: context.cloudflare.env.WORKER_URL,
     WORKER_INTERNAL_KEY: context.cloudflare.env.WORKER_INTERNAL_KEY,
   };
+  const secret = context.cloudflare.env.SESSION_SECRET as string;
   const workOrderId = params.id;
 
   if (!workOrderId) {
@@ -56,6 +59,17 @@ export async function action({ params, request, context }: ActionFunctionArgs) {
 
   const formData = await request.formData();
   const action = formData.get('_action');
+
+  if (action === 'delete') {
+    // Check permissions
+    const user = await requireAuth(request, workerEnv, secret, siteId);
+    if (!canDelete(user)) {
+      return json({ error: 'Insufficient permissions to delete work orders' }, { status: 403 });
+    }
+
+    await deleteWorkOrderToWorker(workerEnv, siteId, workOrderId);
+    return redirect('/admin/work-orders');
+  }
 
   if (action === 'updateStatus') {
     const status = formData.get('status') as string;
@@ -85,7 +99,10 @@ export async function action({ params, request, context }: ActionFunctionArgs) {
 
 export default function WorkOrderDetail() {
   const { workOrder, tenant, property } = useLoaderData<typeof loader>();
+  const adminData = useRouteLoaderData<typeof import('./admin').loader>('routes/admin');
+  const user = adminData?.user || null;
   const submit = useSubmit();
+  const userCanDelete = canDelete(user);
 
   const handleStatusChange = (newStatus: string) => {
     const formData = new FormData();
@@ -293,7 +310,31 @@ export default function WorkOrderDetail() {
               />
             </div>
 
-            <div className="flex justify-end">
+            <div className="flex items-center justify-between pt-4 border-t">
+              {userCanDelete ? (
+                <Form method="post" onSubmit={(e) => {
+                  if (!confirm('Are you sure you want to delete this work order? This action cannot be undone.')) {
+                    e.preventDefault();
+                  }
+                }}>
+                  <input type="hidden" name="_action" value="delete" />
+                  <button
+                    type="submit"
+                    className="px-4 py-2 text-sm text-red-600 hover:text-red-700"
+                  >
+                    Delete Work Order
+                  </button>
+                </Form>
+              ) : (
+                <button
+                  type="button"
+                  disabled
+                  className="px-4 py-2 text-sm text-gray-400 cursor-not-allowed"
+                  title="Admin permission required"
+                >
+                  Delete Work Order
+                </button>
+              )}
               <button
                 type="submit"
                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"

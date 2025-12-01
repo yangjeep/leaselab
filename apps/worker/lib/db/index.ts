@@ -68,6 +68,7 @@ export {
     getTenantById,
     createTenant,
     updateTenant,
+    deleteTenant,
 } from './tenants';
 
 // Re-export all work order operations

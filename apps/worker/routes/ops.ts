@@ -47,6 +47,7 @@ import {
   getTenantById,
   createTenant,
   updateTenant,
+  deleteTenant,
   getUsers,
   getUserById,
   getUserByEmail,
@@ -1016,6 +1017,27 @@ opsRoutes.patch('/tenants/:id', async (c: Context) => {
     });
   } catch (error) {
     console.error('Error updating tenant:', error);
+    return c.json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    }, 500);
+  }
+});
+
+opsRoutes.delete('/tenants/:id', async (c: Context) => {
+  try {
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
+    const id = c.req.param('id');
+
+    await deleteTenant(c.env.DB, siteId, id);
+
+    return c.json({
+      success: true,
+      message: 'Tenant deleted successfully',
+    });
+  } catch (error) {
+    console.error('Error deleting tenant:', error);
     return c.json({
       error: 'Internal server error',
       message: error instanceof Error ? error.message : 'Unknown error',
