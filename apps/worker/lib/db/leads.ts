@@ -21,6 +21,7 @@ function mapLeadFromDb(row: unknown): Lead {
         aiScore: r.ai_score as number | undefined,
         aiLabel: r.ai_label as Lead['aiLabel'] | undefined,
         landlordNote: r.landlord_note as string | undefined,
+        isActive: Boolean(r.is_active ?? 1),
         createdAt: r.created_at as string,
         updatedAt: r.updated_at as string,
     };
@@ -73,9 +74,10 @@ export async function getLeads(dbInput: DatabaseInput, siteId: string, options?:
     sortOrder?: 'asc' | 'desc';
     limit?: number;
     offset?: number;
+    includeArchived?: boolean;
 }) {
     const db = normalizeDb(dbInput);
-    const { status, propertyId, sortBy = 'created_at', sortOrder = 'desc', limit = 50, offset = 0 } = options || {};
+    const { status, propertyId, sortBy = 'created_at', sortOrder = 'desc', limit = 50, offset = 0, includeArchived = false } = options || {};
 
     // Join with units to check if the unit is occupied and properties to get property name
     let query = `
@@ -90,6 +92,11 @@ export async function getLeads(dbInput: DatabaseInput, siteId: string, options?:
     WHERE l.site_id = ?
   `;
     const params: (string | number)[] = [siteId];
+
+    // Filter by is_active unless includeArchived is true
+    if (!includeArchived) {
+        query += ' AND l.is_active = 1';
+    }
 
     if (status) {
         query += ' AND l.status = ?';
@@ -189,6 +196,10 @@ export async function updateLead(dbInput: DatabaseInput, siteId: string, id: str
         updates.push('landlord_note = ?');
         params.push(data.landlordNote || null);
     }
+    if (data.isActive !== undefined) {
+        updates.push('is_active = ?');
+        params.push(data.isActive ? 1 : 0);
+    }
 
     if (updates.length === 0) return;
 
@@ -205,6 +216,24 @@ export async function updateLead(dbInput: DatabaseInput, siteId: string, id: str
         changed[col] = params[i];
     }
     await recordLeadHistory(db, siteId, id, 'lead_updated', changed);
+}
+
+/**
+ * Archive a lead (soft delete)
+ */
+export async function archiveLead(dbInput: DatabaseInput, siteId: string, id: string): Promise<void> {
+    await updateLead(dbInput, siteId, id, { isActive: false });
+    const db = normalizeDb(dbInput);
+    await recordLeadHistory(db, siteId, id, 'lead_archived', {});
+}
+
+/**
+ * Restore an archived lead
+ */
+export async function restoreLead(dbInput: DatabaseInput, siteId: string, id: string): Promise<void> {
+    await updateLead(dbInput, siteId, id, { isActive: true });
+    const db = normalizeDb(dbInput);
+    await recordLeadHistory(db, siteId, id, 'lead_restored', {});
 }
 
 // Lead Files

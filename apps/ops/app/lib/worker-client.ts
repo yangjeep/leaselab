@@ -172,6 +172,30 @@ export async function createLeadToWorker(
   return parseResponse(response);
 }
 
+export async function archiveLeadToWorker(
+  env: WorkerEnv,
+  siteId: string,
+  leadId: string
+): Promise<void> {
+  const url = `${env.WORKER_URL}/api/ops/leads/${leadId}/archive`;
+  const response = await workerFetch(url, env, {
+    method: 'POST',
+  }, siteId);
+  await parseResponse(response);
+}
+
+export async function restoreLeadToWorker(
+  env: WorkerEnv,
+  siteId: string,
+  leadId: string
+): Promise<void> {
+  const url = `${env.WORKER_URL}/api/ops/leads/${leadId}/restore`;
+  const response = await workerFetch(url, env, {
+    method: 'POST',
+  }, siteId);
+  await parseResponse(response);
+}
+
 // ==================== WORK ORDERS ====================
 
 export async function fetchWorkOrdersFromWorker(

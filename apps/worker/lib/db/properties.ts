@@ -21,7 +21,6 @@ function mapPropertyFromDb(row: unknown): Property {
         propertyType: r.property_type as Property['propertyType'],
         description: r.description as string | undefined,
         yearBuilt: r.year_built as number | undefined,
-        lotSize: r.lot_size as number | undefined,
         amenities: JSON.parse(r.amenities as string || '[]'),
         latitude: r.latitude as number | undefined,
         longitude: r.longitude as number | undefined,
@@ -97,7 +96,6 @@ export async function createProperty(dbInput: DatabaseInput, siteId: string, dat
     propertyType: string;
     description?: string;
     yearBuilt?: number;
-    lotSize?: number;
     amenities?: string[];
     latitude?: number;
     longitude?: number;
@@ -108,8 +106,8 @@ export async function createProperty(dbInput: DatabaseInput, siteId: string, dat
     const slug = data.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '-' + id.slice(0, 8);
 
     await db.execute(`
-    INSERT INTO properties (id, site_id, name, slug, address, city, province, postal_code, property_type, description, year_built, lot_size, amenities, latitude, longitude, is_active, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+    INSERT INTO properties (id, site_id, name, slug, address, city, province, postal_code, property_type, description, year_built, amenities, latitude, longitude, is_active, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
   `, [
         id,
         siteId,
@@ -122,7 +120,6 @@ export async function createProperty(dbInput: DatabaseInput, siteId: string, dat
         data.propertyType,
         data.description || null,
         data.yearBuilt || null,
-        data.lotSize || null,
         JSON.stringify(data.amenities || []),
         data.latitude || null,
         data.longitude || null,
@@ -142,7 +139,6 @@ export async function updateProperty(dbInput: DatabaseInput, siteId: string, id:
     propertyType: string;
     description: string;
     yearBuilt: number;
-    lotSize: number;
     amenities: string[];
     latitude: number;
     longitude: number;
@@ -161,7 +157,6 @@ export async function updateProperty(dbInput: DatabaseInput, siteId: string, id:
         propertyType: 'property_type',
         description: 'description',
         yearBuilt: 'year_built',
-        lotSize: 'lot_size',
         latitude: 'latitude',
         longitude: 'longitude',
     };

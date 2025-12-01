@@ -8,12 +8,14 @@
 - [x] Add file upload functionality for ops staff
 
 ### 2. Archive Applicant
-- [ ] Add ability to "archive" (make inactive) an applicant
-- [ ] Implement soft-delete/inactive status for applicants
+- [x] Add ability to "archive" (make inactive) an applicant
+- [x] Implement soft-delete/inactive status for applicants
+- [x] Add archive button to lead detail page
+- [x] Create API endpoints for archive/restore
 
 ### 3. Tenant Management
-- [ ] Add Create Tenant functionality
-- [ ] Add Edit Tenant functionality
+- [x] Add Create Tenant functionality
+- [x] Add Edit Tenant functionality
 - [ ] Associate tenant with lease
 - [ ] Handle lease file association
 
@@ -22,9 +24,11 @@
 - [ ] Implement file access for lease-property relationships
 
 ### 5. Remove Lot Size Field
-- [ ] Remove "Lot Size (sq ft)" from properties - useless data
-- [ ] Update database schema/migration if needed
-- [ ] Update frontend forms and displays
+- [x] Remove "Lot Size (sq ft)" from properties - useless data
+- [x] Update database schema/migration
+- [x] Update frontend forms and displays
+- [x] Update TypeScript types and Zod schemas
+- [x] Update database operations
 
 ### 6. Fix Year Built Logic
 - [ ] Investigate weird "Year built" logic when adding new properties

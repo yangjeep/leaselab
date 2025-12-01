@@ -30,6 +30,8 @@ import {
   getLeadById,
   createLead,
   updateLead,
+  archiveLead,
+  restoreLead,
   getLeadFiles,
   createLeadFile,
   getAIEvaluation,
@@ -43,6 +45,8 @@ import {
   deleteWorkOrder,
   getTenants,
   getTenantById,
+  createTenant,
+  updateTenant,
   getUsers,
   getUserById,
   getUserByEmail,
@@ -430,6 +434,60 @@ opsRoutes.post('/leads/:id/notes', async (c: Context) => {
     });
   } catch (error) {
     console.error('Error updating lead notes:', error);
+    return c.json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    }, 500);
+  }
+});
+
+/**
+ * POST /api/ops/leads/:id/archive
+ * Archive a lead (soft delete)
+ */
+opsRoutes.post('/leads/:id/archive', async (c: Context) => {
+  try {
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) {
+      return c.json({ error: 'Missing X-Site-Id header' }, 400);
+    }
+    const id = c.req.param('id');
+
+    await archiveLead(c.env.DB, siteId, id);
+
+    return c.json({
+      success: true,
+      message: 'Lead archived successfully',
+    });
+  } catch (error) {
+    console.error('Error archiving lead:', error);
+    return c.json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    }, 500);
+  }
+});
+
+/**
+ * POST /api/ops/leads/:id/restore
+ * Restore an archived lead
+ */
+opsRoutes.post('/leads/:id/restore', async (c: Context) => {
+  try {
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) {
+      return c.json({ error: 'Missing X-Site-Id header' }, 400);
+    }
+    const id = c.req.param('id');
+
+    await restoreLead(c.env.DB, siteId, id);
+
+    return c.json({
+      success: true,
+      message: 'Lead restored successfully',
+    });
+  } catch (error) {
+    console.error('Error restoring lead:', error);
     return c.json({
       error: 'Internal server error',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -912,24 +970,49 @@ opsRoutes.get('/tenants/:id', async (c: Context) => {
 });
 
 /**
- * POST /api/ops/tenants/:id
- * Update tenant status
+ * POST /api/ops/tenants
+ * Create a new tenant
  */
-opsRoutes.post('/tenants/:id', async (c: Context) => {
+opsRoutes.post('/tenants', async (c: Context) => {
+  try {
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
+    const body = await c.req.json();
+
+    const tenant = await createTenant(c.env.DB, siteId, body);
+
+    return c.json({
+      success: true,
+      data: tenant,
+    }, 201);
+  } catch (error) {
+    console.error('Error creating tenant:', error);
+    return c.json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    }, 500);
+  }
+});
+
+/**
+ * PATCH /api/ops/tenants/:id
+ * Update tenant information
+ */
+opsRoutes.patch('/tenants/:id', async (c: Context) => {
   try {
     const siteId = c.req.header('X-Site-Id');
     if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
     const id = c.req.param('id');
     const body = await c.req.json();
 
-    if (body.status) {
-      const now = new Date().toISOString();
-      const stmt = c.env.DB.prepare('UPDATE tenants SET status = ?, updated_at = ? WHERE id = ? AND site_id = ?');
-      await stmt.bind(body.status, now, id, siteId).run();
-    }
+    await updateTenant(c.env.DB, siteId, id, body);
+
+    // Fetch updated tenant
+    const updatedTenant = await getTenantById(c.env.DB, siteId, id);
 
     return c.json({
       success: true,
+      data: updatedTenant,
     });
   } catch (error) {
     console.error('Error updating tenant:', error);

@@ -12,7 +12,6 @@ export interface Property {
   propertyType: PropertyType;
   description?: string;
   yearBuilt?: number;
-  lotSize?: number;
   amenities: string[];
   latitude?: number;
   longitude?: number;
@@ -118,6 +117,7 @@ export interface Lead {
   aiScore?: number;
   aiLabel?: AILabel;
   landlordNote?: string; // Internal-only notes (includes legacy income info)
+  isActive: boolean; // For archiving/soft-delete
   createdAt: string;
   updatedAt: string;
   // Computed fields (from joins)

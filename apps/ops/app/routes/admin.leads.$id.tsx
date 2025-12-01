@@ -1,6 +1,6 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs, MetaFunction } from '@remix-run/cloudflare';
-import { json } from '@remix-run/cloudflare';
-import { useLoaderData, useSubmit } from '@remix-run/react';
+import { json, redirect } from '@remix-run/cloudflare';
+import { useLoaderData, useSubmit, useActionData } from '@remix-run/react';
 import { fetchLeadFromWorker, fetchPropertyFromWorker, updateLeadToWorker, fetchLeadHistoryFromWorker, fetchLeadFilesFromWorker } from '~/lib/worker-client';
 import { formatCurrency } from '~/shared/utils';
 import { getSiteId } from '~/lib/site.server';
@@ -85,6 +85,12 @@ export async function action({ params, request, context }: ActionFunctionArgs) {
     }
   }
 
+  if (action === 'archiveLead') {
+    const { archiveLeadToWorker } = await import('~/lib/worker-client');
+    await archiveLeadToWorker(workerEnv, siteId, leadId);
+    return redirect('/admin/leads');
+  }
+
   return json({ success: false }, { status: 400 });
 }
 
@@ -101,15 +107,32 @@ export default function LeadDetail() {
 
   // Income ratio no longer available (monthly income removed)
 
+  const handleArchive = () => {
+    if (!confirm('Are you sure you want to archive this application? It will be hidden from the main list but can be restored later.')) {
+      return;
+    }
+    const formData = new FormData();
+    formData.append('_action', 'archiveLead');
+    submit(formData, { method: 'post' });
+  };
+
   return (
     <div className="p-8">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">
-          {lead.firstName} {lead.lastName}
-        </h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Application ID: {lead.id}
-        </p>
+      <div className="mb-6 flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">
+            {lead.firstName} {lead.lastName}
+          </h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Application ID: {lead.id}
+          </p>
+        </div>
+        <button
+          onClick={handleArchive}
+          className="px-4 py-2 text-sm font-medium text-red-700 bg-red-50 border border-red-300 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-500"
+        >
+          Archive Application
+        </button>
       </div>
 
       {/* Stage Workflow */}

@@ -49,6 +49,8 @@ export {
     getLeadById,
     createLead,
     updateLead,
+    archiveLead,
+    restoreLead,
     getLeadFiles,
     createLeadFile,
     createTempLeadFile,
@@ -64,6 +66,8 @@ export {
 export {
     getTenants,
     getTenantById,
+    createTenant,
+    updateTenant,
 } from './tenants';
 
 // Re-export all work order operations
