@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import type { LoaderFunctionArgs, MetaFunction } from '@remix-run/cloudflare';
 import { json } from '@remix-run/cloudflare';
 import { useLoaderData, Link, useRevalidator } from '@remix-run/react';
@@ -46,52 +45,45 @@ export default function UnitImages() {
   const { unit, property, images } = useLoaderData<typeof loader>();
   const revalidator = useRevalidator();
 
-  const handleUploadComplete = () => {
+  const handleUploadComplete = (newImage: PropertyImage) => {
     revalidator.revalidate();
   };
 
-  const handleDelete = () => {
+  const handleDelete = (imageId: string) => {
     revalidator.revalidate();
   };
 
-  const handleSetCover = () => {
+  const handleSetCover = (imageId: string) => {
     revalidator.revalidate();
   };
-
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   return (
-    <div className="p-8">
-      <div className="mb-6">
-        <Link to={`/admin/units/${unit.id}`} className="text-sm text-indigo-600 hover:text-indigo-700 mb-2 inline-block">
-          ← Back to Unit {unit.unitNumber}
-        </Link>
-        <h1 className="text-2xl font-bold text-gray-900">Unit Images</h1>
-        <p className="text-sm text-gray-500">
-          {property?.name} - Unit {unit.unitNumber}
-        </p>
+    <div className="p-8 max-w-6xl mx-auto">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <Link
+            to={`/admin/units/${unit.id}`}
+            className="text-sm text-indigo-600 hover:text-indigo-700 mb-2 inline-flex items-center gap-1"
+          >
+            <span>←</span> Back to Unit
+          </Link>
+          <h1 className="text-2xl font-bold text-gray-900">Manage Images</h1>
+          <p className="text-gray-500 mt-1">
+            {property?.name} - Unit {unit.unitNumber}
+          </p>
+        </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm p-6">
-        {mounted ? (
-          <ImageUploader
-            entityType="unit"
-            entityId={unit.id}
-            images={images as PropertyImage[]}
-            onUploadComplete={handleUploadComplete}
-            onDelete={handleDelete}
-            onSetCover={handleSetCover}
-          />
-        ) : (
-          <div className="animate-pulse space-y-4">
-            <div className="h-64 bg-gray-100 rounded-lg"></div>
-            <div className="h-10 bg-gray-100 rounded w-1/4"></div>
-          </div>
-        )}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <ImageUploader
+          entityType="unit"
+          entityId={unit.id}
+          images={images}
+          onUploadComplete={handleUploadComplete}
+          onDelete={handleDelete}
+          onSetCover={handleSetCover}
+        />
       </div>
     </div>
   );
