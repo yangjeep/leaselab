@@ -73,6 +73,15 @@ import {
   createSiteApiToken,
   updateSiteApiToken,
   deleteSiteApiToken,
+  getLeases,
+  getLeaseById,
+  createLease,
+  updateLease,
+  deleteLease,
+  getLeaseFiles,
+  getLeaseFileById,
+  createLeaseFile,
+  deleteLeaseFile,
 } from '../lib/db';
 
 
@@ -2046,6 +2055,294 @@ opsRoutes.post('/site-api-tokens/:id/delete', async (c: Context) => {
     });
   } catch (error) {
     console.error('Error deleting site API token:', error);
+    return c.json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    }, 500);
+  }
+});
+
+// ==================== LEASES ====================
+
+/**
+ * GET /api/ops/leases
+ * List all leases for a site
+ */
+opsRoutes.get('/leases', async (c: Context) => {
+  try {
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
+
+    // Get query parameters
+    const status = c.req.query('status');
+    const propertyId = c.req.query('propertyId');
+    const unitId = c.req.query('unitId');
+    const tenantId = c.req.query('tenantId');
+    const sortBy = c.req.query('sortBy');
+    const sortOrder = c.req.query('sortOrder') as 'asc' | 'desc' | undefined;
+
+    const leases = await getLeases(c.env.DB, siteId, {
+      status,
+      propertyId,
+      unitId,
+      tenantId,
+      sortBy,
+      sortOrder,
+    });
+
+    return c.json({
+      success: true,
+      data: leases,
+    });
+  } catch (error) {
+    console.error('Error fetching leases:', error);
+    return c.json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    }, 500);
+  }
+});
+
+/**
+ * GET /api/ops/leases/:id
+ * Get a single lease by ID
+ */
+opsRoutes.get('/leases/:id', async (c: Context) => {
+  try {
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
+    const id = c.req.param('id');
+
+    const lease = await getLeaseById(c.env.DB, siteId, id);
+
+    if (!lease) {
+      return c.json({
+        error: 'Not found',
+        message: 'Lease not found',
+      }, 404);
+    }
+
+    return c.json({
+      success: true,
+      data: lease,
+    });
+  } catch (error) {
+    console.error('Error fetching lease:', error);
+    return c.json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    }, 500);
+  }
+});
+
+/**
+ * POST /api/ops/leases
+ * Create a new lease
+ */
+opsRoutes.post('/leases', async (c: Context) => {
+  try {
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
+
+    const body = await c.req.json();
+    const {
+      propertyId,
+      unitId,
+      tenantId,
+      startDate,
+      endDate,
+      monthlyRent,
+      securityDeposit,
+      status,
+      docuSignEnvelopeId,
+      signedAt,
+    } = body;
+
+    const lease = await createLease(c.env.DB, siteId, {
+      propertyId,
+      unitId,
+      tenantId,
+      startDate,
+      endDate,
+      monthlyRent,
+      securityDeposit,
+      status: status || 'draft',
+      docuSignEnvelopeId,
+      signedAt,
+    });
+
+    return c.json({
+      success: true,
+      data: lease,
+    }, 201);
+  } catch (error) {
+    console.error('Error creating lease:', error);
+    return c.json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    }, 500);
+  }
+});
+
+/**
+ * POST /api/ops/leases/:id
+ * Update a lease
+ */
+opsRoutes.post('/leases/:id', async (c: Context) => {
+  try {
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
+    const id = c.req.param('id');
+
+    const body = await c.req.json();
+
+    await updateLease(c.env.DB, siteId, id, body);
+
+    return c.json({
+      success: true,
+    });
+  } catch (error) {
+    console.error('Error updating lease:', error);
+    return c.json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    }, 500);
+  }
+});
+
+/**
+ * POST /api/ops/leases/:id/delete
+ * Delete a lease
+ */
+opsRoutes.post('/leases/:id/delete', async (c: Context) => {
+  try {
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
+    const id = c.req.param('id');
+
+    await deleteLease(c.env.DB, siteId, id);
+
+    return c.json({
+      success: true,
+    });
+  } catch (error) {
+    console.error('Error deleting lease:', error);
+    return c.json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    }, 500);
+  }
+});
+
+/**
+ * GET /api/ops/leases/:id/files
+ * Get all files for a lease
+ */
+opsRoutes.get('/leases/:id/files', async (c: Context) => {
+  try {
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
+    const leaseId = c.req.param('id');
+
+    const files = await getLeaseFiles(c.env.DB, siteId, leaseId);
+
+    // Generate signed URLs for each file (valid for 1 hour)
+    const filesWithUrls = await Promise.all(
+      files.map(async (file) => {
+        try {
+          const signedUrl = await c.env.PRIVATE_BUCKET.get(file.r2Key, {
+            range: { offset: 0, length: 1 },
+          });
+          if (!signedUrl) {
+            return { ...file, signedUrl: null };
+          }
+          // For now, return the file without signed URL - will implement proper URL generation
+          return file;
+        } catch (error) {
+          console.error('Error generating signed URL for file:', file.id, error);
+          return file;
+        }
+      })
+    );
+
+    return c.json({
+      success: true,
+      data: filesWithUrls,
+    });
+  } catch (error) {
+    console.error('Error fetching lease files:', error);
+    return c.json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    }, 500);
+  }
+});
+
+/**
+ * POST /api/ops/leases/:id/files
+ * Upload a file for a lease
+ */
+opsRoutes.post('/leases/:id/files', async (c: Context) => {
+  try {
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
+    const leaseId = c.req.param('id');
+
+    const body = await c.req.json();
+    const { fileType, fileName, fileSize, mimeType, r2Key } = body;
+
+    const file = await createLeaseFile(c.env.DB, siteId, {
+      leaseId,
+      fileType,
+      fileName,
+      fileSize,
+      mimeType,
+      r2Key,
+    });
+
+    return c.json({
+      success: true,
+      data: file,
+    }, 201);
+  } catch (error) {
+    console.error('Error creating lease file:', error);
+    return c.json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    }, 500);
+  }
+});
+
+/**
+ * POST /api/ops/leases/:leaseId/files/:fileId/delete
+ * Delete a lease file
+ */
+opsRoutes.post('/leases/:leaseId/files/:fileId/delete', async (c: Context) => {
+  try {
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
+    const fileId = c.req.param('fileId');
+
+    // Get the file first to retrieve R2 key
+    const file = await getLeaseFileById(c.env.DB, siteId, fileId);
+    if (!file) {
+      return c.json({
+        error: 'Not found',
+        message: 'File not found',
+      }, 404);
+    }
+
+    // Delete from R2
+    await c.env.PRIVATE_BUCKET.delete(file.r2Key);
+
+    // Delete from database
+    await deleteLeaseFile(c.env.DB, siteId, fileId);
+
+    return c.json({
+      success: true,
+    });
+  } catch (error) {
+    console.error('Error deleting lease file:', error);
     return c.json({
       error: 'Internal server error',
       message: error instanceof Error ? error.message : 'Unknown error',

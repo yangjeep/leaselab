@@ -282,6 +282,29 @@ export type LeaseStatus =
   | 'expired'
   | 'terminated';
 
+// Lease File Types
+export interface LeaseFile {
+  id: string;
+  leaseId: string;
+  fileType: LeaseFileType;
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
+  r2Key: string;
+  uploadedAt: string;
+  // Computed (for ops viewing)
+  signedUrl?: string;
+  expiresAt?: string;
+}
+
+export type LeaseFileType =
+  | 'lease_document'
+  | 'addendum'
+  | 'inspection_report'
+  | 'move_in_checklist'
+  | 'move_out_checklist'
+  | 'other';
+
 // Work Order Types
 export interface WorkOrder {
   id: string;

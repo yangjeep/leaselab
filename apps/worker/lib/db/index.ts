@@ -113,5 +113,15 @@ export {
 // Re-export site token types
 export type { SiteApiToken } from './site-tokens';
 
-// Re-export lease module (placeholder)
-export { LEASES_MODULE_PLACEHOLDER } from './leases';
+// Re-export all lease operations
+export {
+    getLeases,
+    getLeaseById,
+    createLease,
+    updateLease,
+    deleteLease,
+    getLeaseFiles,
+    getLeaseFileById,
+    createLeaseFile,
+    deleteLeaseFile,
+} from './leases';

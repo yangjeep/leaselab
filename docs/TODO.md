@@ -16,12 +16,12 @@
 ### 3. Tenant Management
 - [x] Add Create Tenant functionality
 - [x] Add Edit Tenant functionality
-- [ ] Associate tenant with lease
-- [ ] Handle lease file association
+- [x] Associate tenant with lease
+- [x] Handle lease file association
 
 ### 4. Lease-Property Association
-- [ ] Add lease vs unit/property association
-- [ ] Implement file access for lease-property relationships
+- [x] Add lease vs unit/property association
+- [x] Implement file access for lease-property relationships
 
 ### 5. Remove Lot Size Field
 - [x] Remove "Lot Size (sq ft)" from properties - useless data
