@@ -23,6 +23,16 @@
 - [x] Add lease vs unit/property association
 - [x] Implement file access for lease-property relationships
 
+### 4a. Lease Management UI (Ops App)
+- [x] Create lease list page with filtering (by status, property, unit, tenant)
+- [x] Create lease detail page with full information display
+- [x] Add lease status management (draft, pending signature, signed, active, expired, terminated)
+- [x] Implement lease file upload/management interface
+- [x] Create lease creation form with property/unit/tenant selection
+- [x] Create lease edit form with required PDF upload for every update
+- [x] Add lease navigation to admin sidebar
+- [x] Integrate with Worker API for all CRUD operations
+
 ### 5. Remove Lot Size Field
 - [x] Remove "Lot Size (sq ft)" from properties - useless data
 - [x] Update database schema/migration

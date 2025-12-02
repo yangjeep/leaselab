@@ -1045,3 +1045,143 @@ export async function deleteSiteApiTokenToWorker(
   }, siteId);
   await parseResponse(response);
 }
+
+// ==================== LEASE OPERATIONS ====================
+
+/**
+ * Fetch leases with optional filtering
+ */
+export async function fetchLeasesFromWorker(
+  env: WorkerEnv,
+  siteId: string,
+  options?: {
+    status?: string;
+    propertyId?: string;
+    unitId?: string;
+    tenantId?: string;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+  }
+): Promise<any[]> {
+  let url = `${env.WORKER_URL}/api/ops/leases`;
+  const params = new URLSearchParams();
+  if (options?.status) params.set('status', options.status);
+  if (options?.propertyId) params.set('propertyId', options.propertyId);
+  if (options?.unitId) params.set('unitId', options.unitId);
+  if (options?.tenantId) params.set('tenantId', options.tenantId);
+  if (options?.sortBy) params.set('sortBy', options.sortBy);
+  if (options?.sortOrder) params.set('sortOrder', options.sortOrder);
+  if (params.toString()) url += `?${params.toString()}`;
+
+  const response = await workerFetch(url, env, {}, siteId);
+  return parseResponse(response);
+}
+
+/**
+ * Fetch a single lease by ID
+ */
+export async function fetchLeaseByIdFromWorker(
+  env: WorkerEnv,
+  siteId: string,
+  leaseId: string
+): Promise<any> {
+  const url = `${env.WORKER_URL}/api/ops/leases/${leaseId}`;
+  const response = await workerFetch(url, env, {}, siteId);
+  return parseResponse(response);
+}
+
+/**
+ * Create a new lease
+ */
+export async function createLeaseToWorker(
+  env: WorkerEnv,
+  siteId: string,
+  data: {
+    propertyId: string;
+    unitId?: string;
+    tenantId: string;
+    startDate: string;
+    endDate: string;
+    monthlyRent: number;
+    securityDeposit: number;
+    status?: string;
+  }
+): Promise<any> {
+  const url = `${env.WORKER_URL}/api/ops/leases`;
+  const response = await workerFetch(url, env, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }, siteId);
+  return parseResponse(response);
+}
+
+/**
+ * Update a lease
+ */
+export async function updateLeaseToWorker(
+  env: WorkerEnv,
+  siteId: string,
+  leaseId: string,
+  data: Partial<{
+    propertyId: string;
+    unitId: string | null;
+    tenantId: string;
+    startDate: string;
+    endDate: string;
+    monthlyRent: number;
+    securityDeposit: number;
+    status: string;
+    signedAt: string | null;
+  }>
+): Promise<void> {
+  const url = `${env.WORKER_URL}/api/ops/leases/${leaseId}`;
+  const response = await workerFetch(url, env, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }, siteId);
+  await parseResponse(response);
+}
+
+/**
+ * Delete a lease
+ */
+export async function deleteLeaseToWorker(
+  env: WorkerEnv,
+  siteId: string,
+  leaseId: string
+): Promise<void> {
+  const url = `${env.WORKER_URL}/api/ops/leases/${leaseId}/delete`;
+  const response = await workerFetch(url, env, {
+    method: 'POST',
+  }, siteId);
+  await parseResponse(response);
+}
+
+/**
+ * Fetch lease files
+ */
+export async function fetchLeaseFilesFromWorker(
+  env: WorkerEnv,
+  siteId: string,
+  leaseId: string
+): Promise<any[]> {
+  const url = `${env.WORKER_URL}/api/ops/leases/${leaseId}/files`;
+  const response = await workerFetch(url, env, {}, siteId);
+  return parseResponse(response);
+}
+
+/**
+ * Delete a lease file
+ */
+export async function deleteLeaseFileToWorker(
+  env: WorkerEnv,
+  siteId: string,
+  leaseId: string,
+  fileId: string
+): Promise<void> {
+  const url = `${env.WORKER_URL}/api/ops/leases/${leaseId}/files/${fileId}/delete`;
+  const response = await workerFetch(url, env, {
+    method: 'POST',
+  }, siteId);
+  await parseResponse(response);
+}
