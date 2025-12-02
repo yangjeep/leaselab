@@ -643,4 +643,27 @@ Last updated: 2025-11-28
 
 ## Documentation
 
-- [PRD: File Upload/Download Workflow](docs/PRD-File-Upload-Download.md) - Detailed design and implementation guide
+### For Developers & AI Agents
+**Technical reference, API docs, and implementation guidelines**
+
+📂 [`.claude/`](.claude/) - AI Agent & Developer Reference
+- [**DEVELOPMENT_GUIDE.md**](.claude/DEVELOPMENT_GUIDE.md) - Primary technical reference
+- [**BACKEND_API.md**](.claude/BACKEND_API.md) - Complete API documentation
+- [**CODEBASE_ANALYSIS.md**](.claude/CODEBASE_ANALYSIS.md) - Code structure analysis
+- [**Skills**](.claude/skills/) - AI agent guidelines (multi-tenancy, security, patterns)
+
+### For Product & Design
+**Architecture, PRDs, and project planning**
+
+📂 [`docs/`](docs/) - Design Documentation
+- [**ARCHITECTURE_SUMMARY.md**](docs/ARCHITECTURE_SUMMARY.md) - System architecture overview
+- [**TODO.md**](docs/TODO.md) - Current development tasks
+- [**PRD Documents**](docs/) - Product requirements (PRD-*.md)
+- [**Migration Guides**](docs/) - Historical migrations (*_MIGRATION.md)
+
+### Quick Links
+- 🚀 [Getting Started for Developers](.claude/DEVELOPMENT_GUIDE.md)
+- 🏗️ [System Architecture](docs/ARCHITECTURE_SUMMARY.md)
+- 📋 [Active Tasks](docs/TODO.md)
+- 🔐 [Security Guidelines](.claude/skills/security-guidelines.md)
+- 🏢 [Multi-Tenancy Guidelines](.claude/skills/multi-tenancy-guidelines.md)
