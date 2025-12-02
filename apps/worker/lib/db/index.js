@@ -7,14 +7,14 @@ export { getUnits, getUnitsByPropertyId, getUnitById, getUnitWithDetails, create
 // Re-export all image operations
 export { getImagesByEntity, getImageById, createImage, updateImage, deleteImage, setCoverImage, addImageUrls, getImagesByEntityWithUrls, addImageUrlsWithVerification, getImagesByEntityWithVerification, } from './images';
 // Re-export all lead operations
-export { getLeads, getLeadById, createLead, updateLead, getLeadFiles, createLeadFile, createTempLeadFile, associateFilesWithLead, countLeadFiles, getAIEvaluation, createAIEvaluation, getLeadHistory, recordLeadHistory, } from './leads';
+export { getLeads, getLeadById, createLead, updateLead, archiveLead, restoreLead, getLeadFiles, createLeadFile, createTempLeadFile, associateFilesWithLead, countLeadFiles, getAIEvaluation, createAIEvaluation, getLeadHistory, recordLeadHistory, } from './leads';
 // Re-export all tenant operations
-export { getTenants, getTenantById, } from './tenants';
+export { getTenants, getTenantById, createTenant, updateTenant, deleteTenant, } from './tenants';
 // Re-export all work order operations
 export { getWorkOrders, getWorkOrderById, createWorkOrder, updateWorkOrder, deleteWorkOrder, } from './work-orders';
 // Re-export all user operations
 export { getUserByEmail, getUserById, getUsers, createUser, updateUserPassword, updateUserProfile, updateUserRole, getUserSiteAccess, getUserAccessibleSites, userHasAccessToSite, grantSiteAccess, revokeSiteAccess, isUserSuperAdmin, setSuperAdminStatus, } from './users';
 // Re-export all site token operations
 export { getSiteApiTokens, getSiteApiTokenById, createSiteApiToken, updateSiteApiToken, deleteSiteApiToken, } from './site-tokens';
-// Re-export lease module (placeholder)
-export { LEASES_MODULE_PLACEHOLDER } from './leases';
+// Re-export all lease operations
+export { getLeases, getLeaseById, createLease, updateLease, deleteLease, getLeaseFiles, getLeaseFileById, createLeaseFile, deleteLeaseFile, } from './leases';

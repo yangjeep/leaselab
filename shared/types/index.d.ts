@@ -9,7 +9,6 @@ export interface Property {
     propertyType: PropertyType;
     description?: string;
     yearBuilt?: number;
-    lotSize?: number;
     amenities: string[];
     latitude?: number;
     longitude?: number;
@@ -88,6 +87,7 @@ export interface Lead {
     aiScore?: number;
     aiLabel?: AILabel;
     landlordNote?: string;
+    isActive: boolean;
     createdAt: string;
     updatedAt: string;
     property?: Property;
@@ -198,6 +198,19 @@ export interface Lease {
     tenant?: Tenant;
 }
 export type LeaseStatus = 'draft' | 'pending_signature' | 'signed' | 'active' | 'expired' | 'terminated';
+export interface LeaseFile {
+    id: string;
+    leaseId: string;
+    fileType: LeaseFileType;
+    fileName: string;
+    fileSize: number;
+    mimeType: string;
+    r2Key: string;
+    uploadedAt: string;
+    signedUrl?: string;
+    expiresAt?: string;
+}
+export type LeaseFileType = 'lease_document' | 'addendum' | 'inspection_report' | 'move_in_checklist' | 'move_out_checklist' | 'other';
 export interface WorkOrder {
     id: string;
     propertyId: string;

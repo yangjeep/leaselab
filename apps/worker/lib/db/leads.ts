@@ -109,13 +109,16 @@ export async function getLeads(dbInput: DatabaseInput, siteId: string, options?:
     }
 
     // Map sort fields to database columns
+    // Handle undefined or invalid sortBy values
+    const validSortBy = sortBy && sortBy !== 'undefined' ? sortBy : 'created_at';
+
     let orderColumn: string;
-    if (sortBy === 'aiScore' || sortBy === 'ai_score') {
+    if (validSortBy === 'aiScore' || validSortBy === 'ai_score') {
         orderColumn = 'l.ai_score';
-    } else if (sortBy === 'propertyName' || sortBy === 'property_name') {
+    } else if (validSortBy === 'propertyName' || validSortBy === 'property_name') {
         orderColumn = 'p.name';
     } else {
-        orderColumn = `l.${sortBy.replace(/([A-Z])/g, '_$1').toLowerCase()}`;
+        orderColumn = `l.${validSortBy.replace(/([A-Z])/g, '_$1').toLowerCase()}`;
     }
     query += ` ORDER BY ${orderColumn} ${sortOrder.toUpperCase()} LIMIT ? OFFSET ?`;
     params.push(limit, offset);

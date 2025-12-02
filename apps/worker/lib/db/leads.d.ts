@@ -7,6 +7,7 @@ export declare function getLeads(dbInput: DatabaseInput, siteId: string, options
     sortOrder?: 'asc' | 'desc';
     limit?: number;
     offset?: number;
+    includeArchived?: boolean;
 }): Promise<(Lead & {
     isUnitOccupied?: boolean;
     propertyName?: string;
@@ -14,6 +15,14 @@ export declare function getLeads(dbInput: DatabaseInput, siteId: string, options
 export declare function getLeadById(dbInput: DatabaseInput, siteId: string, id: string): Promise<Lead | null>;
 export declare function createLead(dbInput: DatabaseInput, siteId: string, data: Omit<Lead, 'id' | 'createdAt' | 'updatedAt' | 'aiScore' | 'aiLabel' | 'status'>): Promise<Lead>;
 export declare function updateLead(dbInput: DatabaseInput, siteId: string, id: string, data: Partial<Lead>): Promise<void>;
+/**
+ * Archive a lead (soft delete)
+ */
+export declare function archiveLead(dbInput: DatabaseInput, siteId: string, id: string): Promise<void>;
+/**
+ * Restore an archived lead
+ */
+export declare function restoreLead(dbInput: DatabaseInput, siteId: string, id: string): Promise<void>;
 export declare function getLeadFiles(dbInput: DatabaseInput, siteId: string, leadId: string): Promise<LeadFile[]>;
 export declare function createLeadFile(dbInput: DatabaseInput, siteId: string, data: Omit<LeadFile, 'id' | 'uploadedAt'>): Promise<LeadFile>;
 /**

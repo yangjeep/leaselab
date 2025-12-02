@@ -17,7 +17,6 @@ export declare function createProperty(dbInput: DatabaseInput, siteId: string, d
     propertyType: string;
     description?: string;
     yearBuilt?: number;
-    lotSize?: number;
     amenities?: string[];
     latitude?: number;
     longitude?: number;
@@ -31,7 +30,6 @@ export declare function updateProperty(dbInput: DatabaseInput, siteId: string, i
     propertyType: string;
     description: string;
     yearBuilt: number;
-    lotSize: number;
     amenities: string[];
     latitude: number;
     longitude: number;

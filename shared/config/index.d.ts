@@ -272,7 +272,6 @@ export declare const CreatePropertySchema: z.ZodObject<{
     }>;
     description: z.ZodOptional<z.ZodString>;
     yearBuilt: z.ZodOptional<z.ZodNumber>;
-    lotSize: z.ZodOptional<z.ZodNumber>;
     amenities: z.ZodDefault<z.ZodArray<z.ZodString>>;
     latitude: z.ZodOptional<z.ZodNumber>;
     longitude: z.ZodOptional<z.ZodNumber>;
@@ -293,7 +292,6 @@ export declare const UpdatePropertySchema: z.ZodObject<{
     }>>;
     description: z.ZodOptional<z.ZodOptional<z.ZodString>>;
     yearBuilt: z.ZodOptional<z.ZodOptional<z.ZodNumber>>;
-    lotSize: z.ZodOptional<z.ZodOptional<z.ZodNumber>>;
     amenities: z.ZodOptional<z.ZodDefault<z.ZodArray<z.ZodString>>>;
     latitude: z.ZodOptional<z.ZodOptional<z.ZodNumber>>;
     longitude: z.ZodOptional<z.ZodOptional<z.ZodNumber>>;
@@ -423,8 +421,8 @@ export declare const LeadFilterSchema: z.ZodObject<{
     search: z.ZodOptional<z.ZodString>;
     sortBy: z.ZodDefault<z.ZodEnum<{
         createdAt: "createdAt";
-        aiScore: "aiScore";
         lastName: "lastName";
+        aiScore: "aiScore";
     }>>;
     sortOrder: z.ZodDefault<z.ZodEnum<{
         asc: "asc";

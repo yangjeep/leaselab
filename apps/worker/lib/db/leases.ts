@@ -170,17 +170,20 @@ export async function getLeases(
   }
 
   // Map sort fields to database columns
+  // Handle undefined or invalid sortBy values
+  const validSortBy = sortBy && sortBy !== 'undefined' ? sortBy : 'created_at';
+
   let orderColumn: string;
-  if (sortBy === 'propertyName' || sortBy === 'property_name') {
+  if (validSortBy === 'propertyName' || validSortBy === 'property_name') {
     orderColumn = 'p.name';
-  } else if (sortBy === 'tenantName' || sortBy === 'tenant_name') {
+  } else if (validSortBy === 'tenantName' || validSortBy === 'tenant_name') {
     orderColumn = 't.last_name';
-  } else if (sortBy === 'startDate' || sortBy === 'start_date') {
+  } else if (validSortBy === 'startDate' || validSortBy === 'start_date') {
     orderColumn = 'l.start_date';
-  } else if (sortBy === 'endDate' || sortBy === 'end_date') {
+  } else if (validSortBy === 'endDate' || validSortBy === 'end_date') {
     orderColumn = 'l.end_date';
   } else {
-    orderColumn = `l.${sortBy.replace(/([A-Z])/g, '_$1').toLowerCase()}`;
+    orderColumn = `l.${validSortBy.replace(/([A-Z])/g, '_$1').toLowerCase()}`;
   }
   query += ` ORDER BY ${orderColumn} ${sortOrder.toUpperCase()}`;
 

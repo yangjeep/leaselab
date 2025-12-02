@@ -2287,25 +2287,47 @@ opsRoutes.post('/leases/:id/files', async (c: Context) => {
     const siteId = c.req.header('X-Site-Id');
     if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
     const leaseId = c.req.param('id');
+    const formData = await c.req.formData();
+    const file = formData.get('file') as File | null;
+    if (!file || typeof file === 'string') {
+      return c.json({ error: 'Invalid file' }, 400);
+    }
+    const fileType = formData.get('fileType') as string;
 
-    const body = await c.req.json();
-    const { fileType, fileName, fileSize, mimeType, r2Key } = body;
+    if (!file) {
+      return c.json({
+        error: 'Bad request',
+        message: 'file is required',
+      }, 400);
+    }
 
-    const file = await createLeaseFile(c.env.DB, siteId, {
+    // Generate R2 key
+    const timestamp = Date.now();
+    const r2Key = `leases/${leaseId}/${timestamp}-${file.name}`;
+
+    // Upload to R2 private bucket
+    await c.env.PRIVATE_BUCKET.put(r2Key, file.stream(), {
+      httpMetadata: {
+        contentType: file.type,
+      },
+    });
+
+    // Create file record
+    const leaseFile = await createLeaseFile(c.env.DB, siteId, {
       leaseId,
-      fileType,
-      fileName,
-      fileSize,
-      mimeType,
+      fileName: file.name,
+      fileType: (fileType as any) || 'other',
       r2Key,
+      fileSize: file.size,
+      mimeType: file.type,
     });
 
     return c.json({
       success: true,
-      data: file,
+      data: leaseFile,
     }, 201);
   } catch (error) {
-    console.error('Error creating lease file:', error);
+    console.error('Error uploading lease file:', error);
     return c.json({
       error: 'Internal server error',
       message: error instanceof Error ? error.message : 'Unknown error',
