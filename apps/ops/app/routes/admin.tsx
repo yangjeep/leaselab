@@ -46,9 +46,11 @@ export default function AdminLayout() {
       {/* Sidebar */}
       <aside className="w-64 bg-white shadow-md flex flex-col">
         <div className="p-6 border-b">
-          <h1 className="text-xl font-bold text-gray-900">
-            Lease<span className="text-indigo-600">Lab</span>.io
-          </h1>
+          <Link to="/admin" className="block">
+            <h1 className="text-xl font-bold text-gray-900 hover:text-gray-700 transition-colors cursor-pointer">
+              Lease<span className="text-indigo-600">Lab</span>.io
+            </h1>
+          </Link>
           {/* Site switcher for super admins */}
           {user.isSuperAdmin && availableSites.length > 0 && (
             <div className="mt-3">
