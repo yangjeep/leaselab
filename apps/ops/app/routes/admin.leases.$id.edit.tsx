@@ -131,7 +131,7 @@ export async function action({ params, context, request }: ActionFunctionArgs) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Internal-Key': env.WORKER_INTERNAL_KEY,
+        'X-Internal-Key': env.WORKER_INTERNAL_KEY as string,
         'X-Site-Id': siteId,
       },
       body: JSON.stringify({

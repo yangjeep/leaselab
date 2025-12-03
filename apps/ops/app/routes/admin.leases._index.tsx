@@ -185,13 +185,13 @@ export default function LeasesIndex() {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <SortableTableHeader field="tenant_name" label="Tenant" />
-              <SortableTableHeader field="property_name" label="Property" />
+              <SortableTableHeader column="tenant_name" label="Tenant" />
+              <SortableTableHeader column="property_name" label="Property" />
               <NonSortableTableHeader label="Unit" />
-              <SortableTableHeader field="start_date" label="Start Date" />
-              <SortableTableHeader field="end_date" label="End Date" />
-              <SortableTableHeader field="monthly_rent" label="Monthly Rent" />
-              <SortableTableHeader field="status" label="Status" />
+              <SortableTableHeader column="start_date" label="Start Date" />
+              <SortableTableHeader column="end_date" label="End Date" />
+              <SortableTableHeader column="monthly_rent" label="Monthly Rent" />
+              <SortableTableHeader column="status" label="Status" />
               <NonSortableTableHeader label="Actions" />
             </tr>
           </thead>

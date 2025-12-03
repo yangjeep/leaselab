@@ -64,14 +64,14 @@ export async function action({ params, request, context }: ActionFunctionArgs) {
   const response = await fetch(`${workerEnv.WORKER_URL}/api/ops/leases/${leaseId}/files`, {
     method: 'POST',
     headers: {
-      'X-Internal-Key': workerEnv.WORKER_INTERNAL_KEY,
+      'X-Internal-Key': workerEnv.WORKER_INTERNAL_KEY as string,
       'X-Site-Id': siteId,
     },
     body: workerFormData,
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Upload failed' }));
+    const error = await response.json().catch(() => ({ message: 'Upload failed' })) as { message?: string };
     return json({ error: error.message || 'Upload failed' }, { status: response.status });
   }
 
@@ -114,7 +114,7 @@ export default function LeaseUpload() {
       setUploadProgress(70);
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Upload failed' }));
+        const errorData = await response.json().catch(() => ({ error: 'Upload failed' })) as { error?: string };
         throw new Error(errorData.error || 'Upload failed');
       }
 
