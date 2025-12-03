@@ -32,6 +32,7 @@ export async function loader({ params, request, context }: LoaderFunctionArgs) {
 }
 
 export async function action({ params, request, context }: ActionFunctionArgs) {
+  console.log('Action triggered for upload');
   const siteId = getSiteId(request);
   const workerEnv = {
     WORKER_URL: context.cloudflare.env.WORKER_URL,
@@ -40,12 +41,20 @@ export async function action({ params, request, context }: ActionFunctionArgs) {
   const leaseId = params.id;
 
   if (!leaseId) {
+    console.error('No lease ID');
     throw new Response('Lease ID is required', { status: 400 });
   }
 
   const formData = await request.formData();
   const file = formData.get('file') as File;
   const fileType = formData.get('fileType') as string;
+
+  console.log('Upload action data:', {
+    fileName: file?.name,
+    fileSize: file?.size,
+    fileType,
+    leaseId
+  });
 
   if (!file || file.size === 0) {
     return json({ error: 'Please select a file to upload' }, { status: 400 });
@@ -60,22 +69,31 @@ export async function action({ params, request, context }: ActionFunctionArgs) {
   workerFormData.append('file', file);
   workerFormData.append('fileType', fileType);
 
+  console.log('Sending to worker:', `${workerEnv.WORKER_URL}/api/ops/leases/${leaseId}/files`);
+
   // Upload to worker
-  const response = await fetch(`${workerEnv.WORKER_URL}/api/ops/leases/${leaseId}/files`, {
-    method: 'POST',
-    headers: {
-      'X-Internal-Key': workerEnv.WORKER_INTERNAL_KEY as string,
-      'X-Site-Id': siteId,
-    },
-    body: workerFormData,
-  });
+  try {
+    const response = await fetch(`${workerEnv.WORKER_URL}/api/ops/leases/${leaseId}/files`, {
+      method: 'POST',
+      headers: {
+        'X-Internal-Key': workerEnv.WORKER_INTERNAL_KEY as string,
+        'X-Site-Id': siteId,
+      },
+      body: workerFormData,
+    });
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Upload failed' })) as { message?: string };
-    return json({ error: error.message || 'Upload failed' }, { status: response.status });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: 'Upload failed' })) as { message?: string };
+      console.error('Worker upload failed:', error);
+      return json({ error: error.message || 'Upload failed' }, { status: response.status });
+    }
+
+    console.log('Worker upload success');
+    return json({ success: true });
+  } catch (err) {
+    console.error('Fetch error:', err);
+    return json({ error: 'Network error during upload' }, { status: 500 });
   }
-
-  return json({ success: true });
 }
 
 export default function LeaseUpload() {
@@ -93,11 +111,13 @@ export default function LeaseUpload() {
 
   useEffect(() => {
     if (fetcher.data?.success) {
+      console.log('Upload successful, navigating...');
       navigate(`/admin/leases/${lease.id}`);
     }
   }, [fetcher.data, navigate, lease.id]);
 
   const handleUpload = useCallback((file: File) => {
+    console.log('handleUpload called', { file: file.name, fileType });
     if (!fileType) {
       setClientError('Please select a document type first');
       return;
@@ -108,6 +128,7 @@ export default function LeaseUpload() {
     formData.append('file', file);
     formData.append('fileType', fileType);
 
+    console.log('Submitting fetcher...');
     fetcher.submit(formData, {
       method: 'post',
       encType: 'multipart/form-data',
@@ -115,6 +136,7 @@ export default function LeaseUpload() {
   }, [fileType, fetcher]);
 
   const validateAndUploadFile = useCallback((file: File) => {
+    console.log('validateAndUploadFile', file.name);
     // Validate file type
     const validTypes = [
       'application/pdf',
@@ -141,6 +163,7 @@ export default function LeaseUpload() {
 
     // Auto-upload if file type is already selected
     if (fileType) {
+      console.log('Auto-uploading...');
       // We need to use the callback version or useEffect to ensure state is updated, 
       // but here we can just call submit directly with the file and current fileType
       const formData = new FormData();
@@ -185,6 +208,7 @@ export default function LeaseUpload() {
   }, [uploading, validateAndUploadFile]);
 
   const handleFileInputChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
+    console.log('File input changed');
     if (e.target.files && e.target.files[0]) {
       validateAndUploadFile(e.target.files[0]);
       e.target.value = '';
@@ -198,6 +222,7 @@ export default function LeaseUpload() {
   }, [uploading]);
 
   const handleSubmit = useCallback(() => {
+    console.log('Submit clicked', { selectedFile: selectedFile?.name });
     if (selectedFile) {
       handleUpload(selectedFile);
     }
