@@ -1,9 +1,9 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs, MetaFunction } from '@remix-run/cloudflare';
 import { json, redirect } from '@remix-run/cloudflare';
-import { useLoaderData, Link, useNavigate } from '@remix-run/react';
+import { useLoaderData, Link, useFetcher, useNavigate } from '@remix-run/react';
 import { fetchLeaseByIdFromWorker } from '~/lib/worker-client';
 import { getSiteId } from '~/lib/site.server';
-import { useState, useRef, useCallback, DragEvent, ChangeEvent } from 'react';
+import { useState, useRef, useCallback, DragEvent, ChangeEvent, useEffect } from 'react';
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
   if (!data) return [{ title: 'Upload Document' }];
@@ -75,62 +75,44 @@ export async function action({ params, request, context }: ActionFunctionArgs) {
     return json({ error: error.message || 'Upload failed' }, { status: response.status });
   }
 
-  return redirect(`/admin/leases/${leaseId}`);
+  return json({ success: true });
 }
 
 export default function LeaseUpload() {
   const { lease } = useLoaderData<typeof loader>();
   const navigate = useNavigate();
+  const fetcher = useFetcher<{ error?: string; success?: boolean }>();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileType, setFileType] = useState<string>('');
-  const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [error, setError] = useState<string | null>(null);
+  const [clientError, setClientError] = useState<string | null>(null);
   const [isDragActive, setIsDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleUpload = useCallback(async (file: File) => {
+  const uploading = fetcher.state === 'submitting' || fetcher.state === 'loading';
+  const error = clientError || fetcher.data?.error;
+
+  useEffect(() => {
+    if (fetcher.data?.success) {
+      navigate(`/admin/leases/${lease.id}`);
+    }
+  }, [fetcher.data, navigate, lease.id]);
+
+  const handleUpload = useCallback((file: File) => {
     if (!fileType) {
-      setError('Please select a document type first');
+      setClientError('Please select a document type first');
       return;
     }
 
-    setUploading(true);
-    setError(null);
-    setUploadProgress(0);
+    setClientError(null);
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('fileType', fileType);
 
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('fileType', fileType);
-
-      setUploadProgress(30);
-
-      const response = await fetch(window.location.pathname, {
-        method: 'POST',
-        body: formData,
-      });
-
-      setUploadProgress(70);
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Upload failed' })) as { error?: string };
-        throw new Error(errorData.error || 'Upload failed');
-      }
-
-      setUploadProgress(100);
-
-      // Redirect on success
-      setTimeout(() => {
-        navigate(`/admin/leases/${lease.id}`);
-      }, 500);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Upload failed');
-      setUploadProgress(0);
-    } finally {
-      setUploading(false);
-    }
-  }, [fileType, lease.id, navigate]);
+    fetcher.submit(formData, {
+      method: 'post',
+      encType: 'multipart/form-data',
+    });
+  }, [fileType, fetcher]);
 
   const validateAndUploadFile = useCallback((file: File) => {
     // Validate file type
@@ -144,24 +126,33 @@ export default function LeaseUpload() {
     ];
 
     if (!validTypes.includes(file.type)) {
-      setError('Invalid file type. Please upload PDF, DOC, DOCX, PNG, or JPG files.');
+      setClientError('Invalid file type. Please upload PDF, DOC, DOCX, PNG, or JPG files.');
       return;
     }
 
     // Validate file size (10MB max)
     if (file.size > 10 * 1024 * 1024) {
-      setError('File size must be less than 10MB');
+      setClientError('File size must be less than 10MB');
       return;
     }
 
     setSelectedFile(file);
-    setError(null);
+    setClientError(null);
 
     // Auto-upload if file type is already selected
     if (fileType) {
-      handleUpload(file);
+      // We need to use the callback version or useEffect to ensure state is updated, 
+      // but here we can just call submit directly with the file and current fileType
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('fileType', fileType);
+
+      fetcher.submit(formData, {
+        method: 'post',
+        encType: 'multipart/form-data',
+      });
     }
-  }, [fileType, handleUpload]);
+  }, [fileType, fetcher]);
 
   // Drag event handlers
   const handleDragEnter = useCallback((e: DragEvent<HTMLDivElement>) => {
@@ -234,7 +225,7 @@ export default function LeaseUpload() {
           <span className="text-lg">⚠️</span>
           <span>{error}</span>
           <button
-            onClick={() => setError(null)}
+            onClick={() => setClientError(null)}
             className="ml-auto text-red-500 hover:text-red-700"
           >
             ✕
@@ -315,24 +306,6 @@ export default function LeaseUpload() {
                   </p>
                 )}
               </div>
-
-              {/* Upload Progress */}
-              {uploading && (
-                <div className="absolute bottom-6 left-6 right-6">
-                  <div className="bg-white rounded p-3 shadow-sm">
-                    <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
-                      <span>Uploading...</span>
-                      <span>{uploadProgress}%</span>
-                    </div>
-                    <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-indigo-600 transition-all duration-300"
-                        style={{ width: `${uploadProgress}%` }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
             <p className="mt-2 text-xs text-gray-500">
               Accepted formats: PDF, DOC, DOCX, PNG, JPG • Max size: 10MB
