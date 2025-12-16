@@ -128,12 +128,13 @@ export default function LeaseUpload() {
     formData.append('file', file);
     formData.append('fileType', fileType);
 
-    console.log('Submitting fetcher...');
+    console.log('Submitting fetcher to:', `/admin/leases/${lease.id}/upload`);
     fetcher.submit(formData, {
       method: 'post',
+      action: `/admin/leases/${lease.id}/upload`,
       encType: 'multipart/form-data',
     });
-  }, [fileType, fetcher]);
+  }, [fileType, fetcher, lease.id]);
 
   const validateAndUploadFile = useCallback((file: File) => {
     console.log('validateAndUploadFile', file.name);
@@ -170,12 +171,14 @@ export default function LeaseUpload() {
       formData.append('file', file);
       formData.append('fileType', fileType);
 
+      console.log('Submitting fetcher (auto) to:', `/admin/leases/${lease.id}/upload`);
       fetcher.submit(formData, {
         method: 'post',
+        action: `/admin/leases/${lease.id}/upload`,
         encType: 'multipart/form-data',
       });
     }
-  }, [fileType, fetcher]);
+  }, [fileType, fetcher, lease.id]);
 
   // Drag event handlers
   const handleDragEnter = useCallback((e: DragEvent<HTMLDivElement>) => {
