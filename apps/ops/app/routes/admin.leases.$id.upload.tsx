@@ -128,13 +128,12 @@ export default function LeaseUpload() {
     formData.append('file', file);
     formData.append('fileType', fileType);
 
-    console.log('Submitting fetcher to:', `/admin/leases/${lease.id}/upload`);
+    console.log('Submitting fetcher with formData', { fileName: file.name, fileType });
     fetcher.submit(formData, {
       method: 'post',
-      action: `/admin/leases/${lease.id}/upload`,
       encType: 'multipart/form-data',
     });
-  }, [fileType, fetcher, lease.id]);
+  }, [fileType, fetcher]);
 
   const validateAndUploadFile = useCallback((file: File) => {
     console.log('validateAndUploadFile', file.name);
@@ -164,21 +163,18 @@ export default function LeaseUpload() {
 
     // Auto-upload if file type is already selected
     if (fileType) {
-      console.log('Auto-uploading...');
-      // We need to use the callback version or useEffect to ensure state is updated, 
-      // but here we can just call submit directly with the file and current fileType
+      console.log('Auto-uploading with fileType:', fileType);
       const formData = new FormData();
       formData.append('file', file);
       formData.append('fileType', fileType);
 
-      console.log('Submitting fetcher (auto) to:', `/admin/leases/${lease.id}/upload`);
+      console.log('Submitting fetcher (auto) with formData', { fileName: file.name, fileType });
       fetcher.submit(formData, {
         method: 'post',
-        action: `/admin/leases/${lease.id}/upload`,
         encType: 'multipart/form-data',
       });
     }
-  }, [fileType, fetcher, lease.id]);
+  }, [fileType, fetcher]);
 
   // Drag event handlers
   const handleDragEnter = useCallback((e: DragEvent<HTMLDivElement>) => {
@@ -225,11 +221,17 @@ export default function LeaseUpload() {
   }, [uploading]);
 
   const handleSubmit = useCallback(() => {
-    console.log('Submit clicked', { selectedFile: selectedFile?.name });
-    if (selectedFile) {
-      handleUpload(selectedFile);
+    console.log('Submit clicked', { selectedFile: selectedFile?.name, fileType });
+    if (!selectedFile) {
+      setClientError('Please select a file');
+      return;
     }
-  }, [selectedFile, handleUpload]);
+    if (!fileType) {
+      setClientError('Please select a document type');
+      return;
+    }
+    handleUpload(selectedFile);
+  }, [selectedFile, fileType, handleUpload]);
 
   return (
     <div className="p-8">
@@ -349,6 +351,7 @@ export default function LeaseUpload() {
               Cancel
             </Link>
             <button
+              type="button"
               onClick={handleSubmit}
               disabled={uploading || !selectedFile || !fileType}
               className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
