@@ -101,7 +101,7 @@ export default function WorkOrdersIndex() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {workOrders.map((wo: any) => (
-                <tr key={wo.id} className="hover:bg-gray-50">
+                <tr key={wo.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => window.location.href = `/admin/work-orders/${wo.id}`}>
                   <td className="px-6 py-4">
                     <p className="font-medium text-gray-900">{wo.title}</p>
                     <p className="text-sm text-gray-500 truncate max-w-xs">{wo.description}</p>
@@ -117,6 +117,7 @@ export default function WorkOrdersIndex() {
                       <Link
                         to={`/admin/tenants/${wo.tenantId}`}
                         className="text-sm text-indigo-600 hover:text-indigo-700"
+                        onClick={(e) => e.stopPropagation()}
                       >
                         {wo.tenantName}
                       </Link>
@@ -140,6 +141,7 @@ export default function WorkOrdersIndex() {
                     <Link
                       to={`/admin/work-orders/${wo.id}`}
                       className="text-indigo-600 hover:text-indigo-700 text-sm font-medium"
+                      onClick={(e) => e.stopPropagation()}
                     >
                       View
                     </Link>

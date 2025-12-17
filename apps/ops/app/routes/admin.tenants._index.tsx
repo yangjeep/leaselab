@@ -190,7 +190,8 @@ export default function TenantsIndex() {
                 return (
                   <tr
                     key={tenant.id}
-                    className={`hover:bg-gray-50 ${hasActiveWorkOrders ? 'bg-yellow-50' : ''}`}
+                    className={`hover:bg-gray-50 cursor-pointer ${hasActiveWorkOrders ? 'bg-yellow-50' : ''}`}
+                    onClick={() => window.location.href = `/admin/tenants/${tenant.id}`}
                   >
                     <td className="px-6 py-4">
                       <p className="font-medium text-gray-900">
@@ -230,6 +231,7 @@ export default function TenantsIndex() {
                       <Link
                         to={`/admin/tenants/${tenant.id}`}
                         className="text-indigo-600 hover:text-indigo-700 text-sm font-medium"
+                        onClick={(e) => e.stopPropagation()}
                       >
                         View
                       </Link>

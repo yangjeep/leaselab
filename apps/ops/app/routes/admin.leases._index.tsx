@@ -204,7 +204,7 @@ export default function LeasesIndex() {
               </tr>
             ) : (
               leases.map((lease: any) => (
-                <tr key={lease.id} className="hover:bg-gray-50">
+                <tr key={lease.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => window.location.href = `/admin/leases/${lease.id}`}>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">
                       {lease.tenant ? `${lease.tenant.firstName} ${lease.tenant.lastName}` : 'N/A'}
@@ -234,6 +234,7 @@ export default function LeasesIndex() {
                     <Link
                       to={`/admin/leases/${lease.id}`}
                       className="text-indigo-600 hover:text-indigo-900"
+                      onClick={(e) => e.stopPropagation()}
                     >
                       View
                     </Link>
