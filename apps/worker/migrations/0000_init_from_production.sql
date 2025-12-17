@@ -1,6 +1,25 @@
 -- Migration: Initialize database from production schema
 -- This migration creates all tables based on the production schema export
+-- ⚠️ EMERGENCY RECOVERY ONLY - Should only run on completely empty databases
 -- Safe to re-run (uses IF NOT EXISTS and INSERT OR IGNORE)
+
+-- =============================================================================
+-- SAFETY CHECK: Ensure database is empty (emergency recovery only)
+-- =============================================================================
+-- ⚠️  This migration should ONLY run on completely empty databases
+-- ⚠️  If you need to run this on an existing database, you're doing emergency recovery
+-- ⚠️  and should verify this is intentional before proceeding
+
+-- Count existing user tables (excluding SQLite and D1 internal tables)
+-- This will cause the migration to FAIL if any tables already exist
+SELECT CASE
+  WHEN (SELECT COUNT(*) FROM sqlite_master
+        WHERE type='table'
+        AND name NOT LIKE 'sqlite_%'
+        AND name NOT LIKE 'd1_%') > 0
+  THEN RAISE(ABORT, '🛑 SAFETY: Database not empty! This migration is for NEW databases only. If you need to run this for emergency recovery, manually remove this check.')
+  ELSE 0
+END;
 
 -- Defer foreign keys for batch operations
 PRAGMA defer_foreign_keys=TRUE;

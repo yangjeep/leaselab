@@ -1,5 +1,16 @@
 # Database Migrations Guide
 
+## ⚠️ IMPORTANT: Migration 0000 - Emergency Recovery Only
+
+**Migration `0000_init_from_production.sql` is for NEW databases only!**
+
+- ✅ **When to use**: Creating a brand new database from scratch
+- ❌ **DO NOT use**: On databases that already have tables
+- 🛡️ **Safety Protection**: Automatically FAILS if any tables already exist
+- 🚨 **Emergency Override**: For disaster recovery, manually edit migration to remove safety check
+
+**The migration includes a built-in safety check that will abort with a clear error message if you try to run it on an existing database.**
+
 ## Migration Status
 
 All migrations have been audited for idempotency and safety.
