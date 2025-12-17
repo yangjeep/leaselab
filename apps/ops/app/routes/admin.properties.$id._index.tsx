@@ -1,7 +1,7 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs, MetaFunction } from '@remix-run/cloudflare';
 import { json, redirect } from '@remix-run/cloudflare';
 import { useLoaderData, useRouteLoaderData, Link, Form, useNavigation } from '@remix-run/react';
-import { fetchPropertyWithUnitsFromWorker, savePropertyToWorker, deletePropertyToWorker, fetchImagesFromWorker, getImageServeUrl } from '~/lib/worker-client';
+import { fetchPropertyWithUnitsFromWorker, savePropertyToWorker, deletePropertyToWorker, fetchImagesFromWorker, getImageServeUrl, fetchWorkOrdersFromWorker } from '~/lib/worker-client';
 import { formatCurrency } from '~/shared/utils';
 import type { Property, Unit, PropertyImage } from '~/shared/types';
 import { getSiteId } from '~/lib/site.server';
@@ -40,7 +40,11 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
     url: baseUrl ? `${baseUrl}/${img.r2Key}` : getImageServeUrl(workerEnv, img.id),
   }));
 
-  return json({ property: { ...property, images: imagesWithUrls } });
+  // Fetch work orders for this property
+  const allWorkOrders = await fetchWorkOrdersFromWorker(workerEnv, siteId);
+  const workOrders = allWorkOrders.filter((wo: any) => wo.propertyId === id);
+
+  return json({ property: { ...property, images: imagesWithUrls }, workOrders });
 }
 
 export async function action({ request, params, context }: ActionFunctionArgs) {
@@ -95,7 +99,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 }
 
 export default function PropertyDetail() {
-  const { property } = useLoaderData<typeof loader>();
+  const { property, workOrders } = useLoaderData<typeof loader>();
   const adminData = useRouteLoaderData<typeof import('./admin').loader>('routes/admin');
   const user = adminData?.user || null;
   const navigation = useNavigation();
@@ -104,6 +108,9 @@ export default function PropertyDetail() {
 
   const units = property.units || [];
   const images = property.images || [];
+  const activeWorkOrders = workOrders.filter((wo: any) =>
+    wo.status !== 'completed' && wo.status !== 'cancelled'
+  );
 
   return (
     <div className="p-8">
@@ -401,6 +408,59 @@ export default function PropertyDetail() {
           </div>
         )}
       </div>
+
+      {/* Work Orders */}
+      <div className="mt-6 bg-white rounded-xl shadow-sm p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-gray-900">
+            Work Orders
+            {activeWorkOrders.length > 0 && (
+              <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                {activeWorkOrders.length} active
+              </span>
+            )}
+          </h2>
+          <Link
+            to="/admin/work-orders/new"
+            className="text-sm text-indigo-600 hover:text-indigo-700"
+          >
+            + Create Work Order
+          </Link>
+        </div>
+
+        {workOrders.length === 0 ? (
+          <p className="text-sm text-gray-500 text-center py-8">
+            No work orders for this property yet.
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {workOrders.map((wo: any) => (
+              <Link
+                key={wo.id}
+                to={`/admin/work-orders/${wo.id}`}
+                className="block p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="font-medium text-gray-900">{wo.title}</h3>
+                      <WorkOrderStatusBadge status={wo.status} />
+                      <WorkOrderPriorityBadge priority={wo.priority} />
+                    </div>
+                    <p className="text-sm text-gray-600 mb-2">{wo.description}</p>
+                    <div className="flex items-center gap-4 text-xs text-gray-500">
+                      <span className="capitalize">{wo.category}</span>
+                      {wo.unitNumber && <span>Unit: {wo.unitNumber}</span>}
+                      {wo.tenantName && <span>Tenant: {wo.tenantName}</span>}
+                      <span>{new Date(wo.createdAt).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -416,6 +476,38 @@ function UnitStatusBadge({ status }: { status: string }) {
   return (
     <span className={`text-xs px-2 py-1 rounded-full ${c.bg} ${c.text} capitalize`}>
       {status}
+    </span>
+  );
+}
+
+function WorkOrderStatusBadge({ status }: { status: string }) {
+  const config: Record<string, { bg: string; text: string }> = {
+    open: { bg: 'bg-blue-100', text: 'text-blue-700' },
+    in_progress: { bg: 'bg-yellow-100', text: 'text-yellow-700' },
+    pending_parts: { bg: 'bg-purple-100', text: 'text-purple-700' },
+    scheduled: { bg: 'bg-indigo-100', text: 'text-indigo-700' },
+    completed: { bg: 'bg-green-100', text: 'text-green-700' },
+    cancelled: { bg: 'bg-gray-100', text: 'text-gray-700' },
+  };
+  const c = config[status] || { bg: 'bg-gray-100', text: 'text-gray-700' };
+  return (
+    <span className={`text-xs px-2 py-1 rounded-full ${c.bg} ${c.text} capitalize`}>
+      {status.replace('_', ' ')}
+    </span>
+  );
+}
+
+function WorkOrderPriorityBadge({ priority }: { priority: string }) {
+  const config: Record<string, { bg: string; text: string }> = {
+    low: { bg: 'bg-gray-100', text: 'text-gray-700' },
+    medium: { bg: 'bg-blue-100', text: 'text-blue-700' },
+    high: { bg: 'bg-orange-100', text: 'text-orange-700' },
+    emergency: { bg: 'bg-red-100', text: 'text-red-700' },
+  };
+  const c = config[priority] || { bg: 'bg-gray-100', text: 'text-gray-700' };
+  return (
+    <span className={`text-xs px-2 py-1 rounded-full ${c.bg} ${c.text} capitalize`}>
+      {priority}
     </span>
   );
 }
