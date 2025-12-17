@@ -245,6 +245,14 @@ export default function TenantDetail() {
                   {formatCurrency(tenant.currentLease.securityDeposit)}
                 </dd>
               </div>
+              <div className="pt-4 border-t border-gray-200">
+                <Link
+                  to={`/admin/leases/${tenant.currentLease.id}`}
+                  className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
+                >
+                  View Lease Details →
+                </Link>
+              </div>
             </dl>
           </div>
         )}
