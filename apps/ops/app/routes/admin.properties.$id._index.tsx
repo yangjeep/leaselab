@@ -1,10 +1,12 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs, MetaFunction } from '@remix-run/cloudflare';
 import { json, redirect } from '@remix-run/cloudflare';
-import { useLoaderData, Link, Form, useNavigation } from '@remix-run/react';
+import { useLoaderData, useRouteLoaderData, Link, Form, useNavigation } from '@remix-run/react';
 import { fetchPropertyWithUnitsFromWorker, savePropertyToWorker, deletePropertyToWorker, fetchImagesFromWorker, getImageServeUrl } from '~/lib/worker-client';
 import { formatCurrency } from '~/shared/utils';
 import type { Property, Unit, PropertyImage } from '~/shared/types';
 import { getSiteId } from '~/lib/site.server';
+import { requireAuth } from '~/lib/auth.server';
+import { canDelete } from '~/lib/permissions';
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
   return [{ title: data?.property ? `${data.property.name} - LeaseLab.io` : 'Property - LeaseLab.io' }];
@@ -46,6 +48,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
     WORKER_URL: context.cloudflare.env.WORKER_URL,
     WORKER_INTERNAL_KEY: context.cloudflare.env.WORKER_INTERNAL_KEY,
   };
+  const secret = context.cloudflare.env.SESSION_SECRET as string;
   const siteId = getSiteId(request);
   const { id } = params;
 
@@ -57,6 +60,12 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
   const intent = formData.get('intent');
 
   if (intent === 'delete') {
+    // Check permissions
+    const user = await requireAuth(request, workerEnv, secret, siteId);
+    if (!canDelete(user)) {
+      return json({ error: 'Insufficient permissions to delete properties' }, { status: 403 });
+    }
+
     await deletePropertyToWorker(workerEnv, siteId, id);
     return redirect('/admin/properties');
   }
@@ -75,7 +84,6 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
       propertyType: formData.get('propertyType') as string,
       description: formData.get('description') as string || undefined,
       yearBuilt: formData.get('yearBuilt') ? parseInt(formData.get('yearBuilt') as string) : undefined,
-      lotSize: formData.get('lotSize') ? parseFloat(formData.get('lotSize') as string) : undefined,
       amenities,
       isActive: formData.get('isActive') === 'true',
     });
@@ -88,8 +96,11 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 
 export default function PropertyDetail() {
   const { property } = useLoaderData<typeof loader>();
+  const adminData = useRouteLoaderData<typeof import('./admin').loader>('routes/admin');
+  const user = adminData?.user || null;
   const navigation = useNavigation();
   const isSubmitting = navigation.state === 'submitting';
+  const userCanDelete = canDelete(user);
 
   const units = property.units || [];
   const images = property.images || [];
@@ -207,25 +218,17 @@ export default function PropertyDetail() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Year Built</label>
-                  <input
-                    type="number"
-                    name="yearBuilt"
-                    defaultValue={property.yearBuilt || ''}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Lot Size (sq ft)</label>
-                  <input
-                    type="number"
-                    name="lotSize"
-                    defaultValue={property.lotSize || ''}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  />
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Year Built</label>
+                <input
+                  type="number"
+                  name="yearBuilt"
+                  min="1800"
+                  max={new Date().getFullYear()}
+                  defaultValue={property.yearBuilt || ''}
+                  placeholder="e.g., 1985"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                />
               </div>
 
               <div>
@@ -251,19 +254,30 @@ export default function PropertyDetail() {
               </div>
 
               <div className="flex items-center justify-between pt-4 border-t">
-                <Form method="post" onSubmit={(e) => {
-                  if (!confirm('Are you sure you want to delete this property?')) {
-                    e.preventDefault();
-                  }
-                }}>
-                  <input type="hidden" name="intent" value="delete" />
+                {userCanDelete ? (
+                  <Form method="post" onSubmit={(e) => {
+                    if (!confirm('Are you sure you want to delete this property?')) {
+                      e.preventDefault();
+                    }
+                  }}>
+                    <input type="hidden" name="intent" value="delete" />
+                    <button
+                      type="submit"
+                      className="px-4 py-2 text-sm text-red-600 hover:text-red-700"
+                    >
+                      Delete Property
+                    </button>
+                  </Form>
+                ) : (
                   <button
-                    type="submit"
-                    className="px-4 py-2 text-sm text-red-600 hover:text-red-700"
+                    type="button"
+                    disabled
+                    className="px-4 py-2 text-sm text-gray-400 cursor-not-allowed"
+                    title="Admin permission required"
                   >
                     Delete Property
                   </button>
-                </Form>
+                )}
                 <button
                   type="submit"
                   disabled={isSubmitting}

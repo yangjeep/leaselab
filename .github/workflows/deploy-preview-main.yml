@@ -52,6 +52,8 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: apps/worker
           command: deploy --env preview
+          wranglerVersion: "4.51.0"
+          packageManager: npm
 
   deploy-ops:
     name: Deploy Ops Preview (Main)
@@ -81,6 +83,8 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: apps/ops
           command: pages deploy build/client --project-name=leaselab-ops --branch=preview-main
+          wranglerVersion: "4.51.0"
+          packageManager: npm
 
   deploy-site:
     name: Deploy Site Preview (Main)
@@ -110,6 +114,8 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: apps/site
           command: pages deploy build/client --project-name=leaselab-site --branch=preview-main
+          wranglerVersion: "4.51.0"
+          packageManager: npm
 
   notify:
     name: Notify Preview Deployment

@@ -12,7 +12,6 @@ export interface Property {
   propertyType: PropertyType;
   description?: string;
   yearBuilt?: number;
-  lotSize?: number;
   amenities: string[];
   latitude?: number;
   longitude?: number;
@@ -118,6 +117,7 @@ export interface Lead {
   aiScore?: number;
   aiLabel?: AILabel;
   landlordNote?: string; // Internal-only notes (includes legacy income info)
+  isActive: boolean; // For archiving/soft-delete
   createdAt: string;
   updatedAt: string;
   // Computed fields (from joins)
@@ -281,6 +281,29 @@ export type LeaseStatus =
   | 'active'
   | 'expired'
   | 'terminated';
+
+// Lease File Types
+export interface LeaseFile {
+  id: string;
+  leaseId: string;
+  fileType: LeaseFileType;
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
+  r2Key: string;
+  uploadedAt: string;
+  // Computed (for ops viewing)
+  signedUrl?: string;
+  expiresAt?: string;
+}
+
+export type LeaseFileType =
+  | 'lease_document'
+  | 'addendum'
+  | 'inspection_report'
+  | 'move_in_checklist'
+  | 'move_out_checklist'
+  | 'other';
 
 // Work Order Types
 export interface WorkOrder {

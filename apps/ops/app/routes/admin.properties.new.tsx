@@ -26,7 +26,6 @@ export async function action({ request, context }: ActionFunctionArgs) {
     propertyType: formData.get('propertyType') as string,
     description: formData.get('description') as string || undefined,
     yearBuilt: formData.get('yearBuilt') ? parseInt(formData.get('yearBuilt') as string) : undefined,
-    lotSize: formData.get('lotSize') ? parseFloat(formData.get('lotSize') as string) : undefined,
     amenities,
   };
 
@@ -144,26 +143,16 @@ export default function NewProperty() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Year Built</label>
-                <input
-                  type="number"
-                  name="yearBuilt"
-                  min="1800"
-                  max={new Date().getFullYear()}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Lot Size (sq ft)</label>
-                <input
-                  type="number"
-                  name="lotSize"
-                  min="0"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                />
-              </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Year Built</label>
+              <input
+                type="number"
+                name="yearBuilt"
+                min="1800"
+                max={new Date().getFullYear()}
+                placeholder="e.g., 1985"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              />
             </div>
 
             <div>

@@ -238,7 +238,6 @@ export const CreatePropertySchema = z.object({
   propertyType: PropertyTypeEnum,
   description: z.string().max(2000).optional(),
   yearBuilt: z.number().int().min(1800).max(new Date().getFullYear()).optional(),
-  lotSize: z.number().positive().optional(),
   amenities: z.array(z.string()).default([]),
   latitude: z.number().optional(),
   longitude: z.number().optional(),

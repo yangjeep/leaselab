@@ -4,7 +4,9 @@
     "type": "module",
     "devDependencies": {
         "@cloudflare/workers-types": "^4.20240903.0",
-        "typescript": "^5.5.4"
+        "typescript": "^5.5.4",
+        "unenv": "^1.10.0",
+        "workerd": "^1.20251202.0"
     },
     "scripts": {
         "build": "tsc",

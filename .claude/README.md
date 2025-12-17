@@ -6,7 +6,11 @@ This directory contains the Claude Code infrastructure integrated from the [clau
 
 ```
 .claude/
-├── README.md                           # This file
+├── README.md                           # This file (infrastructure guide)
+├── DEVELOPMENT_GUIDE.md                # Main technical reference (AI/developer guide)
+├── BACKEND_API.md                      # Complete Worker API reference
+├── CODEBASE_ANALYSIS.md                # Codebase structure analysis
+├── CENTRALIZED_CONFIG.md               # Configuration reference
 ├── settings.json                       # Hook configurations
 ├── settings.local.json                 # Local permissions
 ├── hooks/                              # Automation hooks
@@ -318,11 +322,23 @@ See [skill-developer.md](skills/skill-developer.md) for detailed instructions.
 
 ## 📖 References
 
-### Internal Documentation
-- [CLAUDE.md](../CLAUDE.md) - Main project guide
+### Technical Documentation (AI/Developer Reference)
+- [DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md) - **Primary reference** - Complete development guide
+- [BACKEND_API.md](BACKEND_API.md) - Complete Worker API documentation
+- [CODEBASE_ANALYSIS.md](CODEBASE_ANALYSIS.md) - In-depth codebase structure
+- [CENTRALIZED_CONFIG.md](CENTRALIZED_CONFIG.md) - Configuration and schemas
+
+### Skill Guidelines
 - [skill-developer.md](skills/skill-developer.md) - Meta-skill for managing skills
-- [Multi-tenancy guidelines](skills/multi-tenancy-guidelines.md) - Critical: site_id isolation
-- [Security guidelines](skills/security-guidelines.md) - Critical: auth/crypto
+- [multi-tenancy-guidelines.md](skills/multi-tenancy-guidelines.md) - Critical: site_id isolation
+- [security-guidelines.md](skills/security-guidelines.md) - Critical: auth/crypto
+- [cloudflare-worker-guidelines.md](skills/cloudflare-worker-guidelines.md) - Worker patterns
+- [remix-frontend-guidelines.md](skills/remix-frontend-guidelines.md) - Remix patterns
+- [d1-database-guidelines.md](skills/d1-database-guidelines.md) - Database patterns
+- [shared-types-guidelines.md](skills/shared-types-guidelines.md) - TypeScript patterns
+
+### Design Documentation (Human Reference)
+See [/docs/README.md](../docs/README.md) for architecture, PRDs, and project planning
 
 ### External Resources
 - [Claude Code Infrastructure Showcase](https://github.com/diet103/claude-code-infrastructure-showcase)

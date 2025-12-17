@@ -1,9 +1,11 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs, MetaFunction } from '@remix-run/cloudflare';
-import { json } from '@remix-run/cloudflare';
-import { useLoaderData, useSubmit } from '@remix-run/react';
-import { fetchLeadFromWorker, fetchPropertyFromWorker, updateLeadToWorker, fetchLeadHistoryFromWorker } from '~/lib/worker-client';
+import { json, redirect } from '@remix-run/cloudflare';
+import { useLoaderData, useRouteLoaderData, useSubmit, useActionData } from '@remix-run/react';
+import { fetchLeadFromWorker, fetchPropertyFromWorker, updateLeadToWorker, fetchLeadHistoryFromWorker, fetchLeadFilesFromWorker } from '~/lib/worker-client';
 import { formatCurrency } from '~/shared/utils';
 import { getSiteId } from '~/lib/site.server';
+import { requireAuth } from '~/lib/auth.server';
+import { canDelete } from '~/lib/permissions';
 import { StageWorkflow, RENTAL_APPLICATION_STAGES } from '~/components/StageWorkflow';
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
@@ -34,7 +36,8 @@ export async function loader({ params, request, context }: LoaderFunctionArgs) {
   }
 
   const history = await fetchLeadHistoryFromWorker(workerEnv, siteId, lead.id);
-  return json({ lead, property, history });
+  const files = await fetchLeadFilesFromWorker(workerEnv, siteId, lead.id);
+  return json({ lead, property, history, files });
 }
 
 export async function action({ params, request, context }: ActionFunctionArgs) {
@@ -66,12 +69,46 @@ export async function action({ params, request, context }: ActionFunctionArgs) {
     return json({ success: true });
   }
 
+  if (action === 'uploadFile') {
+    const { uploadLeadFileToWorker } = await import('~/lib/worker-client');
+    const file = formData.get('file') as File | null;
+    const fileType = formData.get('fileType') as string;
+
+    if (!file || file.size === 0) {
+      return json({ success: false, error: 'No file selected' }, { status: 400 });
+    }
+
+    try {
+      await uploadLeadFileToWorker(workerEnv, siteId, leadId, file, fileType);
+      return json({ success: true });
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      return json({ success: false, error: 'Failed to upload file' }, { status: 500 });
+    }
+  }
+
+  if (action === 'archiveLead') {
+    // Check permissions
+    const secret = context.cloudflare.env.SESSION_SECRET as string;
+    const user = await requireAuth(request, workerEnv, secret, siteId);
+    if (!canDelete(user)) {
+      return json({ error: 'Insufficient permissions to archive applications' }, { status: 403 });
+    }
+
+    const { archiveLeadToWorker } = await import('~/lib/worker-client');
+    await archiveLeadToWorker(workerEnv, siteId, leadId);
+    return redirect('/admin/leads');
+  }
+
   return json({ success: false }, { status: 400 });
 }
 
 export default function LeadDetail() {
-  const { lead, property, history } = useLoaderData<typeof loader>();
+  const { lead, property, history, files } = useLoaderData<typeof loader>();
+  const adminData = useRouteLoaderData<typeof import('./admin').loader>('routes/admin');
+  const user = adminData?.user || null;
   const submit = useSubmit();
+  const userCanDelete = canDelete(user);
 
   const handleStageChange = (newStage: string) => {
     const formData = new FormData();
@@ -82,15 +119,42 @@ export default function LeadDetail() {
 
   // Income ratio no longer available (monthly income removed)
 
+  const handleArchive = () => {
+    if (!confirm('Are you sure you want to archive this application? It will be hidden from the main list but can be restored later.')) {
+      return;
+    }
+    const formData = new FormData();
+    formData.append('_action', 'archiveLead');
+    submit(formData, { method: 'post' });
+  };
+
   return (
     <div className="p-8">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">
-          {lead.firstName} {lead.lastName}
-        </h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Application ID: {lead.id}
-        </p>
+      <div className="mb-6 flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">
+            {lead.firstName} {lead.lastName}
+          </h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Application ID: {lead.id}
+          </p>
+        </div>
+        {userCanDelete ? (
+          <button
+            onClick={handleArchive}
+            className="px-4 py-2 text-sm font-medium text-red-700 bg-red-50 border border-red-300 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-500"
+          >
+            Archive Application
+          </button>
+        ) : (
+          <button
+            disabled
+            className="px-4 py-2 text-sm font-medium text-gray-400 bg-gray-100 border border-gray-300 rounded-lg cursor-not-allowed"
+            title="Admin permission required"
+          >
+            Archive Application
+          </button>
+        )}
       </div>
 
       {/* Stage Workflow */}
@@ -237,6 +301,137 @@ export default function LeadDetail() {
             )}
           </div>
         </div>
+      </div>
+
+      {/* Applicant Files Section */}
+      <div className="mt-6 bg-white rounded-xl shadow-sm p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-gray-900">Submitted Documents</h2>
+        </div>
+
+        {/* Upload Form */}
+        <form method="post" encType="multipart/form-data" className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+          <input type="hidden" name="_action" value="uploadFile" />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="md:col-span-1">
+              <label htmlFor="fileType" className="block text-sm font-medium text-gray-700 mb-1">
+                Document Type
+              </label>
+              <select
+                id="fileType"
+                name="fileType"
+                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                required
+              >
+                <option value="government_id">Government ID</option>
+                <option value="paystub">Pay Stub</option>
+                <option value="bank_statement">Bank Statement</option>
+                <option value="tax_return">Tax Return</option>
+                <option value="employment_letter">Employment Letter</option>
+                <option value="other">Other Document</option>
+              </select>
+            </div>
+            <div className="md:col-span-1">
+              <label htmlFor="file" className="block text-sm font-medium text-gray-700 mb-1">
+                Select File
+              </label>
+              <input
+                type="file"
+                id="file"
+                name="file"
+                className="block w-full text-sm text-gray-900 border border-gray-300 rounded-md cursor-pointer bg-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                required
+              />
+            </div>
+            <div className="md:col-span-1 flex items-end">
+              <button
+                type="submit"
+                className="w-full px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              >
+                Upload Document
+              </button>
+            </div>
+          </div>
+        </form>
+
+        {files.length === 0 ? (
+          <p className="text-sm text-gray-500">No documents have been submitted yet.</p>
+        ) : (
+          <div className="space-y-3">
+            {files.map((file: any) => {
+              const fileTypeLabels: Record<string, string> = {
+                government_id: 'Government ID',
+                paystub: 'Pay Stub',
+                bank_statement: 'Bank Statement',
+                tax_return: 'Tax Return',
+                employment_letter: 'Employment Letter',
+                other: 'Other Document',
+              };
+
+              const fileTypeLabel = fileTypeLabels[file.fileType] || file.fileType;
+              const fileSizeKB = (file.fileSize / 1024).toFixed(1);
+              const uploadDate = new Date(file.uploadedAt).toLocaleDateString('en-CA', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              });
+
+              return (
+                <div key={file.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    {/* File Icon */}
+                    <div className="flex-shrink-0">
+                      <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+
+                    {/* File Details */}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">
+                        {file.fileName}
+                      </p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                          {fileTypeLabel}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          {fileSizeKB} KB
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          • {uploadDate}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Download Button */}
+                  <div className="flex-shrink-0 ml-4">
+                    <a
+                      href={file.signedUrl}
+                      download={file.fileName}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    >
+                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                      </svg>
+                      Download
+                    </a>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        {files.length > 0 && (
+          <div className="mt-4 text-xs text-gray-500">
+            Download links are valid for 24 hours from page load.
+          </div>
+        )}
       </div>
     </div>
   );

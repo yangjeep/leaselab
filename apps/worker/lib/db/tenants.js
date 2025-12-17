@@ -1,4 +1,5 @@
 import { normalizeDb } from './helpers';
+import { generateId } from '../../../../shared/utils';
 // Mapper functions
 function mapTenantFromDb(row) {
     const r = row;
@@ -130,4 +131,70 @@ export async function getTenantById(dbInput, siteId, id) {
     const db = normalizeDb(dbInput);
     const result = await db.queryOne('SELECT * FROM tenants WHERE id = ? AND site_id = ?', [id, siteId]);
     return result ? mapTenantFromDb(result) : null;
+}
+export async function createTenant(dbInput, siteId, data) {
+    const db = normalizeDb(dbInput);
+    const id = generateId('tenant');
+    const now = new Date().toISOString();
+    await db.execute(`
+    INSERT INTO tenants (id, site_id, lead_id, first_name, last_name, email, phone, emergency_contact, emergency_phone, status, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `, [
+        id,
+        siteId,
+        data.leadId || null,
+        data.firstName,
+        data.lastName,
+        data.email,
+        data.phone,
+        data.emergencyContact || null,
+        data.emergencyPhone || null,
+        data.status,
+        now,
+        now
+    ]);
+    return (await getTenantById(db, siteId, id));
+}
+export async function updateTenant(dbInput, siteId, id, data) {
+    const db = normalizeDb(dbInput);
+    const updates = [];
+    const params = [];
+    if (data.firstName !== undefined) {
+        updates.push('first_name = ?');
+        params.push(data.firstName);
+    }
+    if (data.lastName !== undefined) {
+        updates.push('last_name = ?');
+        params.push(data.lastName);
+    }
+    if (data.email !== undefined) {
+        updates.push('email = ?');
+        params.push(data.email);
+    }
+    if (data.phone !== undefined) {
+        updates.push('phone = ?');
+        params.push(data.phone);
+    }
+    if (data.emergencyContact !== undefined) {
+        updates.push('emergency_contact = ?');
+        params.push(data.emergencyContact || null);
+    }
+    if (data.emergencyPhone !== undefined) {
+        updates.push('emergency_phone = ?');
+        params.push(data.emergencyPhone || null);
+    }
+    if (data.status !== undefined) {
+        updates.push('status = ?');
+        params.push(data.status);
+    }
+    if (updates.length === 0)
+        return;
+    updates.push('updated_at = ?');
+    params.push(new Date().toISOString());
+    params.push(id, siteId);
+    await db.execute(`UPDATE tenants SET ${updates.join(', ')} WHERE id = ? AND site_id = ?`, params);
+}
+export async function deleteTenant(dbInput, siteId, id) {
+    const db = normalizeDb(dbInput);
+    await db.execute('DELETE FROM tenants WHERE id = ? AND site_id = ?', [id, siteId]);
 }
