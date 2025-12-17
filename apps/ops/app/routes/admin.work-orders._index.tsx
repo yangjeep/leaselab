@@ -91,6 +91,7 @@ export default function WorkOrdersIndex() {
                 <SortableTableHeader column="title" label="Title" />
                 <SortableTableHeader column="propertyName" label="Property" />
                 <SortableTableHeader column="unitNumber" label="Unit" />
+                <SortableTableHeader column="tenantName" label="Tenant" />
                 <SortableTableHeader column="category" label="Category" />
                 <SortableTableHeader column="priority" label="Priority" />
                 <SortableTableHeader column="status" label="Status" />
@@ -110,6 +111,18 @@ export default function WorkOrdersIndex() {
                   </td>
                   <td className="px-6 py-4">
                     <span className="text-sm text-gray-700">{wo.unitNumber || '-'}</span>
+                  </td>
+                  <td className="px-6 py-4">
+                    {wo.tenantName ? (
+                      <Link
+                        to={`/admin/tenants/${wo.tenantId}`}
+                        className="text-sm text-indigo-600 hover:text-indigo-700"
+                      >
+                        {wo.tenantName}
+                      </Link>
+                    ) : (
+                      <span className="text-sm text-gray-500">-</span>
+                    )}
                   </td>
                   <td className="px-6 py-4">
                     <span className="text-sm text-gray-600 capitalize">{wo.category}</span>

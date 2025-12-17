@@ -7,6 +7,7 @@ import { normalizeDb } from './helpers';
 export type WorkOrderWithDetails = WorkOrder & {
     propertyName?: string;
     unitNumber?: string;
+    tenantName?: string;
 };
 
 // Mapper function
@@ -37,6 +38,7 @@ function mapWorkOrderWithDetailsFromDb(row: unknown): WorkOrderWithDetails {
         ...mapWorkOrderFromDb(row),
         propertyName: r.property_name as string | undefined,
         unitNumber: r.unit_number as string | undefined,
+        tenantName: r.tenant_name as string | undefined,
     };
 }
 
@@ -58,7 +60,8 @@ export async function getWorkOrders(
         SELECT
             wo.*,
             p.name as property_name,
-            u.unit_number as unit_number
+            u.unit_number as unit_number,
+            (t.first_name || ' ' || t.last_name) as tenant_name
         FROM work_orders wo
         INNER JOIN properties p ON wo.property_id = p.id
         LEFT JOIN tenants t ON wo.tenant_id = t.id
@@ -93,6 +96,8 @@ export async function getWorkOrders(
         'property_name': 'p.name',
         'unitNumber': 'u.unit_number',
         'unit_number': 'u.unit_number',
+        'tenantName': 't.last_name',
+        'tenant_name': 't.last_name',
     };
 
     const dbSortField = sortFieldMap[sortBy] || 'wo.created_at';
