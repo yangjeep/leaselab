@@ -1,9 +1,9 @@
-import type { LoaderFunctionArgs, ActionFunctionArgs, MetaFunction } from '@remix-run/cloudflare';
-import { json, redirect } from '@remix-run/cloudflare';
-import { useLoaderData, Link, useNavigate, Form } from '@remix-run/react';
+import type { LoaderFunctionArgs, MetaFunction } from '@remix-run/cloudflare';
+import { json } from '@remix-run/cloudflare';
+import { useLoaderData, Link, useNavigate } from '@remix-run/react';
 import { fetchLeaseByIdFromWorker } from '~/lib/worker-client';
 import { getSiteId } from '~/lib/site.server';
-import { useState, useRef, useCallback, DragEvent, ChangeEvent, useEffect } from 'react';
+import { useState, useRef, useCallback, DragEvent, ChangeEvent } from 'react';
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
   if (!data) return [{ title: 'Upload Document' }];
@@ -31,71 +31,6 @@ export async function loader({ params, request, context }: LoaderFunctionArgs) {
   return json({ lease });
 }
 
-export async function action({ params, request, context }: ActionFunctionArgs) {
-  console.log('Action triggered for upload');
-  const siteId = getSiteId(request);
-  const workerEnv = {
-    WORKER_URL: context.cloudflare.env.WORKER_URL,
-    WORKER_INTERNAL_KEY: context.cloudflare.env.WORKER_INTERNAL_KEY,
-  };
-  const leaseId = params.id;
-
-  if (!leaseId) {
-    console.error('No lease ID');
-    throw new Response('Lease ID is required', { status: 400 });
-  }
-
-  const formData = await request.formData();
-  const file = formData.get('file') as File;
-  const fileType = formData.get('fileType') as string;
-
-  console.log('Upload action data:', {
-    fileName: file?.name,
-    fileSize: file?.size,
-    fileType,
-    leaseId
-  });
-
-  if (!file || file.size === 0) {
-    return json({ error: 'Please select a file to upload' }, { status: 400 });
-  }
-
-  if (!fileType) {
-    return json({ error: 'Please select a file type' }, { status: 400 });
-  }
-
-  // Create a new FormData for the worker request
-  const workerFormData = new FormData();
-  workerFormData.append('file', file);
-  workerFormData.append('fileType', fileType);
-
-  console.log('Sending to worker:', `${workerEnv.WORKER_URL}/api/ops/leases/${leaseId}/files`);
-
-  // Upload to worker
-  try {
-    const response = await fetch(`${workerEnv.WORKER_URL}/api/ops/leases/${leaseId}/files`, {
-      method: 'POST',
-      headers: {
-        'X-Internal-Key': workerEnv.WORKER_INTERNAL_KEY as string,
-        'X-Site-Id': siteId,
-      },
-      body: workerFormData,
-    });
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'Upload failed' })) as { message?: string };
-      console.error('Worker upload failed:', error);
-      return json({ error: error.message || 'Upload failed' }, { status: response.status });
-    }
-
-    console.log('Worker upload success');
-    return json({ success: true });
-  } catch (err) {
-    console.error('Fetch error:', err);
-    return json({ error: 'Network error during upload' }, { status: 500 });
-  }
-}
-
 export default function LeaseUpload() {
   const { lease } = useLoaderData<typeof loader>();
   const navigate = useNavigate();
@@ -105,15 +40,15 @@ export default function LeaseUpload() {
   const [isDragActive, setIsDragActive] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const formRef = useRef<HTMLFormElement>(null);
 
-  const handleUpload = useCallback(() => {
-    console.log('handleUpload called', { file: selectedFile?.name, fileType });
-    if (!selectedFile) {
+  const handleUpload = useCallback(async (file: File, type: string) => {
+    console.log('handleUpload called', { file: file.name, fileType: type });
+    
+    if (!file) {
       setClientError('Please select a file');
       return;
     }
-    if (!fileType) {
+    if (!type) {
       setClientError('Please select a document type');
       return;
     }
@@ -121,44 +56,39 @@ export default function LeaseUpload() {
     setClientError(null);
     setIsSubmitting(true);
 
-    // Create FormData and submit the form
-    const formData = new FormData();
-    formData.append('file', selectedFile);
-    formData.append('fileType', fileType);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('fileType', type);
 
-    console.log('Submitting form with file:', selectedFile.name);
-    
-    // Submit using fetch directly
-    const submitUpload = async () => {
-      try {
-        const response = await fetch(window.location.href, {
-                method: 'POST',
-                body: formData,
-              });
+      console.log('Uploading to API:', { file: file.name, fileType: type });
 
-              const responseData = await response.json() as { error?: string };
-              console.log('Upload response:', { status: response.status, data: responseData });
+      const response = await fetch(`/api/leases/${lease.id}/files`, {
+        method: 'POST',
+        body: formData,
+      });
 
-              if (!response.ok) {
-                setClientError(responseData.error || 'Upload failed');
-                setIsSubmitting(false);
-                return;
-              }
+      const data = await response.json() as { error?: string; success?: boolean };
+      console.log('Upload response:', { status: response.status, data });
 
-              console.log('Upload successful, navigating...');
-              navigate(`/admin/leases/${lease.id}`);
-      } catch (err) {
-        console.error('Upload error:', err);
-        setClientError(err instanceof Error ? err.message : 'Upload failed');
+      if (!response.ok) {
+        setClientError(data.error || 'Upload failed');
         setIsSubmitting(false);
+        return;
       }
-    };
 
-    submitUpload();
-  }, [selectedFile, fileType, navigate, lease.id]);
+      console.log('Upload successful, navigating...');
+      navigate(`/admin/leases/${lease.id}`);
+    } catch (err) {
+      console.error('Upload error:', err);
+      setClientError(err instanceof Error ? err.message : 'Upload failed');
+      setIsSubmitting(false);
+    }
+  }, [navigate, lease.id]);
 
   const validateAndUploadFile = useCallback((file: File) => {
     console.log('validateAndUploadFile', file.name);
+    
     // Validate file type
     const validTypes = [
       'application/pdf',
@@ -186,48 +116,9 @@ export default function LeaseUpload() {
     // Auto-upload if file type is already selected
     if (fileType) {
       console.log('Auto-uploading with fileType:', fileType);
-      setTimeout(() => {
-        // Trigger upload with the newly set file and existing fileType
-        // We can't use state directly, so we'll handle it in the next render
-        setSelectedFile(prevFile => {
-          const formData = new FormData();
-          formData.append('file', prevFile || file);
-          formData.append('fileType', fileType);
-
-          console.log('Submitting fetcher (auto) with formData', { fileName: file.name, fileType });
-          setIsSubmitting(true);
-
-          const submitUpload = async () => {
-            try {
-              const response = await fetch(formRef.current?.action || window.location.href, {
-                method: 'POST',
-                body: formData,
-              });
-
-              const responseData = await response.json() as { error?: string };
-              console.log('Upload response:', { status: response.status, data: responseData });
-
-              if (!response.ok) {
-                setClientError(responseData.error || 'Upload failed');
-                setIsSubmitting(false);
-                return;
-              }
-
-              console.log('Upload successful, navigating...');
-              navigate(`/admin/leases/${lease.id}`);
-            } catch (err) {
-              console.error('Upload error:', err);
-              setClientError(err instanceof Error ? err.message : 'Upload failed');
-              setIsSubmitting(false);
-            }
-          };
-
-          submitUpload();
-          return prevFile || file;
-        });
-      }, 0);
+      handleUpload(file, fileType);
     }
-  }, [fileType, navigate, lease.id]);
+  }, [fileType, handleUpload]);
 
   // Drag event handlers
   const handleDragEnter = useCallback((e: DragEvent<HTMLDivElement>) => {
@@ -273,6 +164,12 @@ export default function LeaseUpload() {
     }
   }, [isSubmitting]);
 
+  const handleSubmitClick = useCallback(() => {
+    if (selectedFile && fileType) {
+      handleUpload(selectedFile, fileType);
+    }
+  }, [selectedFile, fileType, handleUpload]);
+
   return (
     <div className="p-8">
       {/* Header */}
@@ -304,10 +201,7 @@ export default function LeaseUpload() {
       )}
 
       {/* Upload Form */}
-      <Form ref={formRef as any} method="POST" encType="multipart/form-data" className="bg-white rounded-xl shadow-sm p-6 max-w-2xl" onSubmit={(e) => {
-        e.preventDefault();
-        handleUpload();
-      }}>
+      <div className="bg-white rounded-xl shadow-sm p-6 max-w-2xl">
         <div className="space-y-6">
           {/* File Type Selection */}
           <div>
@@ -317,7 +211,15 @@ export default function LeaseUpload() {
             <select
               id="fileType"
               value={fileType}
-              onChange={(e) => setFileType(e.target.value)}
+              onChange={(e) => {
+                const newType = e.target.value;
+                setFileType(newType);
+                // Auto-upload if file is already selected
+                if (selectedFile && newType) {
+                  console.log('Auto-uploading after type selection');
+                  handleUpload(selectedFile, newType);
+                }
+              }}
               disabled={isSubmitting}
               className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm disabled:opacity-50"
             >
@@ -395,7 +297,7 @@ export default function LeaseUpload() {
             </Link>
             <button
               type="button"
-              onClick={handleUpload}
+              onClick={handleSubmitClick}
               disabled={isSubmitting || !selectedFile || !fileType}
               className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -403,7 +305,7 @@ export default function LeaseUpload() {
             </button>
           </div>
         </div>
-      </Form>
+      </div>
     </div>
   );
 }
