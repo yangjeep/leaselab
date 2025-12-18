@@ -62,6 +62,16 @@ This approach collapses six previous docs (00, 02, 99, README, tasks/README, and
 
 ---
 
+## Application Review Workflow
+
+1. **Applications Panel** (`/admin/applications`) surfaces only properties/units currently open to rent, showing pending counts and quick filters.
+2. **Property Application Page** (`/admin/properties/:propertyId/applications`) lists every applicant for that property, ranked by AI score with filters for stage, score thresholds, and document completeness.
+3. **Application Detail View** (`/admin/properties/:propertyId/applications/:applicationId`) hosts documents, actions, and the slide-in AI panel (Tasks 3.1 & 3.2).
+
+This flow keeps teams focused on rentable inventory, highlights best applicants automatically, and gives them inline AI context before they take action.
+
+---
+
 ## Document Map
 
 | Document | Purpose |
@@ -87,10 +97,12 @@ This approach collapses six previous docs (00, 02, 99, README, tasks/README, and
 - [ ] [Task 2.3: Cron Processor](./tasks/ai-task-2.3-cron-processor.md) – Batch pending jobs, re-check quota, update states, record evaluations.
 - [ ] [Task 2.4: AI Evaluation Logic](./tasks/ai-task-2.4-ai-evaluation.md) – Multi-modal prompt, fraud flag parsing, recommendation logic.
 ### Phase 3 – Frontend Pane & Controls
-- [ ] [Task 3.1: Tenant Detail AI Evaluation Pane](./tasks/ai-task-3.1-tenant-pane.md) – Slide-over UI, job creation, polling, activity log.
+- [ ] [Task 3.1: Application Detail AI Evaluation Pane](./tasks/ai-task-3.1-application-pane.md) – Slide-over UI, job creation, polling, activity log.
 - [ ] [Task 3.2: Quota & Settings Section](./tasks/ai-task-3.2-quota-settings-pane.md) – Quota meter, upgrade CTA, and AI settings form.
+- [ ] [Task 3.3: Application Workflow Restructure](./tasks/ai-task-3.3-application-workflow.md) – Property-centric board, property application list, and application detail routing.
 
 ### Phase 4 – Testing & Deployment
+- [ ] [Task 4.1: Testing & Verification](./tasks/ai-task-4.1-testing.md) – Validate stubbed + real AI flows end-to-end.
 - [ ] [Task 4.2: Deployment & Verification](./tasks/ai-task-4.2-deployment.md) – Deploy CRUD worker, cron worker, and Ops UI; run smoke tests.
 
 Use this checklist to track implementation progress in GitHub issues, Notion, or by simply checking boxes inside this file.

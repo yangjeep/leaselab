@@ -1,20 +1,20 @@
-# Task 3.1: Tenant Detail AI Evaluation Pane
+# Task 3.1: Application Detail AI Evaluation Pane
 
 **Estimated Time**: 2-3 hours  
 **Dependencies**: Tasks 2.1 – 2.4 (backend APIs complete)  
-**Files to Modify**: `apps/ops/app/routes/admin.tenants.$id.tsx`, `apps/ops/app/styles/tailwind.css`, new component `apps/ops/app/components/ai/AiEvaluationPane.tsx`
+**Files to Modify**: `apps/ops/app/routes/admin.properties.$propertyId.applications.$applicationId.tsx` (new route created in Task 3.3), `apps/ops/app/styles/tailwind.css`, new component `apps/ops/app/components/ai/AiEvaluationPane.tsx`
 
 ---
 
 ## Objective
 
-Add a slide-in "AI Evaluation" pane to the tenant detail page. The pane centralizes everything a property manager needs to run, monitor, and review evaluations without leaving the record.
+Add a slide-in "AI Evaluation" pane to the application detail page (opened from the property → applications list). The pane centralizes everything a property manager needs to run, monitor, and review evaluations without leaving the record.
 
 ---
 
 ## UX Requirements
 
-- **Entry Point**: Add a primary button labeled `AI Evaluation` in the tenant header actions of `admin.tenants.$id.tsx`.
+- **Entry Point**: Add a primary button labeled `AI Evaluation` in the application header actions of the new property-application detail route.
 - **Pop-in Pattern**: Implement as a right-side slide-over (fixed, max-width 480px) with overlay dimming the background.
 - **Sections inside the pane**:
   1. **Header**: Tenant avatar, name, status badge, close button.
@@ -32,10 +32,10 @@ Add a slide-in "AI Evaluation" pane to the tenant detail page. The pane centrali
 2. **Create Job**: Clicking `Run Evaluation` submits a `fetcher.submit` to `POST /api/ops/leads/:leadId/ai-evaluation`.
    - Disable the button + show spinner while pending.
    - If API returns `DuplicateDocuments`, show inline warning with `last_evaluated_at` and expose `Force Re-Eval` button for super admins.
-3. **Polling**: After job creation, start polling `GET /api/ops/ai-evaluation-jobs/:jobId` every 2 seconds until `completed` or `failed`. Treat everything between creation and completion as `Queued` in the UI since processing happens asynchronously behind the scenes.
-   - Use `useInterval` (add helper) or `setInterval` inside `useEffect` and clear on unmount/completion.
-   - Push toast notifications on completion/failure.
-4. **Timeline Updates**: Map job statuses to timeline entries:
+3. **Single Follow-Up Fetch**: After job creation, do **not** continuous poll. Instead, trigger one `setTimeout` (2s) that calls `fetcher.load('/api/ops/ai-evaluation-jobs/{jobId}')` to confirm the job transitioned to `queued`, then stop. Future status updates rely on the next time the pane opens.
+   - Copy: “AI evaluation running in the background. Re-open this panel later to view the score.”
+   - Optional toast only on the POST response (success/failure); no additional GET fetches beyond that single 2-second follow-up.
+4. **Timeline Updates**: Map job statuses to timeline entries (based on the most recent fetch):
    - Pending → "Documents queued"
    - Completed → "AI score available"
    - DuplicateDocuments → "Documents unchanged — evaluation skipped"
@@ -56,7 +56,7 @@ components/ai/
 Implementation guidance:
 
 ```tsx
-// Example entry point inside admin.tenants.$id.tsx
+// Example entry point inside admin.properties.$propertyId.applications.$applicationId.tsx
 const [isPaneOpen, setPaneOpen] = useState(false);
 const evaluationFetcher = useFetcher<typeof action>();
 
@@ -64,7 +64,7 @@ const evaluationFetcher = useFetcher<typeof action>();
 <AiEvaluationPane
   open={isPaneOpen}
   onClose={() => setPaneOpen(false)}
-  tenant={data.tenant}
+  application={data.application}
   currentEvaluation={evaluationFetcher.data?.evaluation ?? data.latestEvaluation}
   onRunEvaluation={(force, reason) => {
     const formData = new FormData();
@@ -85,8 +85,8 @@ const evaluationFetcher = useFetcher<typeof action>();
 
 ## Edge Cases
 
-- **No documents**: Display CTA linking to document upload (existing route `admin.leads.$id.files`).
-- **Quota exceeded**: Show message returned from API plus a link to upgrade (point to billing page or `mailto:sales@leaselab.app`).
+- **No documents**: Treat as `Failed` state and show inline error \"AI evaluation cannot run — missing required documents\" with link to upload route (`admin.leads.$id.files`).
+- **Quota exceeded**: Show message returned from API plus placeholder `TODO(stripe): Add payment link to purchase more evaluations` (for now link to billing page or mailto fallback).
 - **Network errors**: Inline alert with retry button.
 - **Duplicate guard triggered**: Replace action row with message + "Force Re-Eval" button (if allowed) or "Upload New Docs" CTA (if not).
 
@@ -94,7 +94,7 @@ const evaluationFetcher = useFetcher<typeof action>();
 
 ## Verification
 
-1. Load `http://localhost:3000/admin/tenants/{tenantId}` and open the pane.
+1. Load `http://localhost:3000/admin/properties/{propertyId}/applications/{applicationId}` and open the pane.
 2. Trigger a new evaluation and observe:
    - Pane stays open, timeline updates.
    - Status transitions animate smoothly.
