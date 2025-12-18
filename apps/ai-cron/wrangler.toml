@@ -1,0 +1,30 @@
+name = "leaselab-ai-cron"
+main = "src/index.ts"
+compatibility_date = "2024-11-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Cron trigger - runs every hour at :00
+[triggers]
+crons = ["0 * * * *"]
+
+# Database binding
+[[d1_databases]]
+binding = "DB"
+database_name = "leaselab-db"
+database_id = "850dc940-1021-4c48-8d40-0f18992424ac"
+
+# R2 storage binding
+[[r2_buckets]]
+binding = "R2_PRIVATE"
+bucket_name = "leaselab-pri"
+
+# Workers AI binding
+[ai]
+binding = "AI"
+
+# Environment-specific config
+[env.production]
+# Production-specific settings
+
+[env.preview]
+# Preview environment
