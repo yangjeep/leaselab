@@ -8,7 +8,7 @@ Welcome to the LeaseLab documentation. This directory contains all technical doc
 
 ## 📚 Documentation Structure
 
-All documentation follows a **consistent pattern**:
+Most documentation follows a **consistent pattern**:
 
 ```
 feature-name/
@@ -24,8 +24,10 @@ feature-name/
 **Directory Naming Convention**:
 - Prefix every feature folder under `docs/features/` with the targeted release month using `YYYYMM-` (e.g., `202512-ai-tenant-intelligence/`) so sorting reveals the latest initiatives first.
 
+> Some initiatives consolidate the summary, architecture snapshot, and implementation checklist into a single `README.md` (e.g., `202512-ai-tenant-intelligence/`). Follow the pattern that keeps context lightest for the team.
+
 **File Naming Convention**:
-- `00-SUMMARY.md` - Always the entry point for a feature
+- `00-SUMMARY.md` - Preferred entry point for a feature (or a consolidated `README.md` if explicitly noted)
 - `01-`, `02-`, etc. - Detailed documentation in logical order
 - `task-*.md` - Implementation task guides
 - Lower case, hyphen-separated for consistency
@@ -42,7 +44,7 @@ feature-name/
 
 | Feature | Status | Summary | Details |
 |---------|--------|---------|---------|
-| **[AI Tenant Intelligence](./features/202512-ai-tenant-intelligence/)** | 🚧 In Progress | Automated tenant screening with AI | [00-SUMMARY.md](./features/202512-ai-tenant-intelligence/00-SUMMARY.md) |
+| **[AI Tenant Intelligence](./features/202512-ai-tenant-intelligence/)** | 🚧 In Progress | Automated tenant screening with AI | [README.md](./features/202512-ai-tenant-intelligence/README.md) |
 | **[File Storage & Upload](./features/202511-file-storage/)** | ✅ Implemented | R2-based file management | [00-SUMMARY.md](./features/202511-file-storage/00-SUMMARY.md) |
 | **[Property Management](./features/202511-property-management/)** | ✅ Implemented | Property & unit data model | [00-SUMMARY.md](./features/202511-property-management/00-SUMMARY.md) |
 | **[Auth & Sessions](./features/202511-auth-session/)** | ✅ Implemented | Signed cookie authentication | [00-SUMMARY.md](./features/202511-auth-session/00-SUMMARY.md) |
@@ -61,18 +63,18 @@ feature-name/
 
 1. **Understand the system**: Read [Infrastructure Summary](./infrastructure/00-SUMMARY.md)
 2. **Pick a feature**: Choose from the table above
-3. **Read the summary**: Each feature has a `00-SUMMARY.md`
+3. **Read the summary**: Most features use `00-SUMMARY.md` (AI Tenant Intelligence uses `README.md`)
 4. **Dive deeper**: Follow links to detailed docs or task guides
 
 ### For Product/Business
 
-1. **Read feature summaries**: All `00-SUMMARY.md` files are non-technical
+1. **Read feature summaries**: All `00-SUMMARY.md` (or consolidated READMEs) are non-technical
 2. **Review costs & metrics**: Each summary includes this info
 3. **Check PRDs**: Detailed requirements in `01-prd-*.md` files
 
 ### For Implementation
 
-1. **Read feature summary**: Understand architecture
+1. **Read the feature’s entry doc**: `00-SUMMARY.md` or README, depending on the folder
 2. **Follow task guides**: If available in `tasks/` directory
 3. **Reference detailed docs**: As needed during implementation
 
@@ -81,7 +83,7 @@ feature-name/
 ## 📖 Documentation by Type
 
 ### Summaries (Start Here)
-Every feature has a `00-SUMMARY.md` with:
+Every feature exposes a quick-entry doc—most use `00-SUMMARY.md`, while some (like AI Tenant Intelligence) consolidate everything into `README.md`. These files always include:
 - 30-second overview
 - Architecture diagram
 - Quick reference
@@ -97,7 +99,7 @@ Comprehensive product specifications:
 ### Architecture Docs
 Technical deep dives:
 - [System Architecture](./infrastructure/00-architecture-overview.md)
-- [AI Cron Worker Architecture](./features/202512-ai-tenant-intelligence/02-architecture-cron-worker.md)
+- [AI Tenant Intelligence Architecture Snapshot](./features/202512-ai-tenant-intelligence/README.md#architecture-snapshot-cron-worker)
 
 ### Task Guides (Implementation)
 Step-by-step implementation:
@@ -117,8 +119,8 @@ See [archive/completed-migrations/](./archive/completed-migrations/) for:
 This documentation follows these principles:
 
 1. **Progressive Disclosure**: Summary → Details → Deep dive
-2. **Consistent Structure**: Every feature follows the same pattern
-3. **Standalone Summaries**: Each `00-SUMMARY.md` is self-contained
+2. **Consistent Structure**: Every feature follows the same overall pattern (with explicit exceptions noted)
+3. **Standalone Entry Docs**: Each feature's entry doc (`00-SUMMARY.md` or README) is self-contained
 4. **Minimal Context**: Load only what you need
 5. **Clear Naming**: Numeric prefixes show reading order
 
@@ -132,13 +134,9 @@ docs/
 │
 ├── features/                          # Feature-specific documentation (prefix folders with YYYYMM-)
 │   ├── 202512-ai-tenant-intelligence/ # AI screening feature
-│   │   ├── 00-SUMMARY.md              # ⭐ Start here
+│   │   ├── README.md                  # ⭐ Start here (consolidated)
 │   │   ├── 01-prd-complete.md
-│   │   ├── 02-architecture-cron-worker.md
-│   │   ├── 99-implementation-summary.md
-│   │   ├── README.md
 │   │   ├── tasks/                     # Implementation guides
-│   │   │   ├── README.md
 │   │   │   ├── ai-task-1.1-database-schema.md
 │   │   │   ├── ai-task-1.2-cron-worker-setup.md
 │   │   │   └── ... (6 task files total)
@@ -178,13 +176,13 @@ docs/
 
 ### By Feature
 1. Go to `features/{yyyymm}-{feature-name}/`
-2. Read `00-SUMMARY.md`
+2. Open the entry doc (`00-SUMMARY.md` or README per folder)
 3. Follow links to detailed docs
 
 ### By Topic
 - **Architecture**: [infrastructure/00-architecture-overview.md](./infrastructure/00-architecture-overview.md)
 - **Deployment**: [infrastructure/01-ci-cd-strategy.md](./infrastructure/01-ci-cd-strategy.md)
-- **AI Screening**: [features/202512-ai-tenant-intelligence/00-SUMMARY.md](./features/202512-ai-tenant-intelligence/00-SUMMARY.md)
+- **AI Screening**: [features/202512-ai-tenant-intelligence/README.md](./features/202512-ai-tenant-intelligence/README.md)
 - **File Storage**: [features/202511-file-storage/00-SUMMARY.md](./features/202511-file-storage/00-SUMMARY.md)
 
 ### By Status
@@ -199,7 +197,7 @@ docs/
 When adding new documentation:
 
 1. **Create feature directory**: `features/{yyyymm}-{feature-name}/` (example: `features/202511-file-storage/`)
-2. **Start with summary**: Create `00-SUMMARY.md` using the template below
+2. **Start with summary**: Create `00-SUMMARY.md` (or a consolidated `README.md` if you're intentionally merging docs) using the template below
 3. **Add detailed docs**: Number sequentially (`01-`, `02-`, etc.)
 4. **Update this README**: Add to the features table
 
