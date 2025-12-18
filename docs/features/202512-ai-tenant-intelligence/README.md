@@ -86,8 +86,12 @@ This approach collapses six previous docs (00, 02, 99, README, tasks/README, and
 - [ ] [Task 2.2: Job Status API](./tasks/ai-task-2.2-job-status-api.md) – GET endpoint for polling + duplicate response surface.
 - [ ] [Task 2.3: Cron Processor](./tasks/ai-task-2.3-cron-processor.md) – Batch pending jobs, re-check quota, update states, record evaluations.
 - [ ] [Task 2.4: AI Evaluation Logic](./tasks/ai-task-2.4-ai-evaluation.md) – Multi-modal prompt, fraud flag parsing, recommendation logic.
+### Phase 3 – Frontend Pane & Controls
+- [ ] [Task 3.1: Tenant Detail AI Evaluation Pane](./tasks/ai-task-3.1-tenant-pane.md) – Slide-over UI, job creation, polling, activity log.
+- [ ] [Task 3.2: Quota & Settings Section](./tasks/ai-task-3.2-quota-settings-pane.md) – Quota meter, upgrade CTA, and AI settings form.
 
-> 🧭 Frontend, quota, and deployment tasks will be added as soon as their specs are merged. Track upcoming work in the project board.
+### Phase 4 – Testing & Deployment
+- [ ] [Task 4.2: Deployment & Verification](./tasks/ai-task-4.2-deployment.md) – Deploy CRUD worker, cron worker, and Ops UI; run smoke tests.
 
 Use this checklist to track implementation progress in GitHub issues, Notion, or by simply checking boxes inside this file.
 
