@@ -1,241 +1,263 @@
-# LeaseLab.io - Design Documentation
+# LeaseLab Documentation
 
-This directory contains high-level design documents, product requirements, architecture decisions, and project planning materials for the LeaseLab platform. These docs are written for **human readers** - product managers, architects, and developers.
+**Last Updated**: 2025-12-17
 
-> **For AI Agents & Technical Reference:** See [`.claude/`](../.claude/) directory
+Welcome to the LeaseLab documentation. This directory contains all technical documentation organized by feature and initiative.
+
+---
+
+## 📚 Documentation Structure
+
+All documentation follows a **consistent pattern**:
+
+```
+feature-name/
+├── 00-SUMMARY.md           ⭐ Start here - quick reference
+├── 01-*.md                 Detailed docs (PRDs, specs)
+├── 02-*.md                 Additional details
+├── tasks/                  Implementation task guides (if applicable)
+│   ├── README.md
+│   └── task-*.md
+└── archive/                Deprecated designs (if applicable)
+```
+
+**Directory Naming Convention**:
+- Prefix every feature folder under `docs/features/` with the targeted release month using `YYYYMM-` (e.g., `202512-ai-tenant-intelligence/`) so sorting reveals the latest initiatives first.
+
+**File Naming Convention**:
+- `00-SUMMARY.md` - Always the entry point for a feature
+- `01-`, `02-`, etc. - Detailed documentation in logical order
+- `task-*.md` - Implementation task guides
+- Lower case, hyphen-separated for consistency
+
+**Folder Naming Convention**:
+- Feature/initiative directories under `docs/` start with `YYYYMM-` (e.g., `202511-file-storage`) so sorting shows the freshest work first
+- Always apply the current year + month prefix when creating a new folder
+
+---
+
+## 🎯 Features & Initiatives
+
+### Active Features
+
+| Feature | Status | Summary | Details |
+|---------|--------|---------|---------|
+| **[AI Tenant Intelligence](./features/202512-ai-tenant-intelligence/)** | 🚧 In Progress | Automated tenant screening with AI | [00-SUMMARY.md](./features/202512-ai-tenant-intelligence/00-SUMMARY.md) |
+| **[File Storage & Upload](./features/202511-file-storage/)** | ✅ Implemented | R2-based file management | [00-SUMMARY.md](./features/202511-file-storage/00-SUMMARY.md) |
+| **[Property Management](./features/202511-property-management/)** | ✅ Implemented | Property & unit data model | [00-SUMMARY.md](./features/202511-property-management/00-SUMMARY.md) |
+| **[Auth & Sessions](./features/202511-auth-session/)** | ✅ Implemented | Signed cookie authentication | [00-SUMMARY.md](./features/202511-auth-session/00-SUMMARY.md) |
+
+### Infrastructure
+
+| Component | Summary | Details |
+|-----------|---------|---------|
+| **[Infrastructure & Deployment](./infrastructure/)** | System architecture & CI/CD | [00-SUMMARY.md](./infrastructure/00-SUMMARY.md) |
+
+---
+
+## 🚀 Quick Start Guides
+
+### For New Engineers
+
+1. **Understand the system**: Read [Infrastructure Summary](./infrastructure/00-SUMMARY.md)
+2. **Pick a feature**: Choose from the table above
+3. **Read the summary**: Each feature has a `00-SUMMARY.md`
+4. **Dive deeper**: Follow links to detailed docs or task guides
+
+### For Product/Business
+
+1. **Read feature summaries**: All `00-SUMMARY.md` files are non-technical
+2. **Review costs & metrics**: Each summary includes this info
+3. **Check PRDs**: Detailed requirements in `01-prd-*.md` files
+
+### For Implementation
+
+1. **Read feature summary**: Understand architecture
+2. **Follow task guides**: If available in `tasks/` directory
+3. **Reference detailed docs**: As needed during implementation
+
+---
+
+## 📖 Documentation by Type
+
+### Summaries (Start Here)
+Every feature has a `00-SUMMARY.md` with:
+- 30-second overview
+- Architecture diagram
+- Quick reference
+- Links to detailed docs
+
+### PRDs (Product Requirements)
+Comprehensive product specifications:
+- [AI Tenant Intelligence PRD](./features/202512-ai-tenant-intelligence/01-prd-complete.md)
+- [File Upload/Download PRD](./features/202511-file-storage/01-prd-file-upload-download.md)
+- [Storage Abstraction PRD](./features/202511-file-storage/02-prd-storage-abstraction.md)
+- [Property Management PRD](./features/202511-property-management/01-prd-property-unit-management.md)
+
+### Architecture Docs
+Technical deep dives:
+- [System Architecture](./infrastructure/00-architecture-overview.md)
+- [AI Cron Worker Architecture](./features/202512-ai-tenant-intelligence/02-architecture-cron-worker.md)
+
+### Task Guides (Implementation)
+Step-by-step implementation:
+- [AI Tenant Intelligence Tasks](./features/202512-ai-tenant-intelligence/tasks/)
+
+### Migration History
+See [archive/completed-migrations/](./archive/completed-migrations/) for:
+- Worker migration logs
+- Session cookie migration
+- R2 bucket migration
+- Deployment status logs
+
+---
+
+## 🎓 Documentation Principles
+
+This documentation follows these principles:
+
+1. **Progressive Disclosure**: Summary → Details → Deep dive
+2. **Consistent Structure**: Every feature follows the same pattern
+3. **Standalone Summaries**: Each `00-SUMMARY.md` is self-contained
+4. **Minimal Context**: Load only what you need
+5. **Clear Naming**: Numeric prefixes show reading order
+
+---
 
 ## 📁 Directory Structure
 
 ```
 docs/
-├── README.md                           # This file
-├── TODO.md                             # Active development tasks
-├── ARCHITECTURE_SUMMARY.md             # High-level system architecture
-├── DEPLOYMENT_STATUS.md                # Deployment tracking and status
-├── CI_CD_STRATEGY.md                   # CI/CD pipeline design
-├── PRD-*.md                            # Product requirement documents
-├── *_MIGRATION.md                      # Migration guides and history
-└── archive_*.md                        # Historical/completed documents
+├── README.md                          # This file (repo-level index)
+│
+├── features/                          # Feature-specific documentation (prefix folders with YYYYMM-)
+│   ├── 202512-ai-tenant-intelligence/ # AI screening feature
+│   │   ├── 00-SUMMARY.md              # ⭐ Start here
+│   │   ├── 01-prd-complete.md
+│   │   ├── 02-architecture-cron-worker.md
+│   │   ├── 99-implementation-summary.md
+│   │   ├── README.md
+│   │   ├── tasks/                     # Implementation guides
+│   │   │   ├── README.md
+│   │   │   ├── ai-task-1.1-database-schema.md
+│   │   │   ├── ai-task-1.2-cron-worker-setup.md
+│   │   │   └── ... (6 task files total)
+│   │   └── archive/                   # Deprecated designs
+│   │       ├── deprecated-queue-architecture.md
+│   │       └── deprecated-workflow-architecture.md
+│   │
+│   ├── 202511-file-storage/           # File upload/download
+│   │   ├── 00-SUMMARY.md              # ⭐ Start here
+│   │   ├── 01-prd-file-upload-download.md
+│   │   └── 02-prd-storage-abstraction.md
+│   │
+│   ├── 202511-property-management/    # Property & unit management
+│   │   ├── 00-SUMMARY.md              # ⭐ Start here
+│   │   └── 01-prd-property-unit-management.md
+│   │
+│   └── 202511-auth-session/           # Authentication & sessions
+│       └── 00-SUMMARY.md              # ⭐ Start here
+│
+├── infrastructure/                    # System-wide infrastructure
+│   ├── 00-SUMMARY.md                  # ⭐ Start here
+│   ├── 00-architecture-overview.md
+│   └── 01-ci-cd-strategy.md
+│
+└── archive/                           # Historical reference
+    └── completed-migrations/          # Completed migration logs
+        ├── r2-bucket-migration.md
+        ├── session-cookie-migration.md
+        ├── ops-migration-guide.md
+        ├── worker-migration.md
+        └── deployment-status.md
 ```
-
-## 📋 Active Development
-
-### [TODO.md](TODO.md)
-**Current development priorities and task tracking**
-
-Contains:
-- Active feature development tasks
-- Completed work items
-- Implementation status
-
-**Use this when:**
-- Planning sprint work
-- Tracking progress
-- Reviewing what's been built
-
-## 🏗️ Architecture & Design
-
-### [ARCHITECTURE_SUMMARY.md](ARCHITECTURE_SUMMARY.md)
-**High-level system architecture overview**
-
-Contains:
-- System components (Worker API, Ops Admin, Site Storefront)
-- Technology stack decisions
-- Data flow diagrams
-- Infrastructure design
-
-**Use this when:**
-- Understanding the overall system
-- Making architectural decisions
-- Onboarding new team members
-
-### [CI_CD_STRATEGY.md](CI_CD_STRATEGY.md)
-**Continuous integration and deployment strategy**
-
-Contains:
-- Build pipeline design
-- Deployment workflows
-- Environment management
-- Testing strategy
-
-**Use this when:**
-- Setting up CI/CD
-- Troubleshooting deployments
-- Planning release processes
-
-### [DEPLOYMENT_STATUS.md](DEPLOYMENT_STATUS.md)
-**Current deployment status and environment info**
-
-Contains:
-- Production/staging URLs
-- Environment configurations
-- Deployment history
-- Known issues
-
-**Use this when:**
-- Checking what's deployed
-- Verifying environment status
-- Tracking deployment history
-
-## 📝 Product Requirements
-
-### PRD Documents
-Product requirement documents defining features and functionality:
-
-- **[PRD-property-unit-management.md](PRD-property-unit-management.md)**
-  - Property and unit CRUD operations
-  - Image management
-  - Multi-unit property support
-
-- **[PRD-Storage-Abstraction-Layer.md](PRD-Storage-Abstraction-Layer.md)**
-  - Storage interface design
-  - R2 implementation
-  - File management patterns
-
-- **[PRD-File-Upload-Download.md](PRD-File-Upload-Download.md)**
-  - File upload workflows
-  - Download and viewing
-  - Security considerations
-
-**Use these when:**
-- Understanding feature requirements
-- Planning new features
-- Reviewing business logic
-
-## 🔄 Migration Guides
-
-Historical migration documentation:
-
-- **[OPS_MIGRATION_GUIDE.md](OPS_MIGRATION_GUIDE.md)**
-  - Ops app migration from monolith
-  - Route structure changes
-  - Component updates
-
-- **[WORKER_MIGRATION.md](WORKER_MIGRATION.md)**
-  - Worker API refactoring
-  - Database operation patterns
-  - API endpoint changes
-
-- **[SESSION_COOKIE_MIGRATION.md](SESSION_COOKIE_MIGRATION.md)**
-  - Session management changes
-  - Cookie configuration
-  - Authentication updates
-
-- **[R2_BUCKET_MIGRATION.md](R2_BUCKET_MIGRATION.md)**
-  - R2 storage setup
-  - File migration process
-  - Bucket configuration
-
-**Use these when:**
-- Understanding past architectural changes
-- Troubleshooting legacy issues
-- Planning similar migrations
-
-## 📦 Archived Documents
-
-Documents in `archive_*` format are historical and no longer actively maintained but kept for reference:
-
-- `archive_MIGRATION_NOTES_lead_notes_history.md` - Lead notes implementation
-- `archive_DEPLOYMENT_COMPLETE.md` - Completed deployment records
-- `archive_plan-applicantNotesHistory.prompt.md` - Planning documents
-- `archive_IMPLEMENTATION_SUMMARY.md` - Implementation summaries
-- `archive_task.md` - Completed task lists
-
-## 🎯 Document Types
-
-### Design Documents
-High-level system design, architecture decisions, and technical planning.
-- **Audience:** Architects, senior developers, product managers
-- **Examples:** ARCHITECTURE_SUMMARY.md, CI_CD_STRATEGY.md
-
-### Product Requirements
-Feature specifications, business logic, and user stories.
-- **Audience:** Product managers, developers, QA
-- **Examples:** PRD-*.md files
-
-### Migration Guides
-Step-by-step guides for major system changes.
-- **Audience:** Developers performing migrations
-- **Examples:** *_MIGRATION.md files
-
-### Status & Tracking
-Current state, progress, and task management.
-- **Audience:** Project managers, team leads
-- **Examples:** TODO.md, DEPLOYMENT_STATUS.md
-
-## 🔗 Related Documentation
-
-### For AI Agents & Developers
-Technical implementation details, API reference, and coding guidelines:
-- **Location:** [`.claude/`](../.claude/)
-- **Key files:**
-  - `DEVELOPMENT_GUIDE.md` - Primary technical reference
-  - `BACKEND_API.md` - Complete API documentation
-  - `CODEBASE_ANALYSIS.md` - Code structure analysis
-  - `skills/` - AI agent guidelines
-
-### For End Users
-User-facing documentation and help guides:
-- **Location:** TBD (future: help.leaselab.io)
-
-## ✍️ Contributing to Documentation
-
-### Adding New Design Docs
-1. Create file in `/docs/` with descriptive name
-2. Use markdown format
-3. Include table of contents for long docs
-4. Add entry to this README
-5. Link from related documents
-
-### Updating Existing Docs
-1. Update the content
-2. Add "Last Updated" date at bottom
-3. Document major changes in git commit message
-4. Notify team of significant updates
-
-### Archiving Completed Docs
-1. Rename file with `archive_` prefix
-2. Update references in other docs
-3. Add entry to "Archived Documents" section
-4. Keep file for historical reference
-
-## 📊 Documentation Health
-
-### Active Documents
-Documents actively maintained and referenced:
-- ✅ TODO.md
-- ✅ ARCHITECTURE_SUMMARY.md
-- ✅ DEPLOYMENT_STATUS.md
-- ✅ All PRD-*.md files
-
-### Periodic Review Needed
-Documents that should be reviewed quarterly:
-- ⚠️ CI_CD_STRATEGY.md
-- ⚠️ Migration guides (*_MIGRATION.md)
-
-### Historical Reference Only
-Documents kept for context but not actively maintained:
-- 📦 All archive_*.md files
-
-## 🎓 Getting Started
-
-### New Developers
-1. Read [ARCHITECTURE_SUMMARY.md](ARCHITECTURE_SUMMARY.md)
-2. Review [TODO.md](TODO.md) for current priorities
-3. Check [`.claude/DEVELOPMENT_GUIDE.md`](../.claude/DEVELOPMENT_GUIDE.md) for technical details
-4. Read relevant PRD documents for your work area
-
-### Product Managers
-1. Review all PRD-*.md files
-2. Check [TODO.md](TODO.md) for development status
-3. Reference [ARCHITECTURE_SUMMARY.md](ARCHITECTURE_SUMMARY.md) for technical context
-
-### DevOps/Infrastructure
-1. Read [CI_CD_STRATEGY.md](CI_CD_STRATEGY.md)
-2. Review [DEPLOYMENT_STATUS.md](DEPLOYMENT_STATUS.md)
-3. Check migration guides for deployment patterns
 
 ---
 
-**Last Updated:** 2024-12-02
-**Maintained By:** Product & Engineering Teams
+## 🔍 Finding Documentation
+
+### By Feature
+1. Go to `features/{yyyymm}-{feature-name}/`
+2. Read `00-SUMMARY.md`
+3. Follow links to detailed docs
+
+### By Topic
+- **Architecture**: [infrastructure/00-architecture-overview.md](./infrastructure/00-architecture-overview.md)
+- **Deployment**: [infrastructure/01-ci-cd-strategy.md](./infrastructure/01-ci-cd-strategy.md)
+- **AI Screening**: [features/202512-ai-tenant-intelligence/00-SUMMARY.md](./features/202512-ai-tenant-intelligence/00-SUMMARY.md)
+- **File Storage**: [features/202511-file-storage/00-SUMMARY.md](./features/202511-file-storage/00-SUMMARY.md)
+
+### By Status
+- **In Progress**: [AI Tenant Intelligence](./features/202512-ai-tenant-intelligence/)
+- **Implemented**: [File Storage](./features/202511-file-storage/), [Property Management](./features/202511-property-management/), [Auth](./features/202511-auth-session/)
+- **Completed Migrations**: [archive/completed-migrations/](./archive/completed-migrations/)
+
+---
+
+## ✍️ Contributing Documentation
+
+When adding new documentation:
+
+1. **Create feature directory**: `features/{yyyymm}-{feature-name}/` (example: `features/202511-file-storage/`)
+2. **Start with summary**: Create `00-SUMMARY.md` using the template below
+3. **Add detailed docs**: Number sequentially (`01-`, `02-`, etc.)
+4. **Update this README**: Add to the features table
+
+### Summary Template
+
+```markdown
+# {Feature Name} - Quick Reference
+
+**Status**: {In Progress | Implemented | Deprecated}
+**Last Updated**: YYYY-MM-DD
+
+---
+
+## 🎯 What It Does
+
+{1-2 sentence description}
+
+**Key Features**:
+- ✅ Feature 1
+- ✅ Feature 2
+
+---
+
+## 🏗️ Architecture (30-Second Overview)
+
+{Simple diagram or flow}
+
+**Why this works**: {Brief rationale}
+
+---
+
+## 📄 Documentation
+
+| Document | Purpose |
+|----------|---------|
+| [01-prd-*.md](./01-prd-*.md) | {Description} |
+
+---
+
+## 🔑 Key Technical Decisions
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| **{Aspect}** | {Choice} | {Why} |
+
+---
+
+**Status**: {Summary of current state}
+```
+
+---
+
+## 📞 Need Help?
+
+- **Can't find what you're looking for?** Check the [directory structure](#-directory-structure) above
+- **Want to implement a feature?** Look for `tasks/` directories
+- **Need architecture context?** Start with [infrastructure/00-SUMMARY.md](./infrastructure/00-SUMMARY.md)
+
+---
+
+**Documentation follows the "summary → breakdown" pattern for optimal vibe coding**

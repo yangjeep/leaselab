@@ -120,36 +120,64 @@ The system SHALL automatically evaluate tenant applications using Cloudflare Wor
 - [x] Results saved to `lead_ai_evaluations` table with model version tracking
 - [x] Lead status updated from `documents_received` → `ai_evaluating` → `ai_evaluated`
 
-**Technical Approach**:
+**Technical Approach** (Workflows):
+
+📄 **See full workflow architecture**: [AI Workflow Architecture](./prd-ai-workflow-architecture.md)
+
 ```typescript
-// New Worker endpoint
-POST /api/ops/leads/:id/evaluate
+// STEP 1: Frontend triggers workflow (CRUD Worker)
+POST /api/ops/leads/:id/ai-evaluation
 
-Input:
-- Lead ID (from URL)
-- Optional: force_refresh (boolean)
+Process (CRUD Worker):
+1. Check quota (ai_evaluation_usage table)
+2. If quota exceeded → return error
+3. Trigger Cloudflare Workflow via workflow.create()
+4. Get workflow instance ID
+5. Increment usage counter
+6. Return instance_id immediately (don't wait for AI)
 
-Process:
-1. Fetch lead record from D1
-2. Fetch all lead_files from D1 (filtered by lead_id)
-3. Generate presigned R2 URLs for documents
-4. Send to Cloudflare Workers AI with structured prompt
-5. Parse AI response into structured format
-6. Save to lead_ai_evaluations table
-7. Update lead.ai_score, lead.ai_label, lead.status
-
-Output:
+Output (Immediate - <100ms):
 {
   success: true,
   data: {
-    id: string,
-    score: number,
-    label: 'A' | 'B' | 'C',
-    recommendation: 'approve' | 'approve_with_conditions' | 'approve_with_verification' | 'reject',
-    summary: string,
-    risk_flags: string[],
-    fraud_signals: string[],
-    evaluated_at: string
+    instance_id: 'wf_abc123def456',  // Workflow instance ID
+    lead_id: 'lead_xyz789',
+    status: 'queued',
+    requested_at: '2025-12-17T10:00:00Z'
+  }
+}
+
+// STEP 2: Workflow executes (Background - Durable)
+Cloudflare Workflow steps (automatic):
+Step 1: Fetch lead record from D1
+Step 2: Load documents from R2
+Step 3: Call Workers AI (multi-modal model)
+Step 4: Parse AI response
+Step 5: Save to lead_ai_evaluations table
+Step 6: Update lead.ai_score, lead.ai_label, lead.status
+Step 7: Email user (placeholder for future)
+
+Each step retries independently on failure (3x with exponential backoff)
+
+// STEP 3: Frontend polls workflow status
+GET /api/ops/ai-workflows/:instanceId
+
+Output (When completed - 5-15s later):
+{
+  success: true,
+  data: {
+    instance_id: 'wf_abc123def456',
+    status: 'complete',  // Workflow status
+    completed_at: '2025-12-17T10:00:12Z',
+    output: {
+      evaluation_id: 'eval_def456',
+      score: 82,
+      label: 'A',
+      recommendation: 'approve',
+      summary: '...',
+      risk_flags: [...],
+      fraud_signals: []
+    }
   }
 }
 ```
@@ -425,30 +453,92 @@ The admin dashboard SHALL display AI evaluation results and allow manual overrid
 
 ## Technical Architecture
 
-### System Components
+**IMPORTANT**: This feature uses an **async, stateful architecture** with a **scheduled cron worker** (simplest and most future-proof).
+
+📄 **See detailed architecture specification**: [AI Cron Architecture](./prd-ai-cron-architecture.md)
+
+### System Components (Cron Worker Design)
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                     LeaseLab2 AI Tenant Intelligence             │
+│          LeaseLab2 AI Tenant Intelligence (Cron Worker)          │
 └─────────────────────────────────────────────────────────────────┘
 
-┌──────────────┐         ┌──────────────┐         ┌──────────────┐
-│              │         │              │         │              │
-│  Ops Admin   │────────▶│   Worker     │────────▶│ Workers AI   │
-│  Dashboard   │         │   (Hono)     │         │  (LLaMA 3.2) │
-│  (Remix)     │◀────────│              │◀────────│              │
-│              │         │              │         │              │
-└──────────────┘         └──────┬───────┘         └──────────────┘
-                                │
-                                │
-                    ┌───────────┼───────────┐
-                    │           │           │
-                    ▼           ▼           ▼
-              ┌─────────┐ ┌─────────┐ ┌─────────┐
-              │   D1    │ │   R2    │ │ Queue   │
-              │ SQLite  │ │ Storage │ │(Future) │
-              └─────────┘ └─────────┘ └─────────┘
+┌──────────────────┐         ┌──────────────────────┐
+│   Ops Dashboard  │────────▶│  leaselab-worker     │
+│   (Remix App)    │         │  (CRUD Only)         │
+│                  │         │                      │
+│  1. Click "Run   │         │  1. Create job in DB │
+│     AI Eval"     │         │  2. Set status:      │
+│                  │         │     'pending'        │
+│  2. Poll job     │◀────────│  3. Return job_id    │
+│     status       │         │                      │
+└──────────────────┘         └──────────┬───────────┘
+         ▲                              │
+         │                              │ Write to DB
+         │                              ▼
+         │                   ┌────────────────────────┐
+         │                   │  D1 Database           │
+         │                   │  ai_evaluation_jobs    │
+         │                   │                        │
+         │                   │  status: 'pending'     │
+         │                   └────────┬───────────────┘
+         │                            │
+         │                            │ Cron reads pending jobs
+         │                            ▼
+         │              ┌─────────────────────────────┐
+         │              │ leaselab-ai-cron (NEW)      │
+         │              │ Scheduled Worker            │
+         │              │                             │
+         │              │ Runs: Every hour (0 * * * *)│
+         │              │                             │
+         │              │ Process:                    │
+         │              │ 1. Fetch pending jobs       │
+         │              │ 2. Check quota per site     │
+         │              │ 3. For each job:            │
+         │              │    - Load documents (R2)    │
+         │              │    - Call Workers AI        │
+         │              │    - Parse results          │
+         │              │    - Save evaluation        │
+         │              │    - Update job status      │
+         │              │ 4. Batch process (up to 100)│
+         │              └──────────┬──────────────────┘
+         │                         │
+         │                         │ Updates DB
+         │                         ▼
+         │              ┌────────────────────────┐
+         │              │  D1 Database           │
+         │              │                        │
+         │              │  status: 'completed'   │
+         └──────────────│  + evaluation results  │
+            Frontend    └────────────────────────┘
+            polls DB
+
+┌────────────────────────────────────────────────────────────────┐
+│  Cron worker binds to: D1, R2, Workers AI                      │
+│  Runs automatically every hour, no manual triggers             │
+└────────────────────────────────────────────────────────────────┘
 ```
+
+### Key Architectural Decisions
+
+1. ✅ **Scheduled Cron Worker** - Runs every hour, processes pending jobs in batches
+2. ✅ **Two Workers** - CRUD worker + Cron worker (separate concerns)
+3. ✅ **Simple DB Table** - `ai_evaluation_jobs` tracks job status (pending → completed)
+4. ✅ **Async Processing** - Frontend creates job, cron processes within 1 hour
+5. ✅ **Batch Efficient** - Process up to 100 jobs per cron run
+6. ✅ **Zero Cost** - Cron triggers are FREE (unlimited, no usage caps)
+
+### Why Cron Worker > Workflows > Queues
+
+| Aspect | Cron Worker ✅ (FINAL) | Workflows | Queues |
+|--------|----------------------|-----------|--------|
+| **Complexity** | Extremely simple | Simple | Complex |
+| **Cost** | **FREE** (unlimited) | 10M steps/month | 1M ops/month |
+| **Limits** | **None** | 10M steps/month | 1M ops/month |
+| **State** | Simple DB table | Built-in | Manual table |
+| **Scaling** | Batch processing | Per-request | Per-request |
+| **Future-Proof** | ✅ No limits | Service limits | Service limits |
 
 ### Data Flow
 
@@ -497,19 +587,25 @@ The admin dashboard SHALL display AI evaluation results and allow manual overrid
 
 ### Worker Deployment
 
-**New Worker: leaselab-ai-worker** (Separate deployment)
+**Single Worker + Workflow** (Simpler Architecture):
 
-**Option A: Dedicated AI Worker (Recommended)**
+#### CRUD Worker: `leaselab-worker` (Enhanced)
+
+**Responsibilities**:
+- Handle all database CRUD operations
+- Trigger Cloudflare Workflows
+- Query workflow status
+- Serve evaluation results
+
+**Wrangler Config** (add Workflow binding):
 ```toml
-# apps/ai-worker/wrangler.toml
-name = "leaselab-ai-worker"
+# apps/worker/wrangler.toml
+name = "leaselab-worker"
 main = "worker.ts"
 compatibility_date = "2024-11-01"
 compatibility_flags = ["nodejs_compat"]
 
-[ai]
-binding = "AI"
-
+# Existing bindings
 [[d1_databases]]
 binding = "DB"
 database_name = "leaselab-db"
@@ -519,20 +615,50 @@ database_id = "850dc940-1021-4c48-8d40-0f18992424ac"
 binding = "R2_PRIVATE"
 bucket_name = "leaselab-pri"
 
+# NEW: Workflow binding
+[[workflows]]
+binding = "AI_WORKFLOW"
+name = "ai-tenant-evaluation"
+script_name = "ai-evaluation-workflow"
+
+# AI binding (for workflow use)
+[ai]
+binding = "AI"
+
 [env.production]
-# Workers AI binding automatically included
+# Production config
 
 [env.preview]
 # Preview environment
 ```
 
-**Option B: Extend Existing Worker**
-- Add AI binding to existing `leaselab-worker`
-- Add new route: `POST /api/ops/leads/:id/evaluate`
-- Pros: Simpler deployment
-- Cons: Larger bundle size, harder to isolate AI costs
+#### Workflow Definition: `ai-evaluation-workflow` (NEW)
 
-**Recommendation**: Use Option A for better separation of concerns and cost tracking.
+**File**: `apps/worker/workflows/ai-evaluation.ts`
+
+**Responsibilities**:
+- Durable execution of AI evaluation pipeline
+- Automatic per-step retries
+- State tracking (queued → running → complete/error)
+
+**Steps**:
+1. Fetch lead from D1
+2. Load documents from R2
+3. Call Workers AI (multi-modal)
+4. Parse AI response
+5. Save evaluation to D1
+6. Update lead status
+7. Send email notification (future)
+
+**Why Workflows (Not Separate Worker)**:
+✅ **Simpler**: One worker instead of two
+✅ **Built-in State**: No manual job tracking table needed
+✅ **Better Retries**: Per-step retries (more efficient)
+✅ **Lower Cost**: More generous free tier (10M vs 1M operations)
+✅ **Easier Debugging**: See step execution in Cloudflare dashboard
+✅ **No Infrastructure**: No Queue/DLQ setup required
+
+📄 **Full implementation details**: [AI Workflow Architecture](./prd-ai-workflow-architecture.md)
 
 ### AI Model Selection
 
@@ -623,6 +749,47 @@ IMPORTANT:
 ### New Tables
 
 ```sql
+-- AI Evaluation Jobs (Stateful Async Processing)
+CREATE TABLE ai_evaluation_jobs (
+  id TEXT PRIMARY KEY,                    -- Job ID (e.g., 'job_abc123')
+  lead_id TEXT NOT NULL,                  -- Foreign key to leads table
+  site_id TEXT NOT NULL,                  -- Multi-tenancy
+  status TEXT NOT NULL DEFAULT 'pending', -- 'pending' | 'processing' | 'completed' | 'failed'
+
+  -- Request metadata
+  requested_by TEXT NOT NULL,             -- User ID who triggered evaluation
+  requested_at TEXT NOT NULL,             -- ISO timestamp
+
+  -- Processing metadata
+  started_at TEXT,                        -- When AI worker picked up job
+  completed_at TEXT,                      -- When job finished (success or failure)
+
+  -- Results (populated on completion)
+  evaluation_id TEXT,                     -- Foreign key to lead_ai_evaluations table
+  error_code TEXT,                        -- Error code if failed
+  error_message TEXT,                     -- Human-readable error if failed
+
+  -- Retry logic
+  retry_count INTEGER NOT NULL DEFAULT 0, -- Number of retries attempted
+  max_retries INTEGER NOT NULL DEFAULT 3, -- Max retry attempts
+
+  -- Model configuration
+  model_version TEXT NOT NULL DEFAULT '@cf/meta/llama-3.2-11b-vision-instruct',
+
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+
+  FOREIGN KEY (lead_id) REFERENCES leads(id),
+  FOREIGN KEY (evaluation_id) REFERENCES lead_ai_evaluations(id)
+);
+
+-- Indexes for fast lookups
+CREATE INDEX idx_ai_jobs_lead_id ON ai_evaluation_jobs(lead_id);
+CREATE INDEX idx_ai_jobs_site_id ON ai_evaluation_jobs(site_id);
+CREATE INDEX idx_ai_jobs_status ON ai_evaluation_jobs(status);
+CREATE INDEX idx_ai_jobs_requested_at ON ai_evaluation_jobs(requested_at DESC);
+CREATE INDEX idx_ai_jobs_lead_status ON ai_evaluation_jobs(lead_id, status);
+
 -- AI Evaluation Usage Tracking
 CREATE TABLE ai_evaluation_usage (
   id TEXT PRIMARY KEY,
@@ -694,16 +861,16 @@ ALTER TABLE sites ADD COLUMN ai_enabled BOOLEAN DEFAULT 0;
 
 ### Endpoints
 
-#### 1. Evaluate Lead (AI Analysis)
+#### 1. Create AI Evaluation Job (Async)
 
 ```http
-POST /api/ops/leads/:id/evaluate
+POST /api/ops/leads/:leadId/ai-evaluation
 ```
 
 **Headers**:
 ```
 X-Site-Id: <site-id>
-X-User-Id: <user-id> (optional, for audit)
+X-User-Id: <user-id> (for audit trail)
 Authorization: Bearer <token>
 ```
 
@@ -715,21 +882,16 @@ Authorization: Bearer <token>
 }
 ```
 
-**Response (Success)**:
+**Response (Immediate - Job Created)**:
 ```json
 {
   "success": true,
   "data": {
-    "id": "eval_abc123",
+    "job_id": "job_abc123",
     "lead_id": "lead_xyz789",
-    "score": 78,
-    "label": "B",
-    "summary": "Strong candidate with verified income 3.1x monthly rent...",
-    "recommendation": "approve",
-    "risk_flags": ["employment_duration_short"],
-    "fraud_signals": [],
-    "model_version": "@cf/meta/llama-3.2-11b-vision-instruct",
-    "evaluated_at": "2025-12-17T10:23:45Z"
+    "status": "pending",
+    "requested_at": "2025-12-17T10:00:00Z",
+    "estimated_completion": "2025-12-17T10:00:30Z"
   },
   "usage": {
     "remaining": 15,
@@ -763,10 +925,80 @@ Authorization: Bearer <token>
 }
 ```
 
-#### 2. Get AI Evaluation
+#### 2. Get AI Evaluation Job Status (Polling)
 
 ```http
-GET /api/ops/leads/:id/evaluation
+GET /api/ops/ai-evaluation-jobs/:jobId
+```
+
+**Response (Pending)**:
+```json
+{
+  "success": true,
+  "data": {
+    "job_id": "job_abc123",
+    "lead_id": "lead_xyz789",
+    "status": "pending",
+    "requested_at": "2025-12-17T10:00:00Z"
+  }
+}
+```
+
+**Response (Processing)**:
+```json
+{
+  "success": true,
+  "data": {
+    "job_id": "job_abc123",
+    "status": "processing",
+    "started_at": "2025-12-17T10:00:05Z",
+    "progress_message": "Analyzing documents with AI..."
+  }
+}
+```
+
+**Response (Completed)**:
+```json
+{
+  "success": true,
+  "data": {
+    "job_id": "job_abc123",
+    "status": "completed",
+    "completed_at": "2025-12-17T10:00:12Z",
+    "duration_ms": 7000,
+    "evaluation": {
+      "id": "eval_abc123",
+      "score": 82,
+      "label": "A",
+      "summary": "...",
+      "recommendation": "approve",
+      "risk_flags": ["employment_duration_short"],
+      "fraud_signals": [],
+      "evaluated_at": "2025-12-17T10:00:12Z",
+      "model_version": "@cf/meta/llama-3.2-11b-vision-instruct"
+    }
+  }
+}
+```
+
+**Response (Failed)**:
+```json
+{
+  "success": true,
+  "data": {
+    "job_id": "job_abc123",
+    "status": "failed",
+    "error_code": "ModelTimeout",
+    "error_message": "AI model took too long to respond. Please try again.",
+    "can_retry": true
+  }
+}
+```
+
+#### 3. Get AI Evaluation (Latest Result)
+
+```http
+GET /api/ops/leads/:leadId/ai-evaluation
 ```
 
 **Response**:
@@ -775,13 +1007,13 @@ GET /api/ops/leads/:id/evaluation
   "success": true,
   "data": {
     "id": "eval_abc123",
-    "score": 78,
+    "score": 82,
     "label": "A",
     "summary": "...",
     "recommendation": "approve",
     "risk_flags": [...],
     "fraud_signals": [],
-    "evaluated_at": "2025-12-17T10:23:45Z",
+    "evaluated_at": "2025-12-17T10:00:12Z",
     "model_version": "@cf/meta/llama-3.2-11b-vision-instruct"
   }
 }
