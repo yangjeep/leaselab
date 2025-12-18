@@ -119,6 +119,8 @@ The system SHALL automatically evaluate tenant applications using Cloudflare Wor
   - Fraud signals array (JSON, including "too good to be true" scenarios)
 - [x] Results saved to `lead_ai_evaluations` table with model version tracking
 - [x] Lead status updated from `documents_received` → `ai_evaluating` → `ai_evaluated`
+- [x] Each evaluation persists a `document_fingerprint` (sorted MD5 digests of every attached file + file count) so future requests can detect whether the same applicant submitted the exact document set again
+- [x] When an incoming request matches the latest fingerprint for that lead (≥90% of MD5 hashes identical), the worker returns a `duplicate_documents` response, surfaces a warning message to the frontend, and **skips AI evaluation unless a super admin explicitly forces the re-run**
 
 **Technical Approach** (Workflows):
 
@@ -129,12 +131,14 @@ The system SHALL automatically evaluate tenant applications using Cloudflare Wor
 POST /api/ops/leads/:id/ai-evaluation
 
 Process (CRUD Worker):
-1. Check quota (ai_evaluation_usage table)
-2. If quota exceeded → return error
-3. Trigger Cloudflare Workflow via workflow.create()
-4. Get workflow instance ID
-5. Increment usage counter
-6. Return instance_id immediately (don't wait for AI)
+1. Build a `document_fingerprint` (MD5 for each uploaded file, sorted + concatenated) and compare against the latest evaluation for that lead
+2. If ≥90% of hashes match AND `force_re_evaluation` is not set by a super admin → short-circuit with `duplicate_documents` response (no job row created)
+3. Check quota (ai_evaluation_usage table)
+4. If quota exceeded → return error
+5. Trigger Cloudflare Workflow via workflow.create()
+6. Get workflow instance ID
+7. Increment usage counter
+8. Return instance_id immediately (don't wait for AI)
 
 Output (Immediate - <100ms):
 {
@@ -145,6 +149,15 @@ Output (Immediate - <100ms):
     status: 'queued',
     requested_at: '2025-12-17T10:00:00Z'
   }
+}
+
+// Output when duplicate guard triggers (no workflow run)
+{
+  success: false,
+  error: 'DuplicateDocuments',
+  message: 'This applicant was already evaluated with the exact same document set. Ask a super admin to force re-eval if the documents actually changed.',
+  last_evaluation_id: 'eval_def456',
+  last_evaluated_at: '2025-12-16T16:00:00Z'
 }
 
 // STEP 2: Workflow executes (Background - Durable)
@@ -377,10 +390,15 @@ The admin dashboard SHALL display AI evaluation results and allow manual overrid
   - Fraud signals (if any) with warning icons
   - Recommendation chip ('Approve', 'Approve with Conditions', 'Reject')
   - Timestamp of evaluation
+- [x] Duplicate guard UX:
+  - If system detects identical documents (fingerprint match), show inline warning banner ("Already evaluated on Dec 16, 10:00 AM")
+  - Standard admins see "Documents unchanged — AI not re-run" with disabled button
+  - Super admins see a `Force Re-Eval` button that requires confirmation + reason before bypassing the guard
 - [x] Manual override option:
   - Landlord can change recommendation with required note
   - Override logged in `landlord_note` field
   - AI evaluation preserved for audit
+
 
 **UI Mockup** (Lead Detail Page):
 ```
@@ -413,6 +431,25 @@ The admin dashboard SHALL display AI evaluation results and allow manual overrid
 │                                                           │
 └─────────────────────────────────────────────────────────┘
 ```
+
+#### FR-7: Identity Deduplication Module
+
+**Priority**: P0 (Must-Have for data hygiene)
+
+The system SHALL ship a reusable **Identity Deduplication Module** that continuously detects and merges duplicate applicants/tenants/leads sharing the same normalized phone number or email address.
+
+**Acceptance Criteria**:
+- [x] Every time a lead/applicant/tenant record is created or updated, the module computes a `contact_fingerprint` (lowercased email + E.164 phone, SHA-256 hashed) and stores it in a dedicated table
+- [x] When the same fingerprint already exists for a different entity, the module emits a dedup candidate with confidence score and affected records (e.g., lead vs tenant vs archived applicant)
+- [x] Ops Dashboard exposes a "Possible Duplicate" panel where admins can merge, link, or dismiss matches; merge action consolidates history (notes, documents, AI evaluations) under one canonical record
+- [x] Merges and dismissals are fully audited (who merged, when, reason)
+- [x] Dedicated API endpoints (`GET /api/ops/identity-matches/:entityType/:entityId` and `POST /api/ops/identity-matches/:matchId/resolve`) power the module so it can be reused beyond AI workflows
+- [x] Scheduled job (hourly) re-sweeps historical data to pick up older duplicates and keeps tenant/applicant graphs in sync
+
+**Module Design Notes**:
+- Works independently from AI scoring so it can be reused by leasing CRM flows
+- Supports future match signals (SSN hash, DOB) without schema changes by storing a JSONB `match_metadata` column
+- Surfaces warnings to AI Evaluation UX (e.g., "Applicant already exists as tenant on Site B")
 
 ---
 
@@ -519,6 +556,19 @@ The admin dashboard SHALL display AI evaluation results and allow manual overrid
 │  Runs automatically every hour, no manual triggers             │
 └────────────────────────────────────────────────────────────────┘
 ```
+
+### Identity Deduplication Module Overview
+
+- **Trigger Points**: invoked synchronously whenever a lead/applicant/tenant saves contact info and asynchronously by the hourly cron worker after finishing AI evaluations to sweep historical data
+- **Fingerprinting**: module takes normalized email + phone, hashes them (SHA-256), and persists to `identity_contact_fingerprints`
+- **Matching Logic**:
+  1. Lookup existing fingerprints for the same hash (per site, but cross-site if super admin)
+  2. Create/refresh `identity_match_candidates` rows with confidence + metadata (e.g., `email_match`, `phone_match`)
+  3. Publish events so Ops Dashboard shows "Possible duplicate" toast and detail panel
+- **Resolution Workflow**:
+  - Merge consolidates records (keep canonical entity, update foreign keys, aggregate docs/AI scores) and marks match row `merged`
+  - Dismiss marks `status = 'dismissed'` with audit reason; module won't re-alert unless source data changes
+- **Outputs**: API responses, audit log entries, optional notifications for cross-tenant collisions
 
 ### Key Architectural Decisions
 
@@ -837,14 +887,47 @@ CREATE TABLE ai_evaluation_audit (
 
 CREATE INDEX idx_ai_audit_lead ON ai_evaluation_audit(lead_id);
 CREATE INDEX idx_ai_audit_site ON ai_evaluation_audit(site_id);
+
+-- Identity Deduplication Module
+CREATE TABLE identity_contact_fingerprints (
+  id TEXT PRIMARY KEY,
+  site_id TEXT NOT NULL,
+  entity_type TEXT NOT NULL, -- 'lead' | 'applicant' | 'tenant'
+  entity_id TEXT NOT NULL,
+  contact_fingerprint TEXT NOT NULL, -- SHA-256 of normalized email+phone
+  phone_normalized TEXT,
+  email_normalized TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  UNIQUE(entity_type, entity_id)
+);
+
+CREATE TABLE identity_match_candidates (
+  id TEXT PRIMARY KEY,
+  fingerprint_id TEXT NOT NULL,
+  matching_fingerprint_id TEXT NOT NULL,
+  confidence INTEGER NOT NULL, -- 0-100
+  status TEXT NOT NULL DEFAULT 'pending', -- 'pending' | 'merged' | 'dismissed'
+  reason TEXT,
+  match_metadata TEXT, -- JSON blob describing signals
+  created_at TEXT NOT NULL,
+  resolved_at TEXT,
+  resolved_by TEXT,
+  FOREIGN KEY (fingerprint_id) REFERENCES identity_contact_fingerprints(id),
+  FOREIGN KEY (matching_fingerprint_id) REFERENCES identity_contact_fingerprints(id)
+);
+
+CREATE INDEX idx_identity_matches_status ON identity_match_candidates(status);
+CREATE INDEX idx_identity_matches_fingerprint ON identity_match_candidates(fingerprint_id, status);
+CREATE INDEX idx_identity_contact_fingerprint ON identity_contact_fingerprints(contact_fingerprint);
 ```
 
 ### Schema Modifications
 
-**Existing Tables** (No changes needed):
-- `leads` - Already has `ai_score`, `ai_label` fields
-- `lead_ai_evaluations` - Already exists with all required fields
-- `lead_files` - Already exists for document storage
+**Existing Tables** (New fields required):
+- `lead_ai_evaluations` - Add `document_fingerprint TEXT NOT NULL` to persist the MD5 signature used by the duplicate guard (backfill existing rows with generated hashes)
+- `lead_files` - Add `md5_hash TEXT` (stored when file uploaded) so we can build fingerprints without re-reading R2
+- `leads` - No change (already carries `ai_score`, `ai_label`)
 
 **Field Additions** (Optional enhancements):
 ```sql
@@ -877,10 +960,15 @@ Authorization: Bearer <token>
 **Request Body** (optional):
 ```json
 {
-  "force_refresh": false, // If true, re-evaluate even if already evaluated
+  "force_re_evaluation": false, // Super admin-only; bypass duplicate guard
   "model_version": "auto" // 'auto' | specific model name
 }
 ```
+
+**Force Re-Eval Guardrails**:
+- Only users with `super_admin` role MAY send `force_re_evaluation: true`
+- UI MUST require a confirmation modal with reason input
+- Non-super-admins receive `403` if they attempt to pass the flag
 
 **Response (Immediate - Job Created)**:
 ```json
@@ -912,6 +1000,17 @@ Authorization: Bearer <token>
     "limit": 20,
     "month": "2025-12"
   }
+}
+```
+
+**Response (Duplicate Documents)**:
+```json
+{
+  "success": false,
+  "error": "DuplicateDocuments",
+  "message": "Lead already evaluated with identical documents on 2025-12-16 16:00 UTC.",
+  "last_evaluation_id": "eval_abc999",
+  "can_force": true
 }
 ```
 
@@ -1082,6 +1181,68 @@ POST /api/ops/leads/:id/evaluation/override
 
 ---
 
+#### 5. List Identity Matches (Dedup Module)
+
+```http
+GET /api/ops/identity-matches/:entityType/:entityId
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "data": {
+    "entity_type": "lead",
+    "entity_id": "lead_123",
+    "matches": [
+      {
+        "match_id": "match_001",
+        "other_entity_type": "applicant",
+        "other_entity_id": "app_999",
+        "confidence": 94,
+        "signals": {
+          "email_match": true,
+          "phone_match": true
+        },
+        "status": "pending",
+        "last_updated": "2025-12-17T12:00:00Z"
+      }
+    ]
+  }
+}
+```
+
+#### 6. Resolve Identity Match (Merge / Dismiss)
+
+```http
+POST /api/ops/identity-matches/:matchId/resolve
+```
+
+**Request Body**:
+```json
+{
+  "action": "merge", // 'merge' | 'dismiss'
+  "canonical_entity_type": "lead",
+  "canonical_entity_id": "lead_123",
+  "reason": "Same phone/email; applicant re-applied through tenant portal."
+}
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "data": {
+    "match_id": "match_001",
+    "status": "merged",
+    "resolved_by": "user_456",
+    "resolved_at": "2025-12-17T12:05:00Z"
+  }
+}
+```
+
+---
+
 ## Usage Scenarios
 
 ### Scenario 1: Happy Path (First-Time Evaluation)
@@ -1200,6 +1361,32 @@ POST /api/ops/leads/:id/evaluation/override
 8. Alert triggers at 80% free tier usage (240k neurons)
 
 **Benefit**: Cost control, stay within free tier
+
+---
+
+### Scenario 6: Duplicate Submission Guard (New)
+
+1. Landlord attempts to re-run AI evaluation for Lead #123 without uploading any new documents
+2. Worker loads stored `md5_hash` values from `lead_files` and builds the exact same fingerprint as the latest evaluation
+3. API short-circuits with `DuplicateDocuments`, returning timestamp + `last_evaluation_id`
+4. Frontend shows inline banner: "Already evaluated on Jan 04, 14:03 UTC — documents unchanged" and disables the run button for standard admins
+5. Landlord either uploads updated paperwork or pings a super admin
+6. Super admin clicks `Force Re-Eval`, adds justification, and the job runs; audit trail records the bypass
+
+**Benefit**: Conserves quota/AI spend and prevents redundant evaluations while still allowing intentional overrides.
+
+---
+
+### Scenario 7: Identity Dedup Merge Workflow
+
+1. New applicant record shares the same normalized phone/email as an existing tenant on another property
+2. Identity Dedup module hashes the contact info, detects the match, and inserts `match_001` with confidence 94
+3. Ops Dashboard surfaces a "Possible duplicate" banner plus side panel showing both records
+4. Admin selects "Merge", picks the tenant as canonical, and confirms the action
+5. Backend updates related tables (leads, documents, evaluations) to point to the canonical entity and marks the match `merged`
+6. Future evaluations and communications reference the single consolidated record, avoiding double-counting usage or conflicting updates
+
+**Benefit**: Keeps applicant/tenant data clean and reusable across AI + CRM features.
 
 ---
 
