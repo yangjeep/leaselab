@@ -103,6 +103,7 @@ This flow keeps teams focused on rentable inventory, highlights best applicants 
 
 ### Phase 4 – Testing & Deployment
 - [ ] [Task 4.1: Testing & Verification](./tasks/ai-task-4.1-testing.md) – Validate stubbed + real AI flows end-to-end.
+- [ ] [Task 4.3: Playwright E2E Tests](./tasks/ai-task-4.3-playwright-tests.md) – Automate the workflow using Playwright + MCP plugin.
 - [ ] [Task 4.2: Deployment & Verification](./tasks/ai-task-4.2-deployment.md) – Deploy CRUD worker, cron worker, and Ops UI; run smoke tests.
 
 Use this checklist to track implementation progress in GitHub issues, Notion, or by simply checking boxes inside this file.
