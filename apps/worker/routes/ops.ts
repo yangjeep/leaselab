@@ -1818,6 +1818,79 @@ opsRoutes.get('/leads/:id/ai-evaluation', async (c: Context) => {
   }
 });
 
+/**
+ * GET /api/ops/ai-usage
+ * Get AI evaluation usage and quota for current site
+ */
+opsRoutes.get('/ai-usage', async (c: Context) => {
+  try {
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) {
+      return c.json({ success: false, error: 'Missing X-Site-Id header' }, 400);
+    }
+
+    const month = c.req.query('month') || new Date().toISOString().slice(0, 7);
+
+    // Get usage record for the month
+    const usage = await c.env.DB.prepare(`
+      SELECT * FROM ai_evaluation_usage
+      WHERE site_id = ?1 AND month = ?2
+    `).bind(siteId, month).first() as {
+      id: string;
+      evaluation_count: number;
+      quota_limit: number;
+      tier: string;
+      created_at: string;
+      updated_at: string;
+    } | null;
+
+    // If no usage record exists, return default values
+    if (!usage) {
+      return c.json({
+        success: true,
+        data: {
+          month,
+          evaluation_count: 0,
+          quota_limit: 20,
+          tier: 'free',
+          remaining: 20,
+          percentage: 0,
+          reset_date: `${month.split('-')[0]}-${(parseInt(month.split('-')[1]) % 12 + 1).toString().padStart(2, '0')}-01`
+        }
+      });
+    }
+
+    const remaining = Math.max(0, usage.quota_limit - usage.evaluation_count);
+    const percentage = Math.round((usage.evaluation_count / usage.quota_limit) * 100);
+
+    // Calculate reset date (1st of next month)
+    const [year, monthNum] = month.split('-').map(Number);
+    const nextMonth = monthNum === 12 ? 1 : monthNum + 1;
+    const nextYear = monthNum === 12 ? year + 1 : year;
+    const resetDate = `${nextYear}-${nextMonth.toString().padStart(2, '0')}-01`;
+
+    return c.json({
+      success: true,
+      data: {
+        month,
+        evaluation_count: usage.evaluation_count,
+        quota_limit: usage.quota_limit,
+        tier: usage.tier,
+        remaining,
+        percentage,
+        reset_date: resetDate
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching AI usage:', error);
+    return c.json({
+      success: false,
+      error: 'InternalError',
+      message: 'Failed to fetch AI usage'
+    }, 500);
+  }
+});
+
 // ==================== ADDITIONAL ENDPOINTS ====================
 
 /**

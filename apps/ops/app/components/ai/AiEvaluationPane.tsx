@@ -10,6 +10,8 @@ interface AiEvaluationPaneProps {
   isSuperAdmin?: boolean;
 }
 
+type TabType = 'evaluation' | 'quota' | 'settings';
+
 export function AiEvaluationPane({
   open,
   onClose,
@@ -19,8 +21,17 @@ export function AiEvaluationPane({
   isSuperAdmin = false,
 }: AiEvaluationPaneProps) {
   const jobFetcher = useFetcher();
+  const usageFetcher = useFetcher<any>();
   const [showForceModal, setShowForceModal] = useState(false);
   const [forceReason, setForceReason] = useState('');
+  const [activeTab, setActiveTab] = useState<TabType>('evaluation');
+
+  // Fetch usage data when pane opens or tab changes
+  useEffect(() => {
+    if (open && activeTab === 'quota' && usageFetcher.state === 'idle' && !usageFetcher.data) {
+      usageFetcher.load('/api/ai-usage');
+    }
+  }, [open, activeTab]);
 
   // Close on Escape key
   useEffect(() => {
@@ -109,8 +120,46 @@ export function AiEvaluationPane({
           </div>
         </div>
 
+        {/* Tab Navigation */}
+        <div className="border-b border-gray-200 px-6">
+          <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+            <button
+              onClick={() => setActiveTab('evaluation')}
+              className={`${
+                activeTab === 'evaluation'
+                  ? 'border-indigo-500 text-indigo-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+            >
+              Evaluation
+            </button>
+            <button
+              onClick={() => setActiveTab('quota')}
+              className={`${
+                activeTab === 'quota'
+                  ? 'border-indigo-500 text-indigo-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+            >
+              Quota
+            </button>
+            <button
+              onClick={() => setActiveTab('settings')}
+              className={`${
+                activeTab === 'settings'
+                  ? 'border-indigo-500 text-indigo-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+            >
+              Settings
+            </button>
+          </nav>
+        </div>
+
         {/* Content */}
         <div className="px-6 py-6 space-y-6">
+          {activeTab === 'evaluation' && (
+            <div className="space-y-6">
           {/* Action Row */}
           {status !== 'duplicate' && (
             <div className="space-y-2">
@@ -343,6 +392,164 @@ export function AiEvaluationPane({
                   </div>
                 </div>
               )}
+            </div>
+          )}
+          </div>
+          )}
+
+          {/* Quota Tab */}
+          {activeTab === 'quota' && (
+            <div className="space-y-6">
+              <div className="bg-white border border-gray-200 rounded-lg p-6">
+                <h3 className="text-sm font-medium text-gray-900 mb-4">Monthly Usage</h3>
+
+                {usageFetcher.state === 'loading' && (
+                  <div className="flex items-center justify-center py-8">
+                    <svg className="animate-spin h-8 w-8 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  </div>
+                )}
+
+                {usageFetcher.data?.success && (
+                  <>
+                    {/* Progress Circle */}
+                    <div className="flex items-center justify-center mb-6">
+                      <div className="relative inline-flex items-center justify-center w-40 h-40">
+                        <svg className="w-40 h-40 transform -rotate-90">
+                          <circle
+                            cx="80"
+                            cy="80"
+                            r="70"
+                            stroke="currentColor"
+                            strokeWidth="12"
+                            fill="none"
+                            className="text-gray-200"
+                          />
+                          <circle
+                            cx="80"
+                            cy="80"
+                            r="70"
+                            stroke="currentColor"
+                            strokeWidth="12"
+                            fill="none"
+                            strokeDasharray={`${(usageFetcher.data.data.percentage / 100) * 439.82} 439.82`}
+                            className={
+                              usageFetcher.data.data.percentage >= 100
+                                ? 'text-red-500'
+                                : usageFetcher.data.data.percentage >= 80
+                                ? 'text-orange-500'
+                                : 'text-green-500'
+                            }
+                          />
+                        </svg>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                          <div className="text-3xl font-bold text-gray-900">{usageFetcher.data.data.percentage}%</div>
+                          <div className="text-sm text-gray-500">used</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Usage Stats */}
+                    <div className="text-center mb-6">
+                      <p className="text-lg font-semibold text-gray-900">
+                        {usageFetcher.data.data.evaluation_count} / {usageFetcher.data.data.quota_limit} evaluations
+                      </p>
+                      <p className="text-sm text-gray-500 mt-1">
+                        {usageFetcher.data.data.month} • {usageFetcher.data.data.remaining} remaining
+                      </p>
+                      <p className="text-xs text-gray-400 mt-2">
+                        Resets on {new Date(usageFetcher.data.data.reset_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                      </p>
+                    </div>
+
+                    {/* Warning Messages */}
+                    {usageFetcher.data.data.percentage >= 100 && (
+                      <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                        <div className="flex">
+                          <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                          </svg>
+                          <div className="ml-3">
+                            <h3 className="text-sm font-medium text-red-800">Monthly quota exhausted</h3>
+                            <p className="mt-1 text-sm text-red-700">
+                              You've used all {usageFetcher.data.data.quota_limit} evaluations for this month.
+                              <a href="/admin/settings" className="font-semibold underline ml-1">Upgrade to Pro</a>
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {usageFetcher.data.data.percentage >= 80 && usageFetcher.data.data.percentage < 100 && (
+                      <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
+                        <div className="flex">
+                          <svg className="h-5 w-5 text-orange-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                          </svg>
+                          <div className="ml-3">
+                            <h3 className="text-sm font-medium text-orange-800">Approaching quota limit</h3>
+                            <p className="mt-1 text-sm text-orange-700">
+                              You've used {usageFetcher.data.data.evaluation_count} of {usageFetcher.data.data.quota_limit} evaluations.
+                              <a href="/admin/settings" className="font-semibold underline ml-1">Upgrade for more</a>
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Refresh Button */}
+                    <button
+                      onClick={() => usageFetcher.load('/api/ai-usage')}
+                      disabled={usageFetcher.state === 'loading'}
+                      className="w-full px-4 py-2 text-sm font-medium text-indigo-700 bg-indigo-50 border border-indigo-300 rounded-lg hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+                    >
+                      {usageFetcher.state === 'loading' ? 'Refreshing...' : 'Refresh Usage'}
+                    </button>
+                  </>
+                )}
+
+                {usageFetcher.data?.success === false && (
+                  <div className="text-center py-8">
+                    <p className="text-sm text-red-600 mb-4">{usageFetcher.data.message || 'Failed to load usage data'}</p>
+                    <button
+                      onClick={() => usageFetcher.load('/api/ai-usage')}
+                      className="px-4 py-2 text-sm font-medium text-indigo-700 bg-indigo-50 border border-indigo-300 rounded-lg hover:bg-indigo-100"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Settings Tab */}
+          {activeTab === 'settings' && (
+            <div className="space-y-6">
+              <div className="bg-white border border-gray-200 rounded-lg p-6">
+                <h3 className="text-sm font-medium text-gray-900 mb-4">AI Settings</h3>
+                <p className="text-sm text-gray-500 mb-4">
+                  Settings and configuration options will be available here in a future update.
+                </p>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-700">AI Evaluations Enabled</p>
+                      <p className="text-xs text-gray-500">Allow AI evaluations for this site</p>
+                    </div>
+                    <div className="text-sm text-gray-400">Coming soon</div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-700">Auto-run on Documents</p>
+                      <p className="text-xs text-gray-500">Automatically evaluate when documents are uploaded</p>
+                    </div>
+                    <div className="text-sm text-gray-400">Coming soon</div>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </div>
