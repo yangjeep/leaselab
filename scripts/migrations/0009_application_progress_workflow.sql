@@ -283,14 +283,14 @@ SELECT
   lf.file_name,
   lf.file_size,
   lf.mime_type,
-  lf.storage_key,
+  lf.r2_key, -- Use r2_key, not storage_key
   'pending', -- Default verification status
-  lf.created_at
+  lf.uploaded_at
 FROM lead_files lf
 JOIN leads l ON lf.lead_id = l.id
 WHERE NOT EXISTS (
   SELECT 1 FROM application_documents ad
-  WHERE ad.storage_key = lf.storage_key
+  WHERE ad.storage_key = lf.r2_key
 )
 AND lf.file_type IN ('government_id', 'paystub', 'bank_statement', 'tax_return', 'employment_letter', 'other');
 
