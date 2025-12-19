@@ -1246,3 +1246,376 @@ export async function saveThemeToWorker(
   );
   return parseResponse(response);
 }
+
+// ==================== APPLICATION WORKFLOW ====================
+
+/**
+ * Get all applicants for an application
+ */
+export async function fetchApplicationApplicantsFromWorker(
+  env: WorkerEnv,
+  siteId: string,
+  applicationId: string
+): Promise<any[]> {
+  const url = `${env.WORKER_URL}/api/ops/applications/${applicationId}/applicants`;
+  const response = await workerFetch(url, env, {}, siteId);
+  return parseResponse(response);
+}
+
+
+/**
+ * Get a single applicant by ID
+ */
+export async function fetchApplicantFromWorker(
+  env: WorkerEnv,
+  siteId: string,
+  applicantId: string
+): Promise<any> {
+  const url = `${env.WORKER_URL}/api/ops/applicants/${applicantId}`;
+  const response = await workerFetch(url, env, {}, siteId);
+  return parseResponse(response);
+}
+
+/**
+ * Create a new applicant
+ */
+export async function createApplicantToWorker(
+  env: WorkerEnv,
+  siteId: string,
+  userId: string,
+  applicationId: string,
+  data: any
+): Promise<any> {
+  const url = `${env.WORKER_URL}/api/ops/applications/${applicationId}/applicants`;
+  const headers = new Headers();
+  headers.set('X-User-Id', userId);
+
+  const response = await workerFetch(url, env, {
+    method: 'POST',
+    body: JSON.stringify(data),
+    headers,
+  }, siteId);
+  return parseResponse(response);
+}
+
+/**
+ * Update an applicant
+ */
+export async function updateApplicantToWorker(
+  env: WorkerEnv,
+  siteId: string,
+  applicantId: string,
+  data: any
+): Promise<any> {
+  const url = `${env.WORKER_URL}/api/ops/applicants/${applicantId}`;
+  const response = await workerFetch(url, env, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  }, siteId);
+  return parseResponse(response);
+}
+
+/**
+ * Delete an applicant
+ */
+export async function deleteApplicantToWorker(
+  env: WorkerEnv,
+  siteId: string,
+  applicantId: string
+): Promise<void> {
+  const url = `${env.WORKER_URL}/api/ops/applicants/${applicantId}`;
+  await workerFetch(url, env, {
+    method: 'DELETE',
+  }, siteId);
+}
+
+/**
+ * Get all documents for an application
+ */
+export async function fetchApplicationDocumentsFromWorker(
+  env: WorkerEnv,
+  siteId: string,
+  applicationId: string
+): Promise<any[]> {
+  const url = `${env.WORKER_URL}/api/ops/applications/${applicationId}/documents`;
+  const response = await workerFetch(url, env, {}, siteId);
+  return parseResponse(response);
+}
+
+/**
+ * Get document statistics for an application
+ */
+export async function fetchApplicationDocumentStatsFromWorker(
+  env: WorkerEnv,
+  siteId: string,
+  applicationId: string
+): Promise<any> {
+  const url = `${env.WORKER_URL}/api/ops/applications/${applicationId}/documents/stats`;
+  const response = await workerFetch(url, env, {}, siteId);
+  return parseResponse(response);
+}
+
+/**
+ * Get documents for a specific applicant
+ */
+export async function fetchApplicantDocumentsFromWorker(
+  env: WorkerEnv,
+  siteId: string,
+  applicantId: string
+): Promise<any[]> {
+  const url = `${env.WORKER_URL}/api/ops/applicants/${applicantId}/documents`;
+  const response = await workerFetch(url, env, {}, siteId);
+  return parseResponse(response);
+}
+
+/**
+ * Create a document record
+ */
+export async function createApplicationDocumentToWorker(
+  env: WorkerEnv,
+  siteId: string,
+  userId: string,
+  applicationId: string,
+  data: any
+): Promise<any> {
+  const url = `${env.WORKER_URL}/api/ops/applications/${applicationId}/documents`;
+  const headers = new Headers();
+  headers.set('X-User-Id', userId);
+
+  const response = await workerFetch(url, env, {
+    method: 'POST',
+    body: JSON.stringify(data),
+    headers,
+  }, siteId);
+  return parseResponse(response);
+}
+
+/**
+ * Update a document
+ */
+export async function updateDocumentToWorker(
+  env: WorkerEnv,
+  siteId: string,
+  documentId: string,
+  data: any
+): Promise<any> {
+  const url = `${env.WORKER_URL}/api/ops/documents/${documentId}`;
+  const response = await workerFetch(url, env, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  }, siteId);
+  return parseResponse(response);
+}
+
+/**
+ * Verify a document
+ */
+export async function verifyDocumentToWorker(
+  env: WorkerEnv,
+  siteId: string,
+  userId: string,
+  documentId: string
+): Promise<any> {
+  const url = `${env.WORKER_URL}/api/ops/documents/${documentId}/verify`;
+  const headers = new Headers();
+  headers.set('X-User-Id', userId);
+
+  const response = await workerFetch(url, env, {
+    method: 'POST',
+    headers,
+  }, siteId);
+  return parseResponse(response);
+}
+
+/**
+ * Reject a document
+ */
+export async function rejectDocumentToWorker(
+  env: WorkerEnv,
+  siteId: string,
+  userId: string,
+  documentId: string,
+  reason: string
+): Promise<any> {
+  const url = `${env.WORKER_URL}/api/ops/documents/${documentId}/reject`;
+  const headers = new Headers();
+  headers.set('X-User-Id', userId);
+
+  const response = await workerFetch(url, env, {
+    method: 'POST',
+    body: JSON.stringify({ reason }),
+    headers,
+  }, siteId);
+  return parseResponse(response);
+}
+
+/**
+ * Get stage transitions for an application
+ */
+export async function fetchApplicationTransitionsFromWorker(
+  env: WorkerEnv,
+  siteId: string,
+  applicationId: string
+): Promise<any[]> {
+  const url = `${env.WORKER_URL}/api/ops/applications/${applicationId}/transitions`;
+  const response = await workerFetch(url, env, {}, siteId);
+  return parseResponse(response);
+}
+
+/**
+ * Create a stage transition
+ */
+export async function createStageTransitionToWorker(
+  env: WorkerEnv,
+  siteId: string,
+  userId: string,
+  applicationId: string,
+  data: any
+): Promise<any> {
+  const url = `${env.WORKER_URL}/api/ops/applications/${applicationId}/transitions`;
+  const headers = new Headers();
+  headers.set('X-User-Id', userId);
+
+  const response = await workerFetch(url, env, {
+    method: 'POST',
+    body: JSON.stringify(data),
+    headers,
+  }, siteId);
+  return parseResponse(response);
+}
+
+/**
+ * Get internal notes for an application
+ */
+export async function fetchApplicationNotesFromWorker(
+  env: WorkerEnv,
+  siteId: string,
+  applicationId: string,
+  category?: string
+): Promise<any[]> {
+  let url = `${env.WORKER_URL}/api/ops/applications/${applicationId}/notes`;
+  if (category) {
+    url += `?category=${encodeURIComponent(category)}`;
+  }
+  const response = await workerFetch(url, env, {}, siteId);
+  return parseResponse(response);
+}
+
+/**
+ * Create an internal note
+ */
+export async function createApplicationNoteToWorker(
+  env: WorkerEnv,
+  siteId: string,
+  userId: string,
+  applicationId: string,
+  data: any
+): Promise<any> {
+  const url = `${env.WORKER_URL}/api/ops/applications/${applicationId}/notes`;
+  const headers = new Headers();
+  headers.set('X-User-Id', userId);
+
+  const response = await workerFetch(url, env, {
+    method: 'POST',
+    body: JSON.stringify(data),
+    headers,
+  }, siteId);
+  return parseResponse(response);
+}
+
+/**
+ * Update a note
+ */
+export async function updateNoteToWorker(
+  env: WorkerEnv,
+  siteId: string,
+  noteId: string,
+  data: any
+): Promise<any> {
+  const url = `${env.WORKER_URL}/api/ops/notes/${noteId}`;
+  const response = await workerFetch(url, env, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  }, siteId);
+  return parseResponse(response);
+}
+
+/**
+ * Delete a note
+ */
+export async function deleteNoteToWorker(
+  env: WorkerEnv,
+  siteId: string,
+  noteId: string
+): Promise<void> {
+  const url = `${env.WORKER_URL}/api/ops/notes/${noteId}`;
+  await workerFetch(url, env, {
+    method: 'DELETE',
+  }, siteId);
+}
+
+/**
+ * Get property applications with sorting/filtering
+ */
+export async function fetchPropertyApplicationsFromWorker(
+  env: WorkerEnv,
+  siteId: string,
+  propertyId: string,
+  options?: { status?: string; sortBy?: string; sortOrder?: 'asc' | 'desc' }
+): Promise<any[]> {
+  let url = `${env.WORKER_URL}/api/ops/properties/${propertyId}/applications`;
+  const params = new URLSearchParams();
+  if (options?.status) params.set('status', options.status);
+  if (options?.sortBy) params.set('sortBy', options.sortBy);
+  if (options?.sortOrder) params.set('sortOrder', options.sortOrder);
+  if (params.toString()) url += `?${params.toString()}`;
+
+  const response = await workerFetch(url, env, {}, siteId);
+  return parseResponse(response);
+}
+
+/**
+ * Get shortlisted applications for a property
+ */
+export async function fetchPropertyShortlistFromWorker(
+  env: WorkerEnv,
+  siteId: string,
+  propertyId: string
+): Promise<any[]> {
+  const url = `${env.WORKER_URL}/api/ops/properties/${propertyId}/shortlist`;
+  const response = await workerFetch(url, env, {}, siteId);
+  return parseResponse(response);
+}
+
+/**
+ * Add application to shortlist
+ */
+export async function shortlistApplicationToWorker(
+  env: WorkerEnv,
+  siteId: string,
+  userId: string,
+  applicationId: string
+): Promise<void> {
+  const url = `${env.WORKER_URL}/api/ops/applications/${applicationId}/shortlist`;
+  const headers = new Headers();
+  headers.set('X-User-Id', userId);
+
+  await workerFetch(url, env, {
+    method: 'POST',
+    headers,
+  }, siteId);
+}
+
+/**
+ * Remove application from shortlist
+ */
+export async function removeFromShortlistToWorker(
+  env: WorkerEnv,
+  siteId: string,
+  applicationId: string
+): Promise<void> {
+  const url = `${env.WORKER_URL}/api/ops/applications/${applicationId}/shortlist`;
+  await workerFetch(url, env, {
+    method: 'DELETE',
+  }, siteId);
+}
