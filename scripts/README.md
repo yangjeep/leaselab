@@ -2,6 +2,27 @@
 
 This directory contains all scripts for database migrations and utilities.
 
+## 🚀 Quick Start - Generate Test Data
+
+**RECOMMENDED**: Use the SQL seed script for fastest setup:
+
+```bash
+# Set your Cloudflare account ID (required for wrangler)
+export CLOUDFLARE_ACCOUNT_ID=280e7379fc5d19bfd9b65ee682896dbe
+
+# Seed test data to remote database
+npx wrangler d1 execute leaselab-db --remote --file=scripts/util/seed-test-data.sql
+```
+
+**What this creates**:
+- ✅ 3 Properties (Maple View Apartments, Oak Ridge Townhomes, Downtown Lofts)
+- ✅ 6 Leads/Applications including **James Kim** (`lead_james_kim`)
+- ✅ Lead history events
+
+**Access the data**:
+- All Leads: http://localhost:5173/admin/leads
+- James Kim: http://localhost:5173/admin/leads/lead_james_kim
+
 ## Directory Structure
 
 ### `/migrations`
