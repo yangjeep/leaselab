@@ -724,4 +724,101 @@ opsApplicationsRoutes.delete('/applications/:applicationId/shortlist', async (c:
   }
 });
 
+// ==================== APPLICATION ACTIONS ====================
+
+/**
+ * POST /api/ops/applications/:applicationId/approve
+ * Approve an application (stub)
+ */
+opsApplicationsRoutes.post('/applications/:applicationId/approve', async (c: Context) => {
+  try {
+    const applicationId = c.req.param('applicationId');
+    const userId = c.req.header('X-User-Id');
+
+    console.log(`[STUB] Approving application ${applicationId} by user ${userId}`);
+
+    // TODO: Implement actual approval logic
+    // - Update application status to 'approved'
+    // - Create stage transition record
+    // - Send approval notification email
+    // - Create tenant record if needed
+
+    return c.json({
+      success: true,
+      message: 'Application approved (stub)',
+    });
+  } catch (error) {
+    console.error('Error approving application:', error);
+    return c.json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    }, 500);
+  }
+});
+
+/**
+ * POST /api/ops/applications/:applicationId/reject
+ * Reject an application (stub)
+ */
+opsApplicationsRoutes.post('/applications/:applicationId/reject', async (c: Context) => {
+  try {
+    const applicationId = c.req.param('applicationId');
+    const userId = c.req.header('X-User-Id');
+    const body = await c.req.json();
+    const reason = body.reason || 'No reason provided';
+
+    console.log(`[STUB] Rejecting application ${applicationId} by user ${userId}. Reason: ${reason}`);
+
+    // TODO: Implement actual rejection logic
+    // - Update application status to 'rejected'
+    // - Create stage transition record with reason
+    // - Send rejection notification email
+    // - Log rejection reason in internal notes
+
+    return c.json({
+      success: true,
+      message: 'Application rejected (stub)',
+    });
+  } catch (error) {
+    console.error('Error rejecting application:', error);
+    return c.json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    }, 500);
+  }
+});
+
+/**
+ * POST /api/ops/applications/:applicationId/send-email
+ * Send email to applicant (stub)
+ */
+opsApplicationsRoutes.post('/applications/:applicationId/send-email', async (c: Context) => {
+  try {
+    const applicationId = c.req.param('applicationId');
+    const userId = c.req.header('X-User-Id');
+    const body = await c.req.json();
+    const { subject, message, template } = body;
+
+    console.log(`[STUB] Sending email for application ${applicationId} by user ${userId}`);
+    console.log(`Subject: ${subject}, Template: ${template}`);
+
+    // TODO: Implement actual email sending logic
+    // - Load applicant email addresses
+    // - Render email template with application data
+    // - Send via email service (e.g., SendGrid, AWS SES)
+    // - Log email sent in application history
+
+    return c.json({
+      success: true,
+      message: 'Email sent (stub)',
+    });
+  } catch (error) {
+    console.error('Error sending email:', error);
+    return c.json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    }, 500);
+  }
+});
+
 export default opsApplicationsRoutes;

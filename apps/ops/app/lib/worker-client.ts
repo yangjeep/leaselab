@@ -1639,3 +1639,68 @@ export async function removeFromShortlistToWorker(
     method: 'DELETE',
   }, siteId);
 }
+
+/**
+ * Approve an application (stub)
+ */
+export async function approveApplicationToWorker(
+  env: WorkerEnv,
+  siteId: string,
+  userId: string,
+  applicationId: string
+): Promise<void> {
+  const url = `${env.WORKER_URL}/api/ops/applications/${applicationId}/approve`;
+  const headers = new Headers();
+  headers.set('X-User-Id', userId);
+
+  await workerFetch(url, env, {
+    method: 'POST',
+    headers,
+  }, siteId);
+}
+
+/**
+ * Reject an application (stub)
+ */
+export async function rejectApplicationToWorker(
+  env: WorkerEnv,
+  siteId: string,
+  userId: string,
+  applicationId: string,
+  reason?: string
+): Promise<void> {
+  const url = `${env.WORKER_URL}/api/ops/applications/${applicationId}/reject`;
+  const headers = new Headers();
+  headers.set('X-User-Id', userId);
+
+  await workerFetch(url, env, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ reason: reason || '' }),
+  }, siteId);
+}
+
+/**
+ * Send email to applicant (stub)
+ */
+export async function sendApplicationEmailToWorker(
+  env: WorkerEnv,
+  siteId: string,
+  userId: string,
+  applicationId: string,
+  emailData: {
+    subject: string;
+    message: string;
+    template?: string;
+  }
+): Promise<void> {
+  const url = `${env.WORKER_URL}/api/ops/applications/${applicationId}/send-email`;
+  const headers = new Headers();
+  headers.set('X-User-Id', userId);
+
+  await workerFetch(url, env, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(emailData),
+  }, siteId);
+}

@@ -7,9 +7,9 @@
  * - AI Notes (internal notes)
  */
 
-import type { LoaderFunctionArgs } from '@remix-run/cloudflare';
+import type { LoaderFunctionArgs, ActionFunctionArgs } from '@remix-run/cloudflare';
 import { json } from '@remix-run/cloudflare';
-import { useLoaderData, Link, useNavigate, useSearchParams } from '@remix-run/react';
+import { useLoaderData, Link, useNavigate, useSearchParams, useFetcher } from '@remix-run/react';
 import { useState } from 'react';
 import { getSiteId } from '~/lib/site.server';
 import {
@@ -19,6 +19,9 @@ import {
   fetchApplicationDocumentsFromWorker,
   fetchApplicationTransitionsFromWorker,
   fetchApplicationNotesFromWorker,
+  approveApplicationToWorker,
+  rejectApplicationToWorker,
+  sendApplicationEmailToWorker,
 } from '~/lib/worker-client';
 import { ApplicantCard, DocumentsList, InternalNotes } from '~/components/application';
 import { AiEvaluationPane } from '~/components/ai/AiEvaluationPane';
@@ -56,6 +59,8 @@ export default function ApplicationDetail() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [showAiPane, setShowAiPane] = useState(false);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   const activeTab = searchParams.get('tab') || 'overview';
 
@@ -63,6 +68,72 @@ export default function ApplicationDetail() {
     const params = new URLSearchParams(searchParams);
     params.set('tab', tab);
     setSearchParams(params);
+  };
+
+  const handleApprove = async () => {
+    setActionLoading('approve');
+    setActionMessage(null);
+    try {
+      // TODO: Get actual user ID from session
+      const userId = 'user_123';
+      const env = (window as any).ENV;
+      const siteId = 'site_123'; // TODO: Get from context
+
+      await approveApplicationToWorker(env, siteId, userId, application.id);
+      setActionMessage({ type: 'success', message: 'Application approved successfully!' });
+      setTimeout(() => setActionMessage(null), 3000);
+    } catch (error) {
+      setActionMessage({ type: 'error', message: 'Failed to approve application' });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleReject = async () => {
+    const reason = prompt('Please provide a reason for rejection:');
+    if (!reason) return;
+
+    setActionLoading('reject');
+    setActionMessage(null);
+    try {
+      const userId = 'user_123';
+      const env = (window as any).ENV;
+      const siteId = 'site_123';
+
+      await rejectApplicationToWorker(env, siteId, userId, application.id, reason);
+      setActionMessage({ type: 'success', message: 'Application rejected' });
+      setTimeout(() => setActionMessage(null), 3000);
+    } catch (error) {
+      setActionMessage({ type: 'error', message: 'Failed to reject application' });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleSendEmail = async () => {
+    const subject = prompt('Email subject:');
+    if (!subject) return;
+    const message = prompt('Email message:');
+    if (!message) return;
+
+    setActionLoading('email');
+    setActionMessage(null);
+    try {
+      const userId = 'user_123';
+      const env = (window as any).ENV;
+      const siteId = 'site_123';
+
+      await sendApplicationEmailToWorker(env, siteId, userId, application.id, {
+        subject,
+        message,
+      });
+      setActionMessage({ type: 'success', message: 'Email sent successfully!' });
+      setTimeout(() => setActionMessage(null), 3000);
+    } catch (error) {
+      setActionMessage({ type: 'error', message: 'Failed to send email' });
+    } finally {
+      setActionLoading(null);
+    }
   };
 
   // Get primary applicant for header display
@@ -150,33 +221,84 @@ export default function ApplicationDetail() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => setShowAiPane(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
               </svg>
               AI Evaluation
             </button>
-            <button className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-              Approve
+            <button
+              onClick={handleApprove}
+              disabled={actionLoading !== null}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {actionLoading === 'approve' ? (
+                <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              ) : (
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              )}
+              {actionLoading === 'approve' ? 'Approving...' : 'Approve'}
             </button>
-            <button className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition-colors">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-              Reject
+            <button
+              onClick={handleReject}
+              disabled={actionLoading !== null}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {actionLoading === 'reject' ? (
+                <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              ) : (
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              )}
+              {actionLoading === 'reject' ? 'Rejecting...' : 'Reject'}
             </button>
-            <button className="inline-flex items-center gap-2 px-4 py-2 bg-white text-gray-700 font-medium rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-              </svg>
-              Send Email
+            <button
+              onClick={handleSendEmail}
+              disabled={actionLoading !== null}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-white text-gray-700 font-medium rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {actionLoading === 'email' ? (
+                <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              ) : (
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+              )}
+              {actionLoading === 'email' ? 'Sending...' : 'Send Email'}
             </button>
           </div>
         </div>
+
+        {/* Action Message */}
+        {actionMessage && (
+          <div className={`mt-4 p-4 rounded-lg ${actionMessage.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+            <div className="flex items-center gap-2">
+              {actionMessage.type === 'success' ? (
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              )}
+              <span className="font-medium">{actionMessage.message}</span>
+            </div>
+          </div>
+        )}
 
         {/* Tabs */}
         <div className="flex border-b border-gray-200 -mb-px">
