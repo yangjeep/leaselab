@@ -82,7 +82,10 @@ import {
   getLeaseFileById,
   createLeaseFile,
   deleteLeaseFile,
+  getThemeConfiguration,
+  upsertThemeConfiguration,
 } from '../lib/db';
+import { buildThemePayload } from '../lib/theme-response';
 
 
 // Import shared environment types
@@ -2382,6 +2385,66 @@ opsRoutes.post('/site-api-tokens/:id/delete', async (c: Context) => {
     });
   } catch (error) {
     console.error('Error deleting site API token:', error);
+    return c.json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    }, 500);
+  }
+});
+
+// ==================== THEME CONFIGURATION ====================
+
+/**
+ * GET /api/ops/theme
+ */
+opsRoutes.get('/theme', async (c: Context) => {
+  try {
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
+
+    const record = await getThemeConfiguration(c.env.DB, siteId);
+    const theme = buildThemePayload(record, siteId);
+
+    return c.json({ success: true, data: theme });
+  } catch (error) {
+    console.error('Error fetching theme configuration:', error);
+    return c.json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    }, 500);
+  }
+});
+
+/**
+ * POST /api/ops/theme
+ */
+opsRoutes.post('/theme', async (c: Context) => {
+  try {
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) { return c.json({ error: 'Missing X-Site-Id header' }, 400); }
+
+    const body = await c.req.json() as any;
+    if (!body.themePreset) {
+      return c.json({ error: 'themePreset is required' }, 400);
+    }
+
+    const result = await upsertThemeConfiguration(c.env.DB, siteId, {
+      themePreset: body.themePreset,
+      brandName: body.brandName ?? null,
+      brandLogoUrl: body.brandLogoUrl ?? null,
+      brandFaviconUrl: body.brandFaviconUrl ?? null,
+      customPrimaryHsl: body.customPrimaryHsl ?? null,
+      customSecondaryHsl: body.customSecondaryHsl ?? null,
+      customAccentHsl: body.customAccentHsl ?? null,
+      fontFamily: body.fontFamily ?? 'Inter',
+      enableDarkMode: body.enableDarkMode !== undefined ? Boolean(body.enableDarkMode) : true,
+      defaultMode: body.defaultMode ?? 'dark',
+    });
+
+    const theme = buildThemePayload(result, siteId);
+    return c.json({ success: true, data: theme });
+  } catch (error) {
+    console.error('Error updating theme configuration:', error);
     return c.json({
       error: 'Internal server error',
       message: error instanceof Error ? error.message : 'Unknown error',

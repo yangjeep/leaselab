@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@leaselab/ui-components": "*",
     "@leaselab/shared-config": "*",
     "@leaselab/shared-types": "*",
     "@leaselab/shared-utils": "*",

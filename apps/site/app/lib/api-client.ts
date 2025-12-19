@@ -5,6 +5,23 @@ import type { Listing } from './types';
  * Uses token-based authentication
  */
 
+export interface ThemeConfig {
+    siteId: string;
+    themePreset: string;
+    brandName: string | null;
+    brandLogoUrl: string | null;
+    brandFaviconUrl: string | null;
+    fontFamily: string | null;
+    enableDarkMode: boolean;
+    defaultMode: string;
+    customColors: {
+        primary: string | null;
+        secondary: string | null;
+        accent: string | null;
+    } | null;
+    updatedAt: string;
+}
+
 export interface SiteConfig {
     siteId: string;
     siteName: string;
@@ -21,6 +38,7 @@ export interface SiteConfig {
         email: string | null;
         phone: string | null;
     };
+    theme?: ThemeConfig;
 }
 
 /**
@@ -118,6 +136,15 @@ export async function fetchSiteConfig(
     env: { WORKER_URL?: string; SITE_API_TOKEN?: string }
 ): Promise<SiteConfig> {
     return apiRequest<SiteConfig>(env, '/api/public/site-config');
+}
+
+/**
+ * Fetch the storefront theme configuration
+ */
+export async function fetchThemeConfig(
+    env: { WORKER_URL?: string; SITE_API_TOKEN?: string }
+): Promise<ThemeConfig> {
+    return apiRequest<ThemeConfig>(env, '/api/public/theme');
 }
 
 /**

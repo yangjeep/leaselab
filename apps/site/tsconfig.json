@@ -19,6 +19,9 @@
       "~/*": [
         "./app/*"
       ],
+      "@/*": [
+        "./app/*"
+      ],
       "~/shared/types": [
         "../../shared/types"
       ],
@@ -27,6 +30,12 @@
       ],
       "~/shared/config": [
         "../../shared/config"
+      ],
+      "@leaselab/ui-components": [
+        "../../shared/ui-components/src"
+      ],
+      "@leaselab/ui-components/*": [
+        "../../shared/ui-components/src/*"
       ]
     }
   },

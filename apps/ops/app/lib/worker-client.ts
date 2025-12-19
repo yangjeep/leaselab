@@ -1189,3 +1189,60 @@ export async function deleteLeaseFileToWorker(
   }, siteId);
   await parseResponse(response);
 }
+
+// ==================== THEME CONFIGURATION ====================
+
+export interface ThemePayload {
+  siteId: string;
+  themePreset: string;
+  brandName: string | null;
+  brandLogoUrl: string | null;
+  brandFaviconUrl: string | null;
+  fontFamily: string | null;
+  enableDarkMode: boolean;
+  defaultMode: string;
+  customColors: {
+    primary: string | null;
+    secondary: string | null;
+    accent: string | null;
+  } | null;
+  updatedAt: string;
+}
+
+export async function fetchThemeFromWorker(
+  env: WorkerEnv,
+  siteId: string
+): Promise<ThemePayload> {
+  const url = `${env.WORKER_URL}/api/ops/theme`;
+  const response = await workerFetch(url, env, {}, siteId);
+  return parseResponse(response);
+}
+
+export async function saveThemeToWorker(
+  env: WorkerEnv,
+  siteId: string,
+  data: {
+    themePreset: string;
+    brandName?: string | null;
+    brandLogoUrl?: string | null;
+    brandFaviconUrl?: string | null;
+    customPrimaryHsl?: string | null;
+    customSecondaryHsl?: string | null;
+    customAccentHsl?: string | null;
+    fontFamily?: string | null;
+    enableDarkMode?: boolean;
+    defaultMode?: string;
+  }
+): Promise<ThemePayload> {
+  const url = `${env.WORKER_URL}/api/ops/theme`;
+  const response = await workerFetch(
+    url,
+    env,
+    {
+      method: 'POST',
+      body: JSON.stringify(data),
+    },
+    siteId
+  );
+  return parseResponse(response);
+}
