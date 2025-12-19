@@ -1,6 +1,7 @@
 -- Migration: Add lease_files table for lease document management
 -- Created: 2025-12-01
 -- Purpose: Store lease documents, addendums, inspection reports, and related files
+-- Idempotent: Safe to run multiple times
 
 -- Create lease_files table (similar to lead_files)
 CREATE TABLE IF NOT EXISTS lease_files (

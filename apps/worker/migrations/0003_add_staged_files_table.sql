@@ -2,6 +2,7 @@
 -- Purpose: Stage files before lead creation (two-step upload process)
 -- Date: 2025-11-29
 -- Related: PRD-File-Upload-Download.md
+-- Idempotent: Safe to run multiple times
 
 -- Create staging table for temporary file uploads
 -- Files stay here until associated with a lead, then moved to lead_files

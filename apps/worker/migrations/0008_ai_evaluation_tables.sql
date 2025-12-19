@@ -1,9 +1,10 @@
 -- Migration: AI Evaluation Tables
 -- Created: 2025-12-18
 -- Description: Tables for async AI evaluation jobs and quota tracking
+-- Idempotent: Safe to run multiple times
 
 -- Job tracking table
-CREATE TABLE ai_evaluation_jobs (
+CREATE TABLE IF NOT EXISTS ai_evaluation_jobs (
   id TEXT PRIMARY KEY,
   lead_id TEXT NOT NULL,
   site_id TEXT NOT NULL,
@@ -24,14 +25,14 @@ CREATE TABLE ai_evaluation_jobs (
   FOREIGN KEY (evaluation_id) REFERENCES lead_ai_evaluations(id)
 );
 
-CREATE INDEX idx_ai_jobs_lead_id ON ai_evaluation_jobs(lead_id);
-CREATE INDEX idx_ai_jobs_site_id ON ai_evaluation_jobs(site_id);
-CREATE INDEX idx_ai_jobs_status ON ai_evaluation_jobs(status);
-CREATE INDEX idx_ai_jobs_requested_at ON ai_evaluation_jobs(requested_at DESC);
-CREATE INDEX idx_ai_jobs_lead_status ON ai_evaluation_jobs(lead_id, status);
+CREATE INDEX IF NOT EXISTS idx_ai_jobs_lead_id ON ai_evaluation_jobs(lead_id);
+CREATE INDEX IF NOT EXISTS idx_ai_jobs_site_id ON ai_evaluation_jobs(site_id);
+CREATE INDEX IF NOT EXISTS idx_ai_jobs_status ON ai_evaluation_jobs(status);
+CREATE INDEX IF NOT EXISTS idx_ai_jobs_requested_at ON ai_evaluation_jobs(requested_at DESC);
+CREATE INDEX IF NOT EXISTS idx_ai_jobs_lead_status ON ai_evaluation_jobs(lead_id, status);
 
 -- Usage tracking table
-CREATE TABLE ai_evaluation_usage (
+CREATE TABLE IF NOT EXISTS ai_evaluation_usage (
   id TEXT PRIMARY KEY,
   site_id TEXT NOT NULL,
   month TEXT NOT NULL,
@@ -43,4 +44,4 @@ CREATE TABLE ai_evaluation_usage (
   UNIQUE(site_id, month)
 );
 
-CREATE INDEX idx_ai_usage_site_month ON ai_evaluation_usage(site_id, month);
+CREATE INDEX IF NOT EXISTS idx_ai_usage_site_month ON ai_evaluation_usage(site_id, month);

@@ -1,6 +1,7 @@
 -- Migration: Reset hashes to PBKDF2
 -- Date: 2025-11-27
 -- Description: Updates admin password to PBKDF2 hash and clears invalid API tokens
+-- Idempotent: Safe to run multiple times
 
 -- Update admin password (4*X9j3DUizzAB_j8)
 UPDATE users 
