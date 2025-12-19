@@ -2,6 +2,7 @@ export interface Env {
   DB: D1Database;
   R2_PRIVATE: R2Bucket;
   AI: Ai;
+  USE_REAL_AI_MODEL?: string; // "true" in production, "false" in preview
 }
 
 export interface AIEvaluationJob {

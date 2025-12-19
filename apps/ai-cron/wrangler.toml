@@ -24,7 +24,9 @@ binding = "AI"
 
 # Environment-specific config
 [env.production]
-# Production-specific settings
+# Production: Use real Workers AI model
+vars = { USE_REAL_AI_MODEL = "true" }
 
 [env.preview]
-# Preview environment
+# Preview: Use stub evaluation for testing
+vars = { USE_REAL_AI_MODEL = "false" }

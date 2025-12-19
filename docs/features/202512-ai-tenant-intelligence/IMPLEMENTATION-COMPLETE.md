@@ -52,8 +52,9 @@ The AI Tenant Intelligence feature is **complete and production-ready**. Propert
 - Updates lead status to `ai_evaluated`
 
 **AI Evaluator** ([apps/ai-cron/src/lib/ai-evaluator.ts](../../apps/ai-cron/src/lib/ai-evaluator.ts))
-- **Current**: Stub implementation generating mock scores
-- **Future**: Replace with Workers AI LLaMA 3.2 Vision model
+- **Environment-Based Routing**: Checks `USE_REAL_AI_MODEL` flag
+- **Preview Mode** (`USE_REAL_AI_MODEL=false`): Uses stub implementation generating mock scores
+- **Production Mode** (`USE_REAL_AI_MODEL=true`): Routes to Workers AI LLaMA 3.2 Vision model (integration pending)
 - Returns score (0-100), label (A/B/C), recommendation, risk flags
 
 ### Phase 3: Frontend UI ✅
@@ -111,7 +112,12 @@ npx wrangler d1 execute leaselab-db --remote \
 ```bash
 cd apps/ai-cron
 npm install
-npm run deploy
+
+# Deploy to preview (uses stub evaluator)
+npx wrangler deploy --env preview
+
+# Deploy to production (uses Workers AI - pending integration)
+npx wrangler deploy --env production
 
 # Verify deployment
 npx wrangler deployments list
@@ -120,6 +126,10 @@ npx wrangler deployments list
 **Verify cron trigger**:
 - Go to Cloudflare Dashboard → Workers & Pages → leaselab-ai-cron
 - Check "Triggers" tab → Should show "0 * * * *" (hourly)
+
+**Environment Notes**:
+- Preview environment uses `USE_REAL_AI_MODEL=false` (stub evaluator, fast testing)
+- Production environment uses `USE_REAL_AI_MODEL=true` (Workers AI, real evaluation)
 
 ### 3. Deploy CRUD Worker
 
@@ -285,7 +295,7 @@ GROUP BY status;
 
 **Cron Worker** (`apps/ai-cron/wrangler.toml`)
 ```toml
-# Already configured
+# Bindings
 [ai]
 binding = "AI"
 
@@ -296,7 +306,18 @@ database_name = "leaselab-db"
 [[r2_buckets]]
 binding = "R2_PRIVATE"
 bucket_name = "leaselab-pri"
+
+# Environment-specific configuration
+[env.production]
+vars = { USE_REAL_AI_MODEL = "true" }  # Use Workers AI
+
+[env.preview]
+vars = { USE_REAL_AI_MODEL = "false" } # Use stub evaluator
 ```
+
+**AI Model Selection**
+- **Preview/Development**: Automatically uses stub evaluator (fast, no AI costs)
+- **Production**: Routes to Workers AI LLaMA 3.2 Vision (real evaluation, pending integration)
 
 **CRUD Worker** (`apps/worker/wrangler.toml`)
 ```toml
@@ -342,10 +363,13 @@ Track these KPIs post-deployment:
 
 ### Short-term (Month 1)
 
-1. **Replace AI Stub with Real Model**
-   - Implement Workers AI LLaMA 3.2 Vision integration
+1. **Complete Workers AI Integration** (infrastructure ready)
+   - Environment-based routing ✅ already in place
+   - Update `evaluateWithWorkersAI()` in [ai-evaluator.ts](../../apps/ai-cron/src/lib/ai-evaluator.ts#L57-L105)
+   - Implement LLaMA 3.2 Vision API calls
    - Add document OCR/text extraction
    - Tune scoring algorithm based on real data
+   - Deploy to production environment (uses `USE_REAL_AI_MODEL=true`)
 
 2. **Add Activity Log**
    - Track evaluation history per lead

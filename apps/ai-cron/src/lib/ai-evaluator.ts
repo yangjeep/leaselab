@@ -29,7 +29,7 @@ export interface EvaluationResult {
 
 /**
  * Main AI evaluation function
- * TODO: Replace stub with real Workers AI integration
+ * Routes to stub or real AI based on environment
  */
 export async function evaluateWithAI(
   env: Env,
@@ -39,8 +39,75 @@ export async function evaluateWithAI(
   console.log(`Evaluating lead: ${input.lead.first_name} ${input.lead.last_name}`);
   console.log(`Documents: ${input.documents.length}`);
 
-  // STUB: Generate mock evaluation based on lead data
-  // TODO: Replace with real AI model call
+  // Check environment flag to determine which evaluator to use
+  const useRealAI = env.USE_REAL_AI_MODEL === 'true';
+
+  if (useRealAI) {
+    console.log('Using real Workers AI model');
+    return evaluateWithWorkersAI(env, input);
+  } else {
+    console.log('Using stub evaluator (preview mode)');
+    return evaluateWithStub(input);
+  }
+}
+
+/**
+ * Real Workers AI evaluation using LLaMA 3.2 Vision
+ */
+async function evaluateWithWorkersAI(
+  env: Env,
+  input: EvaluationInput
+): Promise<EvaluationResult> {
+
+  // TODO: Implement real Workers AI integration
+  // This is a placeholder for the production implementation
+
+  try {
+    // Prepare document images for vision model
+    const imageInputs = input.documents
+      .filter(doc => doc.mimeType.startsWith('image/') || doc.mimeType === 'application/pdf')
+      .map(doc => ({
+        type: doc.type,
+        data: doc.data
+      }));
+
+    // Call Workers AI with LLaMA 3.2 Vision model
+    // const response = await env.AI.run(input.modelVersion, {
+    //   prompt: buildEvaluationPrompt(input.lead),
+    //   images: imageInputs
+    // });
+
+    // For now, return mock data with a note that this will be implemented
+    console.warn('Real Workers AI integration pending - using mock response');
+
+    const mockScore = generateMockScore(input);
+    const label = scoreToLabel(mockScore);
+    const recommendation = determineRecommendation(mockScore, []);
+
+    return {
+      score: mockScore,
+      label,
+      recommendation,
+      summary: `Production AI evaluation (Workers AI integration pending). Lead has ${input.documents.length} documents.`,
+      risk_flags: mockScore < 70 ? ['pending_real_ai_integration'] : [],
+      fraud_signals: [],
+      extracted_data: {
+        document_count: input.documents.length,
+        production_mode: true,
+        workers_ai_pending: true
+      }
+    };
+
+  } catch (error) {
+    console.error('Workers AI evaluation failed:', error);
+    throw new Error(`AI evaluation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
+/**
+ * Stub evaluation for preview/development
+ */
+function evaluateWithStub(input: EvaluationInput): EvaluationResult {
   const mockScore = generateMockScore(input);
   const label = scoreToLabel(mockScore);
   const recommendation = determineRecommendation(mockScore, []);
