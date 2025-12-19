@@ -31,6 +31,6 @@ export default defineConfig({
         v3_lazyRouteDiscovery: true,
       },
     }),
-    tsconfigPaths({ root: __dirname }) as PluginOption,
+    tsconfigPaths({ root: __dirname }) as any,
   ],
 });

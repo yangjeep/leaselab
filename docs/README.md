@@ -44,6 +44,7 @@ feature-name/
 
 | Feature | Status | Summary | Details |
 |---------|--------|---------|---------|
+| **[shadcn/ui Integration](./features/202512-shadcn-ui-integration/)** | ✅ Implemented | UI component library with Tailwind v4 | [00-SUMMARY.md](./features/202512-shadcn-ui-integration/00-SUMMARY.md) |
 | **[AI Tenant Intelligence](./features/202512-ai-tenant-intelligence/)** | 🚧 In Progress | Automated tenant screening with AI | [README.md](./features/202512-ai-tenant-intelligence/README.md) |
 | **[Application Progress Workflow](./features/202512-application-progress-workflow/)** | 🚧 In Progress | Stage-gated property-centric screening flow | [00-SUMMARY.md](./features/202512-application-progress-workflow/00-SUMMARY.md) |
 | **[File Storage & Upload](./features/202511-file-storage/)** | ✅ Implemented | R2-based file management | [00-SUMMARY.md](./features/202511-file-storage/00-SUMMARY.md) |
