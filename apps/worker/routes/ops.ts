@@ -88,6 +88,9 @@ import {
 // Import shared environment types
 import type { CloudflareEnv } from '../../../shared/config';
 
+// Import application workflow routes
+import opsApplicationsRoutes from './ops-applications';
+
 // Use shared bindings type
 type Bindings = CloudflareEnv;
 
@@ -95,6 +98,9 @@ const opsRoutes = new Hono<{ Bindings: Bindings }>();
 
 // Apply internal auth middleware to all ops routes
 opsRoutes.use('*', internalAuthMiddleware);
+
+// Mount application workflow routes
+opsRoutes.route('/', opsApplicationsRoutes);
 
 // ==================== PROPERTIES ====================
 
