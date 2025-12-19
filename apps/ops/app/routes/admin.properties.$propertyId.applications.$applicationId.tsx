@@ -459,12 +459,13 @@ export default function ApplicationDetail() {
       </div>
 
       {/* AI Evaluation Pane */}
-      {showAiPane && (
-        <AiEvaluationPane
-          leadId={application.id}
-          onClose={() => setShowAiPane(false)}
-        />
-      )}
+      <AiEvaluationPane
+        open={showAiPane}
+        leadId={application.id}
+        leadName={`${primaryApplicant?.firstName || ''} ${primaryApplicant?.lastName || ''}`.trim() || 'Applicant'}
+        currentEvaluation={application.aiEvaluation}
+        onClose={() => setShowAiPane(false)}
+      />
     </div>
   );
 }
