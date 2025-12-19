@@ -26,10 +26,14 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
     headers.set('X-Site-Id', siteId);
 
     const response = await fetch(workerUrl, { headers });
-    const data = await response.json();
+    const data = (await response.json().catch(() => ({}))) as {
+      success?: boolean;
+      message?: string;
+      [key: string]: unknown;
+    };
 
     if (!response.ok) {
-      throw new Error(data.message || 'Failed to fetch AI usage');
+      throw new Error(data?.message || 'Failed to fetch AI usage');
     }
 
     return json(data);

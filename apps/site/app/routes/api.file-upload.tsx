@@ -68,7 +68,9 @@ export async function action({ request, context }: ActionFunctionArgs) {
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: "Upload failed" }));
+      const errorData = (await response.json().catch(() => ({ error: "Upload failed" }))) as {
+        error?: string;
+      };
       console.error("Worker API error:", errorData);
 
       // Return appropriate error status

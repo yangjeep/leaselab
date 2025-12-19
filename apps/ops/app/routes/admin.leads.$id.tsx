@@ -463,7 +463,7 @@ export default function LeadDetail() {
         leadId={lead.id}
         leadName={`${lead.firstName} ${lead.lastName}`}
         currentEvaluation={aiEvaluation?.data}
-        isSuperAdmin={user?.role === 'super_admin'}
+        isSuperAdmin={Boolean(user?.isSuperAdmin)}
       />
     </div>
   );

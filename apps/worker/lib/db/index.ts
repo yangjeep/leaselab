@@ -113,6 +113,14 @@ export {
 // Re-export site token types
 export type { SiteApiToken } from './site-tokens';
 
+// Re-export theme operations
+export {
+    getThemeConfiguration,
+    upsertThemeConfiguration,
+} from './themes';
+
+export type { ThemeConfigurationRecord } from './themes';
+
 // Re-export all lease operations
 export {
     getLeases,
