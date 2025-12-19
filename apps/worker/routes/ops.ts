@@ -1498,8 +1498,262 @@ opsRoutes.post('/leads/:id/files', async (c: Context) => {
 // ==================== AI EVALUATION ====================
 
 /**
+ * POST /api/ops/leads/:id/ai-evaluation
+ * Create AI evaluation job (async)
+ */
+opsRoutes.post('/leads/:id/ai-evaluation', async (c: Context) => {
+  try {
+    const leadId = c.req.param('id');
+    const siteId = c.req.header('X-Site-Id');
+    const userId = c.req.header('X-User-Id');
+
+    if (!siteId || !userId) {
+      return c.json({ success: false, error: 'Missing required headers' }, 400);
+    }
+
+    const body = await c.req.json().catch(() => ({}));
+    const { force_refresh = false } = body;
+
+    // Step 1: Verify lead exists and belongs to site
+    const lead = await c.env.DB.prepare(`
+      SELECT id, site_id, status
+      FROM leads
+      WHERE id = ?1 AND site_id = ?2
+    `).bind(leadId, siteId).first();
+
+    if (!lead) {
+      return c.json({
+        success: false,
+        error: 'LeadNotFound',
+        message: 'Lead not found or access denied'
+      }, 404);
+    }
+
+    // Step 2: Check if already evaluated (unless force_refresh)
+    if (!force_refresh) {
+      const existingJob = await c.env.DB.prepare(`
+        SELECT id, status, evaluation_id
+        FROM ai_evaluation_jobs
+        WHERE lead_id = ?1 AND status IN ('pending', 'processing', 'completed')
+        ORDER BY requested_at DESC
+        LIMIT 1
+      `).bind(leadId).first() as {
+        id: string;
+        status: string;
+        evaluation_id: string | null;
+      } | null;
+
+      if (existingJob) {
+        if (existingJob.status === 'pending' || existingJob.status === 'processing') {
+          return c.json({
+            success: false,
+            error: 'JobAlreadyPending',
+            message: 'An evaluation is already in progress for this lead',
+            job_id: existingJob.id
+          }, 409);
+        }
+
+        if (existingJob.status === 'completed') {
+          return c.json({
+            success: false,
+            error: 'AlreadyEvaluated',
+            message: 'Lead already evaluated. Use force_refresh=true to re-evaluate.',
+            evaluation_id: existingJob.evaluation_id
+          }, 409);
+        }
+      }
+    }
+
+    // Step 3: Check quota
+    const currentMonth = new Date().toISOString().slice(0, 7); // 'YYYY-MM'
+    let usage = await c.env.DB.prepare(`
+      SELECT * FROM ai_evaluation_usage
+      WHERE site_id = ?1 AND month = ?2
+    `).bind(siteId, currentMonth).first() as {
+      id: string;
+      evaluation_count: number;
+      quota_limit: number;
+      tier: string;
+    } | null;
+
+    // Create usage record if doesn't exist
+    if (!usage) {
+      const usageId = `usage_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const now = new Date().toISOString();
+      await c.env.DB.prepare(`
+        INSERT INTO ai_evaluation_usage
+        (id, site_id, month, evaluation_count, quota_limit, tier, created_at, updated_at)
+        VALUES (?1, ?2, ?3, 0, 20, 'free', ?4, ?4)
+      `).bind(usageId, siteId, currentMonth, now).run();
+
+      usage = {
+        id: usageId,
+        evaluation_count: 0,
+        quota_limit: 20,
+        tier: 'free'
+      };
+    }
+
+    // Check if quota exceeded
+    if (usage.evaluation_count >= usage.quota_limit) {
+      return c.json({
+        success: false,
+        error: 'QuotaExceeded',
+        message: `Monthly evaluation limit (${usage.quota_limit}) reached for this site.`,
+        usage: {
+          used: usage.evaluation_count,
+          limit: usage.quota_limit,
+          month: currentMonth,
+          tier: usage.tier
+        }
+      }, 429);
+    }
+
+    // Step 4: Create job record
+    const jobId = `job_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const now = new Date().toISOString();
+    const estimatedCompletion = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // +1 hour
+
+    await c.env.DB.prepare(`
+      INSERT INTO ai_evaluation_jobs (
+        id, lead_id, site_id, status,
+        requested_by, requested_at,
+        model_version, created_at, updated_at
+      ) VALUES (?1, ?2, ?3, 'pending', ?4, ?5, ?6, ?5, ?5)
+    `).bind(
+      jobId,
+      leadId,
+      siteId,
+      userId,
+      now,
+      '@cf/meta/llama-3.2-11b-vision-instruct'
+    ).run();
+
+    // Step 5: Increment usage counter
+    await c.env.DB.prepare(`
+      UPDATE ai_evaluation_usage
+      SET evaluation_count = evaluation_count + 1,
+          updated_at = ?1
+      WHERE site_id = ?2 AND month = ?3
+    `).bind(now, siteId, currentMonth).run();
+
+    // Step 6: Return job ID immediately
+    return c.json({
+      success: true,
+      data: {
+        job_id: jobId,
+        lead_id: leadId,
+        status: 'pending',
+        requested_at: now,
+        estimated_completion: estimatedCompletion
+      },
+      usage: {
+        remaining: usage.quota_limit - usage.evaluation_count - 1,
+        limit: usage.quota_limit,
+        month: currentMonth
+      }
+    }, 201);
+
+  } catch (error) {
+    console.error('AI evaluation job creation failed:', error);
+    return c.json({
+      success: false,
+      error: 'InternalError',
+      message: 'Failed to create evaluation job'
+    }, 500);
+  }
+});
+
+/**
+ * GET /api/ops/ai-evaluation-jobs/:jobId
+ * Get AI evaluation job status
+ */
+opsRoutes.get('/ai-evaluation-jobs/:jobId', async (c: Context) => {
+  try {
+    const jobId = c.req.param('jobId');
+    const siteId = c.req.header('X-Site-Id');
+
+    if (!siteId) {
+      return c.json({ success: false, error: 'Missing X-Site-Id header' }, 400);
+    }
+
+    const job = await c.env.DB.prepare(`
+      SELECT * FROM ai_evaluation_jobs
+      WHERE id = ?1 AND site_id = ?2
+    `).bind(jobId, siteId).first() as {
+      id: string;
+      lead_id: string;
+      status: string;
+      requested_at: string;
+      started_at: string | null;
+      completed_at: string | null;
+      evaluation_id: string | null;
+      error_code: string | null;
+      error_message: string | null;
+    } | null;
+
+    if (!job) {
+      return c.json({
+        success: false,
+        error: 'JobNotFound',
+        message: 'Job not found or access denied'
+      }, 404);
+    }
+
+    // If completed, fetch the evaluation result
+    let evaluation = null;
+    if (job.status === 'completed' && job.evaluation_id) {
+      evaluation = await getAIEvaluation(c.env.DB, siteId, job.lead_id);
+    }
+
+    const response: any = {
+      success: true,
+      data: {
+        job_id: job.id,
+        lead_id: job.lead_id,
+        status: job.status,
+        requested_at: job.requested_at,
+      }
+    };
+
+    if (job.status === 'processing') {
+      response.data.started_at = job.started_at;
+      response.data.progress_message = 'Analyzing documents with AI...';
+    }
+
+    if (job.status === 'completed') {
+      response.data.completed_at = job.completed_at;
+      const duration = job.started_at && job.completed_at
+        ? new Date(job.completed_at).getTime() - new Date(job.started_at).getTime()
+        : null;
+      if (duration) response.data.duration_ms = duration;
+
+      if (evaluation) {
+        response.data.evaluation = evaluation;
+      }
+    }
+
+    if (job.status === 'failed') {
+      response.data.error_code = job.error_code;
+      response.data.error_message = job.error_message;
+      response.data.can_retry = true;
+    }
+
+    return c.json(response);
+
+  } catch (error) {
+    console.error('Error fetching job status:', error);
+    return c.json({
+      success: false,
+      error: 'InternalError',
+      message: 'Failed to fetch job status'
+    }, 500);
+  }
+});
+
+/**
  * POST /api/ops/leads/:id/ai-evaluate
- * Run AI evaluation on a lead
+ * Run AI evaluation on a lead (DEPRECATED - kept for backwards compatibility)
  */
 opsRoutes.post('/leads/:id/ai-evaluate', async (c: Context) => {
   try {
@@ -1560,6 +1814,79 @@ opsRoutes.get('/leads/:id/ai-evaluation', async (c: Context) => {
     return c.json({
       error: 'Internal server error',
       message: error instanceof Error ? error.message : 'Unknown error',
+    }, 500);
+  }
+});
+
+/**
+ * GET /api/ops/ai-usage
+ * Get AI evaluation usage and quota for current site
+ */
+opsRoutes.get('/ai-usage', async (c: Context) => {
+  try {
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) {
+      return c.json({ success: false, error: 'Missing X-Site-Id header' }, 400);
+    }
+
+    const month = c.req.query('month') || new Date().toISOString().slice(0, 7);
+
+    // Get usage record for the month
+    const usage = await c.env.DB.prepare(`
+      SELECT * FROM ai_evaluation_usage
+      WHERE site_id = ?1 AND month = ?2
+    `).bind(siteId, month).first() as {
+      id: string;
+      evaluation_count: number;
+      quota_limit: number;
+      tier: string;
+      created_at: string;
+      updated_at: string;
+    } | null;
+
+    // If no usage record exists, return default values
+    if (!usage) {
+      return c.json({
+        success: true,
+        data: {
+          month,
+          evaluation_count: 0,
+          quota_limit: 20,
+          tier: 'free',
+          remaining: 20,
+          percentage: 0,
+          reset_date: `${month.split('-')[0]}-${(parseInt(month.split('-')[1]) % 12 + 1).toString().padStart(2, '0')}-01`
+        }
+      });
+    }
+
+    const remaining = Math.max(0, usage.quota_limit - usage.evaluation_count);
+    const percentage = Math.round((usage.evaluation_count / usage.quota_limit) * 100);
+
+    // Calculate reset date (1st of next month)
+    const [year, monthNum] = month.split('-').map(Number);
+    const nextMonth = monthNum === 12 ? 1 : monthNum + 1;
+    const nextYear = monthNum === 12 ? year + 1 : year;
+    const resetDate = `${nextYear}-${nextMonth.toString().padStart(2, '0')}-01`;
+
+    return c.json({
+      success: true,
+      data: {
+        month,
+        evaluation_count: usage.evaluation_count,
+        quota_limit: usage.quota_limit,
+        tier: usage.tier,
+        remaining,
+        percentage,
+        reset_date: resetDate
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching AI usage:', error);
+    return c.json({
+      success: false,
+      error: 'InternalError',
+      message: 'Failed to fetch AI usage'
     }, 500);
   }
 });

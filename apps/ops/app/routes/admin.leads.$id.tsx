@@ -7,6 +7,8 @@ import { getSiteId } from '~/lib/site.server';
 import { requireAuth } from '~/lib/auth.server';
 import { canDelete } from '~/lib/permissions';
 import { StageWorkflow, RENTAL_APPLICATION_STAGES } from '~/components/StageWorkflow';
+import { AiEvaluationPane } from '~/components/ai/AiEvaluationPane';
+import { useState } from 'react';
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
   if (!data) return [{ title: 'Application Not Found' }];
@@ -37,7 +39,18 @@ export async function loader({ params, request, context }: LoaderFunctionArgs) {
 
   const history = await fetchLeadHistoryFromWorker(workerEnv, siteId, lead.id);
   const files = await fetchLeadFilesFromWorker(workerEnv, siteId, lead.id);
-  return json({ lead, property, history, files });
+
+  // Fetch AI evaluation if exists
+  let aiEvaluation = null;
+  try {
+    const { fetchAIEvaluationFromWorker } = await import('~/lib/worker-client');
+    aiEvaluation = await fetchAIEvaluationFromWorker(workerEnv, siteId, lead.id);
+  } catch (error) {
+    // AI evaluation not found or error - that's okay
+    console.log('No AI evaluation found for lead:', lead.id);
+  }
+
+  return json({ lead, property, history, files, aiEvaluation });
 }
 
 export async function action({ params, request, context }: ActionFunctionArgs) {
@@ -104,11 +117,12 @@ export async function action({ params, request, context }: ActionFunctionArgs) {
 }
 
 export default function LeadDetail() {
-  const { lead, property, history, files } = useLoaderData<typeof loader>();
+  const { lead, property, history, files, aiEvaluation } = useLoaderData<typeof loader>();
   const adminData = useRouteLoaderData<typeof import('./admin').loader>('routes/admin');
   const user = adminData?.user || null;
   const submit = useSubmit();
   const userCanDelete = canDelete(user);
+  const [isAiPaneOpen, setIsAiPaneOpen] = useState(false);
 
   const handleStageChange = (newStage: string) => {
     const formData = new FormData();
@@ -139,22 +153,30 @@ export default function LeadDetail() {
             Application ID: {lead.id}
           </p>
         </div>
-        {userCanDelete ? (
+        <div className="flex space-x-3">
           <button
-            onClick={handleArchive}
-            className="px-4 py-2 text-sm font-medium text-red-700 bg-red-50 border border-red-300 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-500"
+            onClick={() => setIsAiPaneOpen(true)}
+            className="px-4 py-2 text-sm font-medium text-indigo-700 bg-indigo-50 border border-indigo-300 rounded-lg hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
-            Archive Application
+            AI Evaluation
           </button>
-        ) : (
-          <button
-            disabled
-            className="px-4 py-2 text-sm font-medium text-gray-400 bg-gray-100 border border-gray-300 rounded-lg cursor-not-allowed"
-            title="Admin permission required"
-          >
-            Archive Application
-          </button>
-        )}
+          {userCanDelete ? (
+            <button
+              onClick={handleArchive}
+              className="px-4 py-2 text-sm font-medium text-red-700 bg-red-50 border border-red-300 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-500"
+            >
+              Archive Application
+            </button>
+          ) : (
+            <button
+              disabled
+              className="px-4 py-2 text-sm font-medium text-gray-400 bg-gray-100 border border-gray-300 rounded-lg cursor-not-allowed"
+              title="Admin permission required"
+            >
+              Archive Application
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Stage Workflow */}
@@ -433,6 +455,16 @@ export default function LeadDetail() {
           </div>
         )}
       </div>
+
+      {/* AI Evaluation Pane */}
+      <AiEvaluationPane
+        open={isAiPaneOpen}
+        onClose={() => setIsAiPaneOpen(false)}
+        leadId={lead.id}
+        leadName={`${lead.firstName} ${lead.lastName}`}
+        currentEvaluation={aiEvaluation?.data}
+        isSuperAdmin={user?.role === 'super_admin'}
+      />
     </div>
   );
 }

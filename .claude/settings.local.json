@@ -15,7 +15,9 @@
       "Bash(npm run build:*)",
       "Bash(npm run typecheck:*)",
       "Bash(git -C /Users/yangjeep/ws/yangjeep/leaselab2 log --oneline -10)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(wc:*)",
+      "Bash(tree:*)"
     ],
     "deny": [],
     "ask": []
