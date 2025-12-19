@@ -1,5 +1,28 @@
 import { useState, useEffect } from 'react';
 import { useFetcher } from '@remix-run/react';
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  Textarea,
+} from '@leaselab/ui-components';
 
 interface AiEvaluationPaneProps {
   open: boolean;
@@ -101,65 +124,33 @@ export function AiEvaluationPane({
               </h2>
               <p className="text-sm text-gray-500 mt-1">{leadName}</p>
             </div>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded-lg p-1"
-              aria-label="Close panel"
-            >
+            <Button onClick={onClose} variant="ghost" size="icon" aria-label="Close panel" className="text-gray-500 hover:text-gray-700">
               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
-            </button>
+            </Button>
           </div>
         </div>
 
-        {/* Tab Navigation */}
-        <div className="border-b border-gray-200 px-6">
-          <nav className="-mb-px flex space-x-8" aria-label="Tabs">
-            <button
-              onClick={() => setActiveTab('evaluation')}
-              className={`${
-                activeTab === 'evaluation'
-                  ? 'border-indigo-500 text-indigo-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
-            >
-              Evaluation
-            </button>
-            <button
-              onClick={() => setActiveTab('quota')}
-              className={`${
-                activeTab === 'quota'
-                  ? 'border-indigo-500 text-indigo-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
-            >
-              Quota
-            </button>
-            <button
-              onClick={() => setActiveTab('settings')}
-              className={`${
-                activeTab === 'settings'
-                  ? 'border-indigo-500 text-indigo-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
-            >
-              Settings
-            </button>
-          </nav>
-        </div>
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as TabType)} className="flex h-full flex-col">
+          <div className="border-b border-gray-200 px-6">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="evaluation">Evaluation</TabsTrigger>
+              <TabsTrigger value="quota">Quota</TabsTrigger>
+              <TabsTrigger value="settings">Settings</TabsTrigger>
+            </TabsList>
+          </div>
 
-        {/* Content */}
-        <div className="px-6 py-6 space-y-6">
-          {activeTab === 'evaluation' && (
-            <div className="space-y-6">
+          {/* Content */}
+          <div className="flex-1 space-y-6 overflow-y-auto px-6 py-6">
+            <TabsContent value="evaluation" className="space-y-6">
           {/* Action Row */}
           {status !== 'duplicate' && (
             <div className="space-y-2">
-              <button
+              <Button
                 onClick={() => handleRunEvaluation(false)}
                 disabled={isLoading || status === 'queued'}
-                className="w-full px-4 py-3 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+                className="w-full"
               >
                 {isLoading && (
                   <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -168,23 +159,22 @@ export function AiEvaluationPane({
                   </svg>
                 )}
                 <span>{status === 'queued' ? 'Evaluation Queued...' : 'Run AI Evaluation'}</span>
-              </button>
+              </Button>
 
               {isSuperAdmin && status === 'completed' && (
-                <button
-                  onClick={() => setShowForceModal(true)}
-                  className="w-full px-4 py-2 text-sm font-medium text-indigo-700 bg-indigo-50 border border-indigo-300 rounded-lg hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                >
+                <Button type="button" variant="secondary" className="w-full" onClick={() => setShowForceModal(true)}>
                   Force Re-Evaluation
-                </button>
+                </Button>
               )}
             </div>
           )}
 
           {/* Status Timeline */}
-          <div className="bg-gray-50 rounded-lg p-4" role="status" aria-live="polite">
-            <h3 className="text-sm font-medium text-gray-900 mb-3">Status</h3>
-            <div className="space-y-3">
+          <Card role="status" aria-live="polite">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium">Status</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
               {status === 'not_evaluated' && (
                 <div className="flex items-start space-x-3">
                   <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
@@ -244,12 +234,9 @@ export function AiEvaluationPane({
                     <p className="text-sm font-medium text-gray-900">Documents Unchanged</p>
                     <p className="text-sm text-gray-500">{jobData?.message}</p>
                     {isSuperAdmin ? (
-                      <button
-                        onClick={() => setShowForceModal(true)}
-                        className="mt-2 text-sm font-medium text-indigo-600 hover:text-indigo-700"
-                      >
+                      <Button variant="link" className="px-0" onClick={() => setShowForceModal(true)}>
                         Force Re-Evaluation →
-                      </button>
+                      </Button>
                     ) : (
                       <p className="text-xs text-gray-400 mt-2">Contact a super admin to force re-evaluation</p>
                     )}
@@ -289,13 +276,17 @@ export function AiEvaluationPane({
                   </div>
                 </div>
               )}
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
           {/* Evaluation Result */}
           {status === 'completed' && currentEvaluation && (
-            <div className="bg-white border border-gray-200 rounded-lg p-6">
-              <h3 className="text-sm font-medium text-gray-900 mb-4">Evaluation Result</h3>
+            <Card>
+              <CardHeader className="pb-4">
+                <CardTitle className="text-sm font-medium text-foreground">Evaluation Result</CardTitle>
+                <CardDescription>Overview of the latest AI score.</CardDescription>
+              </CardHeader>
+              <CardContent>
 
               {/* Score Gauge */}
               <div className="flex items-center justify-center mb-6">
@@ -336,17 +327,18 @@ export function AiEvaluationPane({
 
               {/* Label */}
               <div className="flex items-center justify-center mb-4">
-                <span
-                  className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold ${
+                <Badge
+                  variant={
                     currentEvaluation.label === 'A'
-                      ? 'bg-green-100 text-green-800'
+                      ? 'success'
                       : currentEvaluation.label === 'B'
-                      ? 'bg-blue-100 text-blue-800'
-                      : 'bg-yellow-100 text-yellow-800'
-                  }`}
+                      ? 'info'
+                      : 'warning'
+                  }
+                  className="px-4 py-2 text-sm font-semibold"
                 >
                   Grade {currentEvaluation.label}
-                </span>
+                </Badge>
               </div>
 
               {/* Summary */}
@@ -358,12 +350,9 @@ export function AiEvaluationPane({
                   <p className="text-sm font-medium text-gray-900 mb-2">Risk Flags:</p>
                   <div className="flex flex-wrap gap-2">
                     {currentEvaluation.riskFlags.map((flag: string, idx: number) => (
-                      <span
-                        key={idx}
-                        className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-yellow-100 text-yellow-800"
-                      >
+                      <Badge key={idx} variant="warning">
                         {flag.replace(/_/g, ' ')}
-                      </span>
+                      </Badge>
                     ))}
                   </div>
                 </div>
@@ -375,26 +364,25 @@ export function AiEvaluationPane({
                   <p className="text-sm font-medium text-red-900 mb-2">⚠️ Fraud Signals:</p>
                   <div className="flex flex-wrap gap-2">
                     {currentEvaluation.fraudSignals.map((signal: string, idx: number) => (
-                      <span
-                        key={idx}
-                        className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-red-100 text-red-800"
-                      >
+                      <Badge key={idx} variant="destructive">
                         {signal.replace(/_/g, ' ')}
-                      </span>
+                      </Badge>
                     ))}
                   </div>
                 </div>
               )}
-            </div>
+              </CardContent>
+            </Card>
           )}
-          </div>
-          )}
+            </TabsContent>
 
-          {/* Quota Tab */}
-          {activeTab === 'quota' && (
-            <div className="space-y-6">
-              <div className="bg-white border border-gray-200 rounded-lg p-6">
-                <h3 className="text-sm font-medium text-gray-900 mb-4">Monthly Usage</h3>
+            <TabsContent value="quota" className="space-y-6">
+              <Card>
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-sm font-medium text-foreground">Monthly Usage</CardTitle>
+                  <CardDescription>Track how many evaluations are available this month.</CardDescription>
+                </CardHeader>
+                <CardContent>
 
                 {usageFetcher.state === 'loading' && (
                   <div className="flex items-center justify-center py-8">
@@ -493,97 +481,97 @@ export function AiEvaluationPane({
                     )}
 
                     {/* Refresh Button */}
-                    <button
+                    <Button
+                      type="button"
+                      variant="secondary"
                       onClick={() => usageFetcher.load('/api/ai-usage')}
                       disabled={usageFetcher.state === 'loading'}
-                      className="w-full px-4 py-2 text-sm font-medium text-indigo-700 bg-indigo-50 border border-indigo-300 rounded-lg hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+                      className="w-full"
                     >
                       {usageFetcher.state === 'loading' ? 'Refreshing...' : 'Refresh Usage'}
-                    </button>
+                    </Button>
                   </>
                 )}
 
                 {usageFetcher.data?.success === false && (
                   <div className="text-center py-8">
                     <p className="text-sm text-red-600 mb-4">{usageFetcher.data.message || 'Failed to load usage data'}</p>
-                    <button
-                      onClick={() => usageFetcher.load('/api/ai-usage')}
-                      className="px-4 py-2 text-sm font-medium text-indigo-700 bg-indigo-50 border border-indigo-300 rounded-lg hover:bg-indigo-100"
-                    >
+                    <Button type="button" variant="outline" onClick={() => usageFetcher.load('/api/ai-usage')}>
                       Retry
-                    </button>
+                    </Button>
                   </div>
                 )}
-              </div>
-            </div>
-          )}
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-          {/* Settings Tab */}
-          {activeTab === 'settings' && (
-            <div className="space-y-6">
-              <div className="bg-white border border-gray-200 rounded-lg p-6">
-                <h3 className="text-sm font-medium text-gray-900 mb-4">AI Settings</h3>
-                <p className="text-sm text-gray-500 mb-4">
-                  Settings and configuration options will be available here in a future update.
-                </p>
-                <div className="space-y-4">
+            <TabsContent value="settings" className="space-y-6">
+              <Card>
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-sm font-medium text-foreground">AI Settings</CardTitle>
+                  <CardDescription>Settings and configuration options will be available here in a future update.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-gray-700">AI Evaluations Enabled</p>
                       <p className="text-xs text-gray-500">Allow AI evaluations for this site</p>
                     </div>
-                    <div className="text-sm text-gray-400">Coming soon</div>
+                    <Badge variant="outline">Coming soon</Badge>
                   </div>
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-gray-700">Auto-run on Documents</p>
                       <p className="text-xs text-gray-500">Automatically evaluate when documents are uploaded</p>
                     </div>
-                    <div className="text-sm text-gray-400">Coming soon</div>
+                    <Badge variant="outline">Coming soon</Badge>
                   </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </div>
+        </Tabs>
       </div>
 
-      {/* Force Re-Eval Modal */}
-      {showForceModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-60 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg max-w-md w-full p-6 shadow-xl">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Force Re-Evaluation</h3>
-            <p className="text-sm text-gray-600 mb-4">
-              This will create a new evaluation even if documents haven't changed. Please provide a reason:
-            </p>
-            <textarea
-              value={forceReason}
-              onChange={(e) => setForceReason(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
-              rows={3}
-              placeholder="e.g., Testing AI model update, Manual review required..."
-            />
-            <div className="mt-4 flex space-x-3">
-              <button
-                onClick={() => handleRunEvaluation(true)}
-                disabled={!forceReason.trim()}
-                className="flex-1 px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-300 disabled:cursor-not-allowed"
-              >
-                Force Re-Eval
-              </button>
-              <button
-                onClick={() => {
-                  setShowForceModal(false);
-                  setForceReason('');
-                }}
-                className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Dialog
+        open={showForceModal}
+        onOpenChange={(open) => {
+          if (!open) {
+            setShowForceModal(false);
+            setForceReason('');
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Force Re-Evaluation</DialogTitle>
+            <DialogDescription>
+              This will create a new evaluation even if documents have not changed. Provide a reason for auditing purposes.
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            value={forceReason}
+            onChange={(e) => setForceReason(e.target.value)}
+            rows={3}
+            placeholder="e.g., Testing AI model update, Manual review required..."
+          />
+          <DialogFooter className="gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setShowForceModal(false);
+                setForceReason('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button type="button" onClick={() => handleRunEvaluation(true)} disabled={!forceReason.trim()}>
+              Force Re-Eval
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

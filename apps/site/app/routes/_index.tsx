@@ -2,6 +2,7 @@ import type { LoaderFunctionArgs, MetaFunction } from "@remix-run/cloudflare";
 import { json } from "@remix-run/cloudflare";
 import { useLoaderData, useSearchParams, Link } from "@remix-run/react";
 import { useState } from "react";
+import { Button, Card, CardContent, buttonVariants, cn } from "@leaselab/ui-components";
 import PropertyMap from "~/components/PropertyMap";
 import { fetchProperties, fetchSiteConfig } from "~/lib/api-client";
 import { applyFilters, sortByStatus } from "~/lib/filters";
@@ -98,20 +99,17 @@ export default function Index() {
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold">Browse Listings</h2>
-              <button
-                className="rounded-md border border-white/20 px-3 py-2 text-sm hover:border-white/40"
-                onClick={() => setShowMap((v) => !v)}
-                aria-pressed={showMap}
-              >
+              <Button variant="outline" onClick={() => setShowMap((v) => !v)} aria-pressed={showMap}>
                 {showMap ? "Hide Map" : "Show Map"}
-              </button>
+              </Button>
             </div>
             {/* Filters take full width */}
             <Filters allListings={allListings} />
           </div>
 
           {listings.length === 0 ? (
-            <div className="card p-8 text-center">
+            <Card>
+              <CardContent className="p-8 text-center">
               <div className="max-w-md mx-auto space-y-4">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -131,11 +129,18 @@ export default function Index() {
                 <p className="opacity-70">
                   Try adjusting your search criteria to see more properties.
                 </p>
-                <Link to="/" className="inline-flex items-center gap-2 btn mt-4">
+                <Link
+                  to="/"
+                  className={cn(
+                    buttonVariants({ variant: "secondary" }),
+                    "inline-flex items-center justify-center gap-2 mt-4"
+                  )}
+                >
                   Reset All Filters
                 </Link>
               </div>
-            </div>
+              </CardContent>
+            </Card>
           ) : (
             <div className="space-y-6">
               {showMap && (

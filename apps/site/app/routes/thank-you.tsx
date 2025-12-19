@@ -1,5 +1,6 @@
 import type { MetaFunction } from "@remix-run/cloudflare";
 import { Link } from "@remix-run/react";
+import { Card, CardContent, buttonVariants, cn } from "@leaselab/ui-components";
 
 export const meta: MetaFunction = () => {
   return [
@@ -12,7 +13,8 @@ export default function ThankYou() {
   return (
     <div className="container py-8">
       <div className="max-w-2xl mx-auto">
-        <div className="card p-8 text-center space-y-6">
+        <Card>
+          <CardContent className="p-8 text-center space-y-6">
           <div className="w-16 h-16 mx-auto rounded-full bg-green-500/20 flex items-center justify-center">
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -38,10 +40,11 @@ export default function ThankYou() {
             You should receive a confirmation email shortly. If you don't see it,
             please check your spam folder.
           </p>
-          <Link to="/" className="btn inline-block">
+          <Link to="/" className={cn(buttonVariants(), "inline-flex w-full justify-center sm:w-auto")}>
             Return to Listings
           </Link>
-        </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

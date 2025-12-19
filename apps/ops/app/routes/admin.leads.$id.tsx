@@ -9,6 +9,7 @@ import { canDelete } from '~/lib/permissions';
 import { StageWorkflow, RENTAL_APPLICATION_STAGES } from '~/components/StageWorkflow';
 import { AiEvaluationPane } from '~/components/ai/AiEvaluationPane';
 import { useState } from 'react';
+import { Button, Label, Textarea } from '@leaselab/ui-components';
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
   if (!data) return [{ title: 'Application Not Found' }];
@@ -297,11 +298,15 @@ export default function LeadDetail() {
               // allow progressive enhancement
             }}>
               <input type="hidden" name="_action" value="updateNotes" />
-              <div>
-                <label htmlFor="landlordNote" className="text-sm font-medium text-gray-700">Landlord Note</label>
-                <textarea id="landlordNote" name="landlordNote" rows={4} className="input w-full mt-1" defaultValue={lead.landlordNote || ''} />
+              <div className="space-y-2">
+                <Label htmlFor="landlordNote" className="text-sm font-medium text-gray-700">
+                  Landlord Note
+                </Label>
+                <Textarea id="landlordNote" name="landlordNote" rows={4} defaultValue={lead.landlordNote || ''} />
               </div>
-              <button type="submit" className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700">Save Notes</button>
+              <Button type="submit" className="w-full sm:w-auto">
+                Save Notes
+              </Button>
             </form>
           </div>
           <div>

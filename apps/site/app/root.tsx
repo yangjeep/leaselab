@@ -12,6 +12,7 @@ import type { LinksFunction, MetaFunction, LoaderFunctionArgs } from "@remix-run
 import { json } from "@remix-run/cloudflare";
 import { fetchThemeConfig, type ThemeConfig } from "~/lib/api-client";
 import { themePresets } from "@leaselab/ui-components/themes";
+import { buttonVariants, cn } from "@leaselab/ui-components";
 
 import "./tailwind.css";
 
@@ -114,7 +115,7 @@ export function ErrorBoundary() {
       <div className="text-center space-y-4">
         <h1 className="text-6xl font-bold text-muted-foreground">{errorStatus}</h1>
         <p className="text-lg text-muted-foreground">{errorMessage}</p>
-        <a href="/" className="inline-flex btn">
+        <a href="/" className={cn(buttonVariants(), "inline-flex")}>
           Go Home
         </a>
       </div>
