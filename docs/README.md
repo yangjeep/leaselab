@@ -45,6 +45,7 @@ feature-name/
 | Feature | Status | Summary | Details |
 |---------|--------|---------|---------|
 | **[AI Tenant Intelligence](./features/202512-ai-tenant-intelligence/)** | 🚧 In Progress | Automated tenant screening with AI | [README.md](./features/202512-ai-tenant-intelligence/README.md) |
+| **[Application Progress Workflow](./features/202512-application-progress-workflow/)** | 🚧 In Progress | Stage-gated property-centric screening flow | [00-SUMMARY.md](./features/202512-application-progress-workflow/00-SUMMARY.md) |
 | **[File Storage & Upload](./features/202511-file-storage/)** | ✅ Implemented | R2-based file management | [00-SUMMARY.md](./features/202511-file-storage/00-SUMMARY.md) |
 | **[Property Management](./features/202511-property-management/)** | ✅ Implemented | Property & unit data model | [00-SUMMARY.md](./features/202511-property-management/00-SUMMARY.md) |
 | **[Auth & Sessions](./features/202511-auth-session/)** | ✅ Implemented | Signed cookie authentication | [00-SUMMARY.md](./features/202511-auth-session/00-SUMMARY.md) |

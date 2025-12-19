@@ -1,9 +1,10 @@
 # Property-Centric Application Workflow
 
-**Status**: Future Enhancement
-**Priority**: Medium
+**Status**: In Progress
+**Priority**: High
+**Last Updated**: 2025-12-17
 **Estimated Effort**: 4-5 hours
-**Dependencies**: AI Tenant Intelligence MVP (completed)
+**Dependencies**: AI Tenant Intelligence MVP (completed), [Application Progress Workflow](./00-SUMMARY.md)
 
 ---
 
@@ -69,6 +70,7 @@ Comprehensive application view with property context.
 - Reuses existing AI Evaluation pane
 - Inline file viewer with R2 docs
 - Sticky action bar: Approve, Reject, Request Docs, Send Email
+- StageWorkflow guardrails: Step-specific checker lists, confirmation dialogs, and actions defined in [Application Progress Workflow](./00-SUMMARY.md)
 
 ## Navigation Flow
 
@@ -122,6 +124,14 @@ apps/ops/app/components/applications/AiScoreBadge.tsx
 - Reduced time to review applications per property
 - Increased usage of AI evaluation feature
 - Faster decision-making on high-volume properties
+
+## Relationship to Application Progress Workflow
+
+This document covers the navigation and UI scaffolding for a property-first experience. To keep the flow compliant and audit-friendly:
+
+1. Every stage transition in this UI defers to the guardrails defined in [Application Progress Workflow](./00-SUMMARY.md).
+2. Property-level shortlists are surfaced automatically when the Decision stage is active.
+3. Lease Preparation launches as a separate workflow once an applicant is approved, maintaining a clean split between screening and lease execution.
 
 ## Related Features
 

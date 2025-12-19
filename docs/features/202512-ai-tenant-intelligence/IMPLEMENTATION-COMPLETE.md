@@ -384,7 +384,7 @@ Track these KPIs post-deployment:
 
 ### Future Enhancements
 
-- [Property-Centric Application Workflow](../future-enhancements/property-centric-application-workflow.md)
+- [Property-Centric Application Workflow](../202512-application-progress-workflow/property-centric-application-workflow.md)
 - Settings page with quota upgrades (Stripe integration)
 - Email notifications on evaluation completion
 - Webhook support for external integrations
