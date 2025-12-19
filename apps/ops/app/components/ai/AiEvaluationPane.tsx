@@ -85,13 +85,6 @@ export function AiEvaluationPane({
 
   return (
     <>
-      {/* Overlay */}
-      <div
-        className="fixed inset-0 bg-black bg-opacity-50 z-40"
-        onClick={onClose}
-        aria-hidden="true"
-      />
-
       {/* Slide-over panel */}
       <div
         className="fixed right-0 top-0 bottom-0 w-full max-w-md bg-white shadow-xl z-50 overflow-y-auto"
