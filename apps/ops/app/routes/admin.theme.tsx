@@ -81,7 +81,11 @@ export default function ThemeStudio() {
             <CardDescription>Start with a curated palette, then fine-tune colors if needed.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-3">
-            {Object.entries(themePresets).map(([presetKey, presetValue]) => {
+            {(
+              Object.entries(themePresets) as Array<
+                [keyof typeof themePresets, (typeof themePresets)[keyof typeof themePresets]]
+              >
+            ).map(([presetKey, presetValue]) => {
               const isActive = presetKey === selectedPreset;
               return (
                 <button

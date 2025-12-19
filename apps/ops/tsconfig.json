@@ -15,7 +15,9 @@
       "~/shared/storage-core": ["../../shared/storage-core"],
       "~/shared/storage-cloudflare": ["../../shared/storage-cloudflare"],
       "@leaselab/ui-components": ["../../shared/ui-components/src"],
-      "@leaselab/ui-components/*": ["../../shared/ui-components/src/*"]
+      "@leaselab/ui-components/*": ["../../shared/ui-components/src/*"],
+      "@remix-run/cloudflare": ["../../node_modules/@remix-run/cloudflare/dist/index"],
+      "@remix-run/cloudflare/*": ["../../node_modules/@remix-run/cloudflare/dist/*"]
     }
   },
   "include": [

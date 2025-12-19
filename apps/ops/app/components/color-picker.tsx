@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ChangeEvent } from "react";
 import { Input, Label, Button } from "@leaselab/ui-components";
 
 interface ColorPickerProps {
@@ -36,7 +36,7 @@ export function ColorPicker({ label, name, defaultValue, helperText }: ColorPick
           id={name}
           name={name}
           value={value}
-          onChange={(event) => setValue(event.target.value)}
+          onChange={(event: ChangeEvent<HTMLInputElement>) => setValue(event.target.value)}
           placeholder="210 40% 56%"
         />
       </div>
