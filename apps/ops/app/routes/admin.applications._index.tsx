@@ -5,7 +5,8 @@
 
 import type { LoaderFunctionArgs } from '@remix-run/cloudflare';
 import { json } from '@remix-run/cloudflare';
-import { useLoaderData, Link } from '@remix-run/react';
+import { useLoaderData, Link, useSearchParams } from '@remix-run/react';
+import { useState, useMemo } from 'react';
 import { getSiteId } from '~/lib/site.server';
 import { fetchPropertiesWithApplicationCountsFromWorker } from '~/lib/worker-client';
 
@@ -26,6 +27,58 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
 
 export default function ApplicationBoard() {
   const { properties } = useLoaderData<typeof loader>();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '');
+
+  const filterType = searchParams.get('filter') || 'all';
+
+  const setFilter = (filter: string) => {
+    const params = new URLSearchParams(searchParams);
+    if (filter === 'all') {
+      params.delete('filter');
+    } else {
+      params.set('filter', filter);
+    }
+    setSearchParams(params);
+  };
+
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+    const params = new URLSearchParams(searchParams);
+    if (query) {
+      params.set('search', query);
+    } else {
+      params.delete('search');
+    }
+    setSearchParams(params);
+  };
+
+  // Filter properties based on search and filter type
+  const filteredProperties = useMemo(() => {
+    return properties.filter((property: any) => {
+      // Search filter
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        const matchesName = property.name.toLowerCase().includes(query);
+        const matchesCity = property.city.toLowerCase().includes(query);
+        if (!matchesName && !matchesCity) {
+          return false;
+        }
+      }
+
+      // Type filter
+      if (filterType === 'high_volume') {
+        return property.pendingCount >= 10;
+      } else if (filterType === 'needs_review') {
+        // Properties with applications that don't have AI scores
+        // For now, we'll show properties with any pending applications
+        // TODO: Add AI score tracking to determine which need review
+        return property.pendingCount > 0;
+      }
+
+      return true;
+    });
+  }, [properties, searchQuery, filterType]);
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -45,8 +98,72 @@ export default function ApplicationBoard() {
         </Link>
       </div>
 
+      {/* Search and Filters */}
+      <div className="mb-6 space-y-4">
+        {/* Search Bar */}
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <svg
+              className="h-5 w-5 text-gray-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
+            </svg>
+          </div>
+          <input
+            type="text"
+            placeholder="Search by property name or city..."
+            value={searchQuery}
+            onChange={(e) => handleSearch(e.target.value)}
+            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
+        </div>
+
+        {/* Filter Buttons */}
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-gray-700">Filter:</span>
+          <button
+            onClick={() => setFilter('all')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              filterType === 'all'
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            All ({properties.length})
+          </button>
+          <button
+            onClick={() => setFilter('high_volume')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              filterType === 'high_volume'
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            High Volume (10+ apps)
+          </button>
+          <button
+            onClick={() => setFilter('needs_review')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              filterType === 'needs_review'
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            Needs Review
+          </button>
+        </div>
+      </div>
+
       {/* Property Grid */}
-      {properties.length === 0 ? (
+      {filteredProperties.length === 0 ? (
         <div className="text-center py-12">
           <div className="text-gray-400 mb-4">
             <svg
@@ -63,18 +180,26 @@ export default function ApplicationBoard() {
               />
             </svg>
           </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-1">No properties yet</h3>
-          <p className="text-gray-500 mb-4">Get started by adding your first property</p>
-          <Link
-            to="/admin/properties/new"
-            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Add Property
-          </Link>
+          <h3 className="text-lg font-medium text-gray-900 mb-1">
+            {properties.length === 0 ? 'No properties yet' : 'No properties match your filters'}
+          </h3>
+          <p className="text-gray-500 mb-4">
+            {properties.length === 0
+              ? 'Get started by adding your first property'
+              : 'Try adjusting your search or filter criteria'}
+          </p>
+          {properties.length === 0 && (
+            <Link
+              to="/admin/properties/new"
+              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Add Property
+            </Link>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {properties.map((property: any) => (
+          {filteredProperties.map((property: any) => (
             <PropertyCard key={property.id} property={property} />
           ))}
         </div>
