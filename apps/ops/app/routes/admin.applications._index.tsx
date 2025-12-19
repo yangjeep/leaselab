@@ -11,9 +11,10 @@ import { fetchPropertiesFromWorker } from '~/lib/worker-client';
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
   const user = await requireUser(request, context);
+  const env = context.cloudflare.env;
 
   // Fetch all properties
-  const properties = await fetchPropertiesFromWorker(context.env, user.siteId);
+  const properties = await fetchPropertiesFromWorker(env, user.siteId);
 
   // TODO: Fetch application counts per property
   // For now, we'll use placeholder data until we add aggregation queries
