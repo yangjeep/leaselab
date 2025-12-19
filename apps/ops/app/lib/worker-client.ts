@@ -69,6 +69,26 @@ export async function fetchPropertiesFromWorker(
   return parseResponse(response);
 }
 
+export async function fetchPropertiesWithApplicationCountsFromWorker(
+  env: WorkerEnv,
+  siteId: string,
+  options?: {
+    onlyAvailable?: boolean;
+  }
+): Promise<any[]> {
+  const params = new URLSearchParams({
+    withApplicationCounts: 'true',
+  });
+
+  if (options?.onlyAvailable) {
+    params.set('onlyAvailable', 'true');
+  }
+
+  const url = `${env.WORKER_URL}/api/ops/properties?${params.toString()}`;
+  const response = await workerFetch(url, env, {}, siteId);
+  return parseResponse(response);
+}
+
 export async function fetchPropertyFromWorker(
   env: WorkerEnv,
   siteId: string,

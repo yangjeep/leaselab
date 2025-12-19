@@ -7,17 +7,17 @@ import type { LoaderFunctionArgs } from '@remix-run/cloudflare';
 import { json } from '@remix-run/cloudflare';
 import { useLoaderData, Link } from '@remix-run/react';
 import { getSiteId } from '~/lib/site.server';
-import { fetchPropertiesFromWorker } from '~/lib/worker-client';
+import { fetchPropertiesWithApplicationCountsFromWorker } from '~/lib/worker-client';
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
   const env = context.cloudflare.env;
   const siteId = getSiteId(request);
 
-  // Fetch all properties
-  const properties = await fetchPropertiesFromWorker(env, siteId);
-
-  // TODO: Fetch application counts per property
-  // For now, we'll use placeholder data until we add aggregation queries
+  // Fetch properties with application counts
+  // Only show properties with available units
+  const properties = await fetchPropertiesWithApplicationCountsFromWorker(env, siteId, {
+    onlyAvailable: true,
+  });
 
   return json({
     properties,
@@ -84,9 +84,9 @@ export default function ApplicationBoard() {
 }
 
 function PropertyCard({ property }: { property: any }) {
-  // TODO: Get actual counts from API
-  const pendingCount = 0;
-  const shortlistedCount = 0;
+  // Get counts from API data
+  const pendingCount = property.pendingCount || 0;
+  const shortlistedCount = property.shortlistedCount || 0;
 
   return (
     <Link

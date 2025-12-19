@@ -17,6 +17,7 @@ import {
   updateProperty,
   deleteProperty,
   getPublicListings,
+  getPropertiesWithApplicationCounts,
   getUnits,
   getUnitsByPropertyId,
   getUnitById,
@@ -110,6 +111,9 @@ opsRoutes.route('/', opsApplicationsRoutes);
 /**
  * GET /api/ops/properties
  * List all properties for a site
+ * Query params:
+ * - withApplicationCounts: Include application counts
+ * - onlyAvailable: Only properties with available units
  */
 opsRoutes.get('/properties', async (c: Context) => {
   try {
@@ -117,7 +121,19 @@ opsRoutes.get('/properties', async (c: Context) => {
     if (!siteId) {
       return c.json({ error: 'Missing X-Site-Id header' }, 400);
     }
-    const properties = await getProperties(c.env.DB, siteId);
+
+    const withCounts = c.req.query('withApplicationCounts') === 'true';
+    const onlyAvailable = c.req.query('onlyAvailable') === 'true';
+
+    let properties;
+    if (withCounts) {
+      properties = await getPropertiesWithApplicationCounts(c.env.DB, siteId, {
+        isActive: true,
+        onlyAvailable,
+      });
+    } else {
+      properties = await getProperties(c.env.DB, siteId);
+    }
 
     return c.json({
       success: true,

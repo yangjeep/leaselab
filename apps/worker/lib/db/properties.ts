@@ -284,3 +284,58 @@ export async function getPublicListings(dbInput: DatabaseInput, siteId: string, 
 
     return listings;
 }
+
+/**
+ * Get properties with application counts for the application board
+ * Returns properties with counts of pending/active applications
+ */
+export async function getPropertiesWithApplicationCounts(
+    dbInput: DatabaseInput,
+    siteId: string,
+    options?: {
+        isActive?: boolean;
+        onlyAvailable?: boolean; // Only properties with available units
+    }
+): Promise<Array<Property & { applicationCount: number; pendingCount: number; shortlistedCount: number }>> {
+    const db = normalizeDb(dbInput);
+
+    let query = `
+        SELECT
+            p.*,
+            COUNT(DISTINCT l.id) as application_count,
+            COUNT(DISTINCT CASE WHEN l.status IN ('new', 'documents_pending', 'documents_received', 'ai_evaluated', 'screening') THEN l.id END) as pending_count,
+            COUNT(DISTINCT CASE WHEN l.shortlisted_at IS NOT NULL THEN l.id END) as shortlisted_count
+        FROM properties p
+        LEFT JOIN leads l ON l.property_id = p.id AND l.site_id = p.site_id
+        WHERE p.site_id = ?
+    `;
+
+    const params: (string | number)[] = [siteId];
+
+    if (options?.isActive !== undefined) {
+        query += ' AND p.is_active = ?';
+        params.push(options.isActive ? 1 : 0);
+    }
+
+    if (options?.onlyAvailable) {
+        // Only include properties that have at least one available unit
+        query += ` AND EXISTS (
+            SELECT 1 FROM units u
+            WHERE u.property_id = p.id
+            AND u.site_id = p.site_id
+            AND u.status = 'available'
+            AND u.is_active = 1
+        )`;
+    }
+
+    query += ' GROUP BY p.id ORDER BY pending_count DESC, p.created_at DESC';
+
+    const results = await db.query(query, params);
+
+    return results.map((row: any) => ({
+        ...mapPropertyFromDb(row),
+        applicationCount: Number(row.application_count) || 0,
+        pendingCount: Number(row.pending_count) || 0,
+        shortlistedCount: Number(row.shortlisted_count) || 0,
+    }));
+}

@@ -14,6 +14,7 @@ export {
     updateProperty,
     deleteProperty,
     getPublicListings,
+    getPropertiesWithApplicationCounts,
 } from './properties';
 
 // Re-export all unit operations
