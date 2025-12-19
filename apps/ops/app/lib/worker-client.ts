@@ -722,13 +722,17 @@ export async function uploadLeadFileToWorker(
 export async function runAIEvaluationToWorker(
   env: WorkerEnv,
   siteId: string,
+  userId: string,
   leadId: string,
   data: any
 ): Promise<any> {
-  const url = `${env.WORKER_URL}/api/ops/leads/${leadId}/ai-evaluate`;
+  const url = `${env.WORKER_URL}/api/ops/leads/${leadId}/ai-evaluation`;
   const response = await workerFetch(url, env, {
     method: 'POST',
     body: JSON.stringify(data),
+    headers: {
+      'X-User-Id': userId,
+    },
   }, siteId);
   return parseResponse(response);
 }
