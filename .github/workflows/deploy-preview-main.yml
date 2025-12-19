@@ -55,6 +55,33 @@ jobs:
           wranglerVersion: "4.51.0"
           packageManager: npm
 
+  deploy-ai-worker:
+    name: Deploy AI Worker Preview (Main)
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Deploy AI Worker Preview
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: apps/ai-cron
+          command: deploy --env preview
+          wranglerVersion: "4.51.0"
+          packageManager: npm
+
   deploy-ops:
     name: Deploy Ops Preview (Main)
     needs: deploy-worker
@@ -119,7 +146,7 @@ jobs:
 
   notify:
     name: Notify Preview Deployment
-    needs: [deploy-worker, deploy-ops, deploy-site]
+    needs: [deploy-worker, deploy-ai-worker, deploy-ops, deploy-site]
     runs-on: ubuntu-latest
     if: success()
     steps:
@@ -130,6 +157,7 @@ jobs:
           echo ""
           echo "Preview URLs (Main Branch):"
           echo "- Worker: https://leaselab-worker-preview.yangjeep.workers.dev"
+          echo "- AI Worker: https://leaselab-ai-cron-preview.yangjeep.workers.dev"
           echo "- Ops: https://preview-main.leaselab-ops.pages.dev"
           echo "- Site: https://preview-main.leaselab-site.pages.dev"
           echo ""
