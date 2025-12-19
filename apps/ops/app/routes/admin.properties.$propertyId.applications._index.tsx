@@ -6,15 +6,15 @@
 import type { LoaderFunctionArgs } from '@remix-run/cloudflare';
 import { json } from '@remix-run/cloudflare';
 import { useLoaderData, Link, useSearchParams, useNavigate } from '@remix-run/react';
-import { requireUser } from '~/lib/auth.server';
+import { getSiteId } from '~/lib/site.server';
 import {
   fetchPropertyFromWorker,
   fetchPropertyApplicationsFromWorker,
 } from '~/lib/worker-client';
 
 export async function loader({ request, params, context }: LoaderFunctionArgs) {
-  const user = await requireUser(request, context);
   const env = context.cloudflare.env;
+  const siteId = getSiteId(request);
   const { propertyId } = params;
 
   if (!propertyId) {
@@ -27,8 +27,8 @@ export async function loader({ request, params, context }: LoaderFunctionArgs) {
   const sortOrder = (url.searchParams.get('sortOrder') as 'asc' | 'desc') || 'desc';
 
   const [property, applications] = await Promise.all([
-    fetchPropertyFromWorker(env, user.siteId, propertyId),
-    fetchPropertyApplicationsFromWorker(env, user.siteId, propertyId, {
+    fetchPropertyFromWorker(env, siteId, propertyId),
+    fetchPropertyApplicationsFromWorker(env, siteId, propertyId, {
       status,
       sortBy,
       sortOrder,
@@ -36,7 +36,6 @@ export async function loader({ request, params, context }: LoaderFunctionArgs) {
   ]);
 
   return json({
-    user,
     property,
     applications,
     filters: { status, sortBy, sortOrder },

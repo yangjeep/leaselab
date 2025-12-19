@@ -6,21 +6,20 @@
 import type { LoaderFunctionArgs } from '@remix-run/cloudflare';
 import { json } from '@remix-run/cloudflare';
 import { useLoaderData, Link } from '@remix-run/react';
-import { requireUser } from '~/lib/auth.server';
+import { getSiteId } from '~/lib/site.server';
 import { fetchPropertiesFromWorker } from '~/lib/worker-client';
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
-  const user = await requireUser(request, context);
   const env = context.cloudflare.env;
+  const siteId = getSiteId(request);
 
   // Fetch all properties
-  const properties = await fetchPropertiesFromWorker(env, user.siteId);
+  const properties = await fetchPropertiesFromWorker(env, siteId);
 
   // TODO: Fetch application counts per property
   // For now, we'll use placeholder data until we add aggregation queries
 
   return json({
-    user,
     properties,
   });
 }
