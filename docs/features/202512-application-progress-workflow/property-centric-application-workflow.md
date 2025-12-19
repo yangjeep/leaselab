@@ -51,6 +51,7 @@ Dedicated view per property showing all applications ranked by AI score.
   - AI label (A/B/C) and score
   - Monthly income summary
   - Document completeness indicator
+  - Household badge (primary applicant + co-applicant count when present)
 - Filters:
   - Stage (New/Docs Received/AI Evaluated)
   - Minimum AI Score slider
@@ -71,6 +72,17 @@ Comprehensive application view with property context.
 - Inline file viewer with R2 docs
 - Sticky action bar: Approve, Reject, Request Docs, Send Email
 - StageWorkflow guardrails: Step-specific checker lists, confirmation dialogs, and actions defined in [Application Progress Workflow](./00-SUMMARY.md)
+- Household view: Primary applicant highlighted with expandable list of co-applicants (documents, AI scores, background status)
+
+### 4. Multi-Applicant Intake (Form-Level)
+
+Updates to the public-facing application form ensure households are captured in a single submission.
+
+**Features:**
+- Add “Add Co-Applicant/Roommate” modules so primary applicant can enter up to N applicants inline.
+- Optional “Send Invite” flow emails a secure link so co-applicants can fill in their section asynchronously.
+- Each applicant section mirrors the existing form fields (identity, employment, references) and ties back to the same application ID.
+- Admin UI surfaces pending invites + completion status so ops can nudge applicants from the property detail page.
 
 ## Navigation Flow
 
@@ -111,6 +123,7 @@ apps/ops/app/components/applications/AiScoreBadge.tsx
 - Update queries to join `ai_score` and `ai_label` with applications
 - Add filtering/sorting support for score-based ranking
 - Optimize queries for property-grouped application lists
+- Introduce `application_applicants` join so each application record can surface a primary + optional co-applicants (documents, AI, screening status) sourced from the enhanced guest intake form
 
 ## Edge Cases
 
@@ -132,6 +145,7 @@ This document covers the navigation and UI scaffolding for a property-first expe
 1. Every stage transition in this UI defers to the guardrails defined in [Application Progress Workflow](./00-SUMMARY.md).
 2. Property-level shortlists are surfaced automatically when the Decision stage is active.
 3. Lease Preparation launches as a separate workflow once an applicant is approved, maintaining a clean split between screening and lease execution.
+4. Multi-applicant households share a single application file; this UI shows applicant badges wherever a single name previously appeared so ops can manage co-applicants without changing the public intake form.
 
 ## Related Features
 
