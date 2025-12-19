@@ -78,6 +78,9 @@ This flow keeps teams focused on rentable inventory, highlights best applicants 
 |----------|---------|
 | `README.md` *(this file)* | Quick reference, architecture snapshot, workflow, tasks checklist |
 | `01-prd-complete.md` | Canonical PRD covering requirements, schema, APIs, dedup module, compliance |
+| `IMPLEMENTATION-COMPLETE.md` | Implementation status, deployment guide, testing checklist |
+| `WORKERS-AI-INTEGRATION.md` | Workers AI technical implementation guide |
+| `WORKERS-AI-INTEGRATION-SUMMARY.md` | Executive summary of AI integration completion |
 | `tasks/ai-task-*.md` | Focused build guides (see checklist) |
 | `archive/` | Deprecated architectures (Workflows, Queues) for historical context |
 
@@ -92,10 +95,10 @@ This flow keeps teams focused on rentable inventory, highlights best applicants 
 - [ ] [Task 1.2: Cron Worker Setup](./tasks/ai-task-1.2-cron-worker-setup.md) – Scaffold `leaselab-ai-cron`, bind D1/R2/AI, configure hourly trigger.
 
 ### Phase 2 – Backend APIs & Logic
-- [ ] [Task 2.1: Job Creation API](./tasks/ai-task-2.1-job-creation-api.md) – POST endpoint, quota check, document fingerprint guard, queue job.
-- [ ] [Task 2.2: Job Status API](./tasks/ai-task-2.2-job-status-api.md) – GET endpoint for polling + duplicate response surface.
-- [ ] [Task 2.3: Cron Processor](./tasks/ai-task-2.3-cron-processor.md) – Batch pending jobs, re-check quota, update states, record evaluations.
-- [ ] [Task 2.4: AI Evaluation Logic](./tasks/ai-task-2.4-ai-evaluation.md) – Multi-modal prompt, fraud flag parsing, recommendation logic.
+- [x] [Task 2.1: Job Creation API](./tasks/ai-task-2.1-job-creation-api.md) – POST endpoint, quota check, document fingerprint guard, queue job.
+- [x] [Task 2.2: Job Status API](./tasks/ai-task-2.2-job-status-api.md) – GET endpoint for polling + duplicate response surface.
+- [x] [Task 2.3: Cron Processor](./tasks/ai-task-2.3-cron-processor.md) – Batch pending jobs, re-check quota, update states, record evaluations.
+- [x] [Task 2.4: AI Evaluation Logic](./tasks/ai-task-2.4-ai-evaluation.md) – Multi-modal prompt, fraud flag parsing, recommendation logic. **✅ [Complete - See Integration Docs](./WORKERS-AI-INTEGRATION.md)**
 ### Phase 3 – Frontend Pane & Controls
 - [ ] [Task 3.1: Application Detail AI Evaluation Pane](./tasks/ai-task-3.1-application-pane.md) – Slide-over UI, job creation, polling, activity log.
 - [ ] [Task 3.2: Quota & Settings Section](./tasks/ai-task-3.2-quota-settings-pane.md) – Quota meter, upgrade CTA, and AI settings form.
