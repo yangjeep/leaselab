@@ -61,6 +61,7 @@ export {
     createAIEvaluation,
     getLeadHistory,
     recordLeadHistory,
+    getGeneralInquiriesCount,
 } from './leads';
 
 // Re-export all tenant operations

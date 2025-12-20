@@ -45,6 +45,13 @@ export default function ContactForm({ listings = [], selectedProperty }: Contact
     }
   }, [selectedProperty]);
 
+  // Clear file uploads when switching to General Inquiries
+  useEffect(() => {
+    if (selectedListingId === "other") {
+      setFileIds([]);
+    }
+  }, [selectedListingId]);
+
   // Navigate to thank you page when submission succeeds
   // Check as soon as data is available (during loading state), not just idle
   useEffect(() => {
@@ -67,6 +74,7 @@ export default function ContactForm({ listings = [], selectedProperty }: Contact
     ? "general"
     : (selectedListing?.propertyId || selectedListingId);
   const unitIdToSubmit = selectedListingId === "other" ? undefined : selectedListingId;
+  const isGeneralInquiry = selectedListingId === "other";
 
   return (
     <Card>
@@ -140,29 +148,33 @@ export default function ContactForm({ listings = [], selectedProperty }: Contact
           <Input type="tel" id="phone" name="phone" required />
         </div>
 
-        {/* Move-in Date */}
-        <div className="space-y-2">
-          <Label htmlFor="moveInDate">Ideal Move-in Date</Label>
-          <Input type="date" id="moveInDate" name="moveInDate" defaultValue={getFirstDayOfNextMonth()} />
-        </div>
+        {/* Move-in Date - Hidden for General Inquiries */}
+        {!isGeneralInquiry && (
+          <div className="space-y-2">
+            <Label htmlFor="moveInDate">Ideal Move-in Date</Label>
+            <Input type="date" id="moveInDate" name="moveInDate" defaultValue={getFirstDayOfNextMonth()} />
+          </div>
+        )}
 
-        {/* Employment Status */}
-        <div className="space-y-2">
-          <Label htmlFor="employmentStatus">Employment Status</Label>
-          <Select
-            id="employmentStatus"
-            name="employmentStatus"
-            value={employmentStatus}
-            onChange={(event) => setEmploymentStatus(event.target.value)}
-          >
-            <option value="">Select...</option>
-            <option value="employed">Employed</option>
-            <option value="self_employed">Self-Employed</option>
-            <option value="student">Student</option>
-            <option value="retired">Retired</option>
-            <option value="unemployed">Unemployed</option>
-          </Select>
-        </div>
+        {/* Employment Status - Hidden for General Inquiries */}
+        {!isGeneralInquiry && (
+          <div className="space-y-2">
+            <Label htmlFor="employmentStatus">Employment Status</Label>
+            <Select
+              id="employmentStatus"
+              name="employmentStatus"
+              value={employmentStatus}
+              onChange={(event) => setEmploymentStatus(event.target.value)}
+            >
+              <option value="">Select...</option>
+              <option value="employed">Employed</option>
+              <option value="self_employed">Self-Employed</option>
+              <option value="student">Student</option>
+              <option value="retired">Retired</option>
+              <option value="unemployed">Unemployed</option>
+            </Select>
+          </div>
+        )}
 
         {/* Monthly Income removed (internal-only now) */}
 
@@ -172,14 +184,21 @@ export default function ContactForm({ listings = [], selectedProperty }: Contact
           <Textarea id="message" name="message" rows={4} />
         </div>
 
-        {/* File Upload */}
-        <FileUpload onFilesChange={handleFilesChange} />
-
-        {/* Hidden input for fileIds */}
-        <input type="hidden" name="fileIds" value={JSON.stringify(fileIds)} />
+        {/* File Upload - Hidden for General Inquiries */}
+        {!isGeneralInquiry && (
+          <>
+            <FileUpload onFilesChange={handleFilesChange} />
+            {/* Hidden input for fileIds */}
+            <input type="hidden" name="fileIds" value={JSON.stringify(fileIds)} />
+          </>
+        )}
 
         <Button type="submit" disabled={isSubmitting} className="w-full">
-          {isSubmitting ? "Submitting..." : "Submit Application"}
+          {isSubmitting
+            ? "Submitting..."
+            : isGeneralInquiry
+              ? "Submit Inquiry"
+              : "Submit Application"}
         </Button>
       </fetcher.Form>
       </CardContent>

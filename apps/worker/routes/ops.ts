@@ -39,6 +39,7 @@ import {
   createAIEvaluation,
   getLeadHistory,
   recordLeadHistory,
+  getGeneralInquiriesCount,
   getWorkOrders,
   getWorkOrderById,
   createWorkOrder,
@@ -374,6 +375,33 @@ opsRoutes.post('/leads', async (c: Context) => {
     }, 201);
   } catch (error) {
     console.error('Error creating lead:', error);
+    return c.json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    }, 500);
+  }
+});
+
+/**
+ * GET /api/ops/general-inquiries/count
+ * Get count of general inquiries (property_id = 'general')
+ */
+opsRoutes.get('/general-inquiries/count', async (c: Context) => {
+  try {
+    const siteId = c.req.header('X-Site-Id');
+    if (!siteId) {
+      return c.json({ error: 'Missing X-Site-Id header' }, 400);
+    }
+
+    const status = c.req.query('status');
+    const counts = await getGeneralInquiriesCount(c.env.DB, siteId, { status });
+
+    return c.json({
+      success: true,
+      data: counts,
+    });
+  } catch (error) {
+    console.error('Error fetching general inquiries count:', error);
     return c.json({
       error: 'Internal server error',
       message: error instanceof Error ? error.message : 'Unknown error',

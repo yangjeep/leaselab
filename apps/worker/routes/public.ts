@@ -365,6 +365,9 @@ publicRoutes.post('/leads', async (c: Context) => {
     const siteId = c.get('siteId') as string;
     const body = await c.req.json();
 
+    // Check if this is a General Inquiry
+    const isGeneralInquiry = body.propertyId === 'general';
+
     // Validate required fields
     const requiredFields = ['propertyId', 'firstName', 'lastName', 'email', 'phone'];
     for (const field of requiredFields) {
@@ -374,6 +377,14 @@ publicRoutes.post('/leads', async (c: Context) => {
           message: `Missing required field: ${field}`,
         }, 400);
       }
+    }
+
+    // General Inquiries should not have file attachments
+    if (isGeneralInquiry && body.fileIds && body.fileIds.length > 0) {
+      return c.json({
+        error: 'Validation error',
+        message: 'File attachments are not allowed for general inquiries',
+      }, 400);
     }
 
     // Create the lead

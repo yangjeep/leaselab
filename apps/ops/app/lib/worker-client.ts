@@ -89,6 +89,24 @@ export async function fetchPropertiesWithApplicationCountsFromWorker(
   return parseResponse(response);
 }
 
+export async function fetchGeneralInquiriesCountFromWorker(
+  env: WorkerEnv,
+  siteId: string,
+  options?: {
+    status?: string;
+  }
+): Promise<{ totalCount: number; pendingCount: number; resolvedCount: number }> {
+  const params = new URLSearchParams();
+
+  if (options?.status) {
+    params.set('status', options.status);
+  }
+
+  const url = `${env.WORKER_URL}/api/ops/general-inquiries/count${params.toString() ? `?${params.toString()}` : ''}`;
+  const response = await workerFetch(url, env, {}, siteId);
+  return parseResponse(response);
+}
+
 export async function fetchPropertyFromWorker(
   env: WorkerEnv,
   siteId: string,
@@ -214,6 +232,20 @@ export async function restoreLeadToWorker(
     method: 'POST',
   }, siteId);
   await parseResponse(response);
+}
+
+export async function updateLeadInWorker(
+  env: WorkerEnv,
+  siteId: string,
+  leadId: string,
+  data: any
+): Promise<any> {
+  const url = `${env.WORKER_URL}/api/ops/leads/${leadId}`;
+  const response = await workerFetch(url, env, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }, siteId);
+  return parseResponse(response);
 }
 
 // ==================== WORK ORDERS ====================

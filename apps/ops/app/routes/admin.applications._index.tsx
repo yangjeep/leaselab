@@ -8,7 +8,7 @@ import { json } from '@remix-run/cloudflare';
 import { useLoaderData, Link, useSearchParams } from '@remix-run/react';
 import { useState, useMemo } from 'react';
 import { getSiteId } from '~/lib/site.server';
-import { fetchPropertiesWithApplicationCountsFromWorker } from '~/lib/worker-client';
+import { fetchPropertiesWithApplicationCountsFromWorker, fetchGeneralInquiriesCountFromWorker } from '~/lib/worker-client';
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
   const env = context.cloudflare.env;
@@ -20,13 +20,17 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
     onlyAvailable: true,
   });
 
+  // Fetch general inquiries count
+  const generalInquiriesCount = await fetchGeneralInquiriesCountFromWorker(env, siteId);
+
   return json({
     properties,
+    generalInquiriesCount,
   });
 }
 
 export default function ApplicationBoard() {
-  const { properties } = useLoaderData<typeof loader>();
+  const { properties, generalInquiriesCount } = useLoaderData<typeof loader>();
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '');
 
@@ -162,7 +166,16 @@ export default function ApplicationBoard() {
         </div>
       </div>
 
-      {/* Property Grid */}
+      {/* General Inquiries Section */}
+      {generalInquiriesCount && generalInquiriesCount.totalCount > 0 && (
+        <div className="mb-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-3">General Inquiries</h2>
+          <GeneralInquiriesCard counts={generalInquiriesCount} />
+        </div>
+      )}
+
+      {/* Property Applications Section */}
+      <h2 className="text-lg font-semibold text-gray-900 mb-3">Property Applications</h2>
       {filteredProperties.length === 0 ? (
         <div className="text-center py-12">
           <div className="text-gray-400 mb-4">
@@ -205,6 +218,57 @@ export default function ApplicationBoard() {
         </div>
       )}
     </div>
+  );
+}
+
+function GeneralInquiriesCard({ counts }: { counts: { totalCount: number; pendingCount: number; resolvedCount: number } }) {
+  return (
+    <Link
+      to="/admin/general-inquiries"
+      className="block bg-white border-2 border-purple-200 rounded-lg hover:shadow-lg transition-shadow overflow-hidden max-w-md"
+    >
+      {/* Header */}
+      <div className="h-48 bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center">
+        <svg
+          className="h-20 w-20 text-white opacity-50"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={1}
+            d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
+          />
+        </svg>
+      </div>
+
+      <div className="p-6">
+        <h3 className="text-xl font-semibold text-gray-900 mb-2">
+          General Inquiries
+        </h3>
+        <p className="text-sm text-gray-600 mb-4">
+          Non-property specific inquiries
+        </p>
+
+        <div className="flex items-center gap-3">
+          {counts.pendingCount > 0 && (
+            <span className="inline-flex items-center px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm font-medium">
+              {counts.pendingCount} pending
+            </span>
+          )}
+          {counts.resolvedCount > 0 && (
+            <span className="inline-flex items-center px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm font-medium">
+              {counts.resolvedCount} resolved
+            </span>
+          )}
+          {counts.totalCount === 0 && (
+            <span className="text-sm text-gray-500">No inquiries</span>
+          )}
+        </div>
+      </div>
+    </Link>
   );
 }
 
