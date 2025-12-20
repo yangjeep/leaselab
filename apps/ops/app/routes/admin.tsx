@@ -16,10 +16,12 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
 
   const user = await requireAuth(request, workerEnv, secret, siteId);
 
-  // Get available sites for super admins
+  // Get available sites for this user (used by the sidebar switcher)
   let availableSites: any[] = [];
-  if (user.isSuperAdmin) {
+  try {
     availableSites = await fetchUserSitesFromWorker(workerEnv, user.id);
+  } catch {
+    availableSites = [];
   }
 
   return json({ user, currentSite: siteId, availableSites });
@@ -50,18 +52,15 @@ export default function AdminLayout() {
               Lease<span className="text-indigo-600">Lab</span>.io
             </h1>
           </Link>
-          {/* Site switcher for super admins */}
-          {user.isSuperAdmin && availableSites.length > 0 && (
-            <div className="mt-3">
-              <label className="block text-xs font-medium text-gray-600 mb-1">
-                Active Site
-              </label>
-              <SiteSwitcher currentSite={currentSite} availableSites={availableSites} />
-            </div>
-          )}
         </div>
 
         <nav className="flex-1 overflow-y-auto p-4">
+          <div className="mb-4">
+            <label className="block text-xs font-medium text-gray-600 mb-1">
+              Active Site
+            </label>
+            <SiteSwitcher currentSite={currentSite} availableSites={availableSites} />
+          </div>
           <ul className="space-y-1">
             {navItems.map((item) => {
               const isActive = location.pathname === item.path ||

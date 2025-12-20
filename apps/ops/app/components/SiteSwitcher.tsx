@@ -17,11 +17,6 @@ interface SiteSwitcherProps {
 export function SiteSwitcher({ currentSite, availableSites }: SiteSwitcherProps) {
     const fetcher = useFetcher();
 
-    if (availableSites.length <= 1) {
-        // Only one site - no need to show switcher
-        return null;
-    }
-
     const handleSiteChange = (siteId: string) => {
         const formData = new FormData();
         formData.append('siteId', siteId);
@@ -30,6 +25,24 @@ export function SiteSwitcher({ currentSite, availableSites }: SiteSwitcherProps)
             action: '/api/site/switch'
         });
     };
+
+    const normalizedSites = (() => {
+        const sites = [...availableSites];
+        const siteIdSet = new Set(sites.map((site) => site.siteId));
+        if (currentSite && !siteIdSet.has(currentSite)) {
+            sites.unshift({ siteId: currentSite });
+        }
+        return sites;
+    })();
+
+    if (normalizedSites.length <= 1) {
+        const siteLabel = normalizedSites[0]?.siteId || currentSite;
+        return (
+            <div className="inline-flex items-center rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900">
+                {siteLabel}
+            </div>
+        );
+    }
 
     return (
         <div className="relative inline-flex items-center gap-3">
@@ -43,7 +56,7 @@ export function SiteSwitcher({ currentSite, availableSites }: SiteSwitcherProps)
                 disabled={fetcher.state !== 'idle'}
                 className="min-w-[180px]"
             >
-                {availableSites.map((site) => (
+                {normalizedSites.map((site) => (
                     <option key={site.siteId} value={site.siteId}>
                         {site.siteId}
                     </option>
