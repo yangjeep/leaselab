@@ -43,9 +43,9 @@ export default function AdminLayout() {
   const location = useLocation();
 
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="flex min-h-full bg-gray-100">
       {/* Sidebar */}
-      <aside className="w-64 bg-white shadow-md flex flex-col h-screen">
+      <aside className="flex h-full w-64 flex-col bg-white shadow-md">
         <div className="p-6 border-b flex-shrink-0">
           <Link to="/admin" className="block">
             <h1 className="text-xl font-bold text-gray-900 hover:text-gray-700 transition-colors cursor-pointer">
@@ -63,7 +63,7 @@ export default function AdminLayout() {
           )}
         </div>
 
-        <nav className="flex-1 p-4 overflow-y-auto">
+        <nav className="flex-1 overflow-y-auto p-4">
           <ul className="space-y-1">
             {navItems.map((item) => {
               const isActive = location.pathname === item.path ||
@@ -87,7 +87,7 @@ export default function AdminLayout() {
           </ul>
         </nav>
 
-        <div className="p-4 border-t flex-shrink-0">
+        <div className="flex-shrink-0 border-t p-4" data-testid="sidebar-user-profile">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-900">{user.name}</p>
@@ -106,7 +106,7 @@ export default function AdminLayout() {
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 min-h-0 overflow-auto">
         <Outlet />
       </main>
     </div>
@@ -140,9 +140,9 @@ export function ErrorBoundary() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="flex min-h-full bg-gray-100">
       {/* Sidebar - minimal version */}
-      <aside className="w-64 bg-white shadow-md flex flex-col">
+      <aside className="flex h-full w-64 flex-col bg-white shadow-md">
         <div className="p-6 border-b">
           <Link to="/admin">
             <h1 className="text-xl font-bold text-gray-900 hover:text-gray-700 transition-colors cursor-pointer">
@@ -168,7 +168,7 @@ export function ErrorBoundary() {
       </aside>
 
       {/* Error content */}
-      <main className="flex-1 overflow-auto flex items-center justify-center">
+      <main className="flex-1 min-h-0 overflow-auto flex items-center justify-center">
         <div className="max-w-md text-center px-6">
           <div className="mb-6">
             <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-red-100 mb-4">
