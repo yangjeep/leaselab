@@ -43,9 +43,9 @@ export default function AdminLayout() {
   const location = useLocation();
 
   return (
-    <div className="flex min-h-full bg-gray-100">
+    <div className="flex flex-1 min-h-0 bg-gray-100">
       {/* Sidebar */}
-      <aside className="flex h-full w-64 flex-col bg-white shadow-md">
+      <aside className="flex h-full w-64 flex-shrink-0 flex-col bg-white shadow-md">
         <div className="p-6 border-b flex-shrink-0">
           <Link to="/admin" className="block">
             <h1 className="text-xl font-bold text-gray-900 hover:text-gray-700 transition-colors cursor-pointer">
