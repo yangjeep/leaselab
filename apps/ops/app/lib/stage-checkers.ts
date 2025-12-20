@@ -331,6 +331,13 @@ export function getStageWarnings(
       warnings.push('One or more applicants have failed background checks.');
     }
 
+    const requiresManualReview = data.applicants?.some(
+      (a) => a.backgroundCheckStatus === 'review_required'
+    );
+    if (requiresManualReview) {
+      warnings.push('Background check requires manual review before approval.');
+    }
+
     // Additional review warnings can be added when new statuses are introduced.
   }
 
