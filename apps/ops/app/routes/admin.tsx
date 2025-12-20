@@ -43,7 +43,7 @@ export default function AdminLayout() {
   const location = useLocation();
 
   return (
-    <div className="flex flex-1 min-h-0 bg-gray-100">
+    <div className="flex h-full min-h-0 bg-gray-100">
       {/* Sidebar */}
       <aside className="flex h-full w-64 flex-shrink-0 flex-col bg-white shadow-md">
         <div className="p-6 border-b flex-shrink-0">
