@@ -6,6 +6,7 @@
 import type { LoaderFunctionArgs } from '@remix-run/cloudflare';
 import { json } from '@remix-run/cloudflare';
 import { useLoaderData, Link, useSearchParams, useNavigate } from '@remix-run/react';
+import { useMemo } from 'react';
 import { getSiteId } from '~/lib/site.server';
 import { requireAuth } from '~/lib/auth.server';
 import {
@@ -54,6 +55,19 @@ export default function PropertyApplicationList() {
   const { property, applications, filters } = useLoaderData<typeof loader>();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
+
+  const orderedApplications = useMemo(() => {
+    const rejected: any[] = [];
+    const nonRejected: any[] = [];
+    for (const application of applications) {
+      if (application?.status === 'rejected') {
+        rejected.push(application);
+      } else {
+        nonRejected.push(application);
+      }
+    }
+    return [...nonRejected, ...rejected];
+  }, [applications]);
 
   const handleFilterChange = (key: string, value: string) => {
     const params = new URLSearchParams(searchParams);
@@ -157,12 +171,12 @@ export default function PropertyApplicationList() {
               {property.address}, {property.city}
             </p>
             <p className="text-sm text-gray-500 mt-1">
-              {applications.length} application{applications.length !== 1 ? 's' : ''}
+              {orderedApplications.length} application{orderedApplications.length !== 1 ? 's' : ''}
             </p>
           </div>
 
           {/* Applications */}
-          {applications.length === 0 ? (
+          {orderedApplications.length === 0 ? (
             <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
               <div className="text-gray-400 mb-4">
                 <svg
@@ -190,7 +204,7 @@ export default function PropertyApplicationList() {
             </div>
           ) : (
             <div className="space-y-3">
-              {applications.map((app: any) => (
+              {orderedApplications.map((app: any) => (
                 <ApplicationListItem
                   key={app.id}
                   application={app}
@@ -229,6 +243,11 @@ function ApplicationListItem({
     rejected: 'Rejected',
   };
 
+  const statusColors: Record<string, string> = {
+    approved: 'bg-green-100 text-green-800 border-green-200',
+    rejected: 'bg-red-100 text-red-800 border-red-200',
+  };
+
   return (
     <Link
       to={`/admin/properties/${propertyId}/applications/${application.id}`}
@@ -252,7 +271,11 @@ function ApplicationListItem({
               </span>
             )}
 
-            <span className="px-2 py-1 bg-gray-100 text-gray-700 border border-gray-200 rounded text-xs font-medium">
+            <span
+              className={`px-2 py-1 rounded text-xs font-medium border ${
+                statusColors[application.status] || 'bg-gray-100 text-gray-700 border-gray-200'
+              }`}
+            >
               {statusLabels[application.status] || application.status}
             </span>
           </div>

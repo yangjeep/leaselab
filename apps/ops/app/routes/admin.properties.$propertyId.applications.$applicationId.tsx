@@ -9,7 +9,7 @@
 
 import type { LoaderFunctionArgs, ActionFunctionArgs } from '@remix-run/cloudflare';
 import { json } from '@remix-run/cloudflare';
-import { useLoaderData, Link, useNavigate, useSearchParams, useRouteLoaderData, useFetcher } from '@remix-run/react';
+import { useLoaderData, Link, useNavigate, useSearchParams, useRouteLoaderData, useFetcher, useRevalidator } from '@remix-run/react';
 import { useEffect, useState } from 'react';
 import { getSiteId } from '~/lib/site.server';
 import { requireAuth } from '~/lib/auth.server';
@@ -22,6 +22,7 @@ import {
   fetchApplicationNotesFromWorker,
   approveApplicationToWorker,
   rejectApplicationToWorker,
+  reviveApplicationToWorker,
   sendApplicationEmailToWorker,
 } from '~/lib/worker-client';
 import { ApplicantCard, DocumentsList, InternalNotes } from '~/components/application';
@@ -96,6 +97,10 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
         await rejectApplicationToWorker(env, siteId, user.id, applicationId, reason);
         return json({ success: true, message: 'Application rejected.' });
       }
+      case 'revive': {
+        await reviveApplicationToWorker(env, siteId, user.id, applicationId);
+        return json({ success: true, message: 'Application revived.' });
+      }
       case 'sendEmail': {
         const subject = formData.get('subject');
         const message = formData.get('message');
@@ -125,6 +130,8 @@ export default function ApplicationDetail() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const actionFetcher = useFetcher<{ success?: boolean; message?: string; error?: string }>();
+  const revalidator = useRevalidator();
+  const isRejected = application?.status === 'rejected';
 
   const activeTab = searchParams.get('tab') || 'overview';
 
@@ -154,10 +161,11 @@ export default function ApplicationDetail() {
         setActionMessage({ type: 'error', message: 'Unexpected response from server.' });
       }
       setActionLoading(null);
+      revalidator.revalidate();
       const timeout = setTimeout(() => setActionMessage(null), 3000);
       return () => clearTimeout(timeout);
     }
-  }, [actionFetcher.state, actionFetcher.data, actionLoading]);
+  }, [actionFetcher.state, actionFetcher.data, actionLoading, revalidator]);
 
   const handleApprove = async () => {
     setActionLoading('approve');
@@ -191,6 +199,14 @@ export default function ApplicationDetail() {
     formData.append('_action', 'sendEmail');
     formData.append('subject', subject);
     formData.append('message', message);
+    actionFetcher.submit(formData, { method: 'post' });
+  };
+
+  const handleRevive = async () => {
+    setActionLoading('revive');
+    setActionMessage(null);
+    const formData = new FormData();
+    formData.append('_action', 'revive');
     actionFetcher.submit(formData, { method: 'post' });
   };
 
@@ -279,7 +295,10 @@ export default function ApplicationDetail() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => setShowAiPane(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isRejected}
+              className={`inline-flex items-center gap-2 px-4 py-2 font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                isRejected ? 'bg-gray-200 text-gray-500' : 'bg-purple-600 text-white hover:bg-purple-700'
+              }`}
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
@@ -288,8 +307,10 @@ export default function ApplicationDetail() {
             </button>
             <button
               onClick={handleApprove}
-              disabled={actionLoading !== null}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={actionLoading !== null || isRejected}
+              className={`inline-flex items-center gap-2 px-4 py-2 font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                isRejected ? 'bg-gray-200 text-gray-500' : 'bg-green-600 text-white hover:bg-green-700'
+              }`}
             >
               {actionLoading === 'approve' ? (
                 <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
@@ -305,8 +326,10 @@ export default function ApplicationDetail() {
             </button>
             <button
               onClick={handleReject}
-              disabled={actionLoading !== null}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={actionLoading !== null || isRejected}
+              className={`inline-flex items-center gap-2 px-4 py-2 font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                isRejected ? 'bg-gray-200 text-gray-500' : 'bg-red-600 text-white hover:bg-red-700'
+              }`}
             >
               {actionLoading === 'reject' ? (
                 <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
@@ -322,8 +345,10 @@ export default function ApplicationDetail() {
             </button>
             <button
               onClick={handleSendEmail}
-              disabled={actionLoading !== null}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-white text-gray-700 font-medium rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={actionLoading !== null || isRejected}
+              className={`inline-flex items-center gap-2 px-4 py-2 font-medium rounded-lg border transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                isRejected ? 'bg-gray-100 text-gray-400 border-gray-200' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+              }`}
             >
               {actionLoading === 'email' ? (
                 <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
@@ -336,6 +361,23 @@ export default function ApplicationDetail() {
                 </svg>
               )}
               {actionLoading === 'email' ? 'Sending...' : 'Send Email'}
+            </button>
+            <button
+              onClick={handleRevive}
+              disabled={actionLoading !== null || !isRejected}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-amber-600 text-white font-medium rounded-lg hover:bg-amber-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {actionLoading === 'revive' ? (
+                <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              ) : (
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v6h6M20 20v-6h-6M5 19a9 9 0 0114-7.5M19 5a9 9 0 00-14 7.5" />
+                </svg>
+              )}
+              {actionLoading === 'revive' ? 'Reviving...' : 'Revive'}
             </button>
           </div>
         </div>

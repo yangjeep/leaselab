@@ -1713,6 +1713,25 @@ export async function rejectApplicationToWorker(
 }
 
 /**
+ * Revive an application back to a reviewable state
+ */
+export async function reviveApplicationToWorker(
+  env: WorkerEnv,
+  siteId: string,
+  userId: string,
+  applicationId: string
+): Promise<void> {
+  const url = `${env.WORKER_URL}/api/ops/applications/${applicationId}/revive`;
+  const headers = new Headers();
+  headers.set('X-User-Id', userId);
+
+  await workerFetch(url, env, {
+    method: 'POST',
+    headers,
+  }, siteId);
+}
+
+/**
  * Send email to applicant (stub)
  */
 export async function sendApplicationEmailToWorker(

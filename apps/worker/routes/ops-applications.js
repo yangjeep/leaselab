@@ -693,6 +693,40 @@ opsApplicationsRoutes.post('/applications/:applicationId/reject', async (c) => {
     }
 });
 /**
+ * POST /api/ops/applications/:applicationId/revive
+ * Revive a rejected application back to a reviewable state
+ */
+opsApplicationsRoutes.post('/applications/:applicationId/revive', async (c) => {
+    try {
+        const siteId = c.req.header('X-Site-Id');
+        if (!siteId) {
+            return c.json({ error: 'Missing X-Site-Id header' }, 400);
+        }
+        const applicationId = c.req.param('applicationId');
+        const userId = c.req.header('X-User-Id');
+        const lead = await getLeadById(c.env.DB, siteId, applicationId);
+        if (!lead) {
+            return c.json({ error: 'Not found', message: 'Application not found' }, 404);
+        }
+        await updateLead(c.env.DB, siteId, applicationId, { status: 'new' });
+        await recordLeadHistory(c.env.DB, siteId, applicationId, 'application_revived', {
+            previousStatus: lead.status,
+            revivedBy: userId ?? null,
+        });
+        return c.json({
+            success: true,
+            message: 'Application revived',
+        });
+    }
+    catch (error) {
+        console.error('Error reviving application:', error);
+        return c.json({
+            error: 'Internal server error',
+            message: error instanceof Error ? error.message : 'Unknown error',
+        }, 500);
+    }
+});
+/**
  * POST /api/ops/applications/:applicationId/send-email
  * Send email to applicant (stub)
  */
