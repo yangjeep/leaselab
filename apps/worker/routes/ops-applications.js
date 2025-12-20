@@ -14,7 +14,7 @@ import { getApplicantsByApplicationId, getApplicantById, createApplicant, update
 import { getDocumentsByApplicationId, getDocumentsByApplicantId, createDocument, updateDocument, verifyDocument, rejectDocument, getDocumentStats, } from '../lib/db/application-documents';
 import { getTransitionsByApplicationId, createTransition, } from '../lib/db/application-stage-transitions';
 import { getNotesByApplicationId, createNote, updateNote, deleteNote, } from '../lib/db/application-internal-notes';
-import { updateLead, getLeadById } from '../lib/db/leads';
+import { updateLead, getLeadById, recordLeadHistory } from '../lib/db/leads';
 const opsApplicationsRoutes = new Hono();
 // ==================== APPLICANTS ====================
 /**
@@ -621,21 +621,28 @@ opsApplicationsRoutes.delete('/applications/:applicationId/shortlist', async (c)
 // ==================== APPLICATION ACTIONS ====================
 /**
  * POST /api/ops/applications/:applicationId/approve
- * Approve an application (stub)
+ * Approve an application
  */
 opsApplicationsRoutes.post('/applications/:applicationId/approve', async (c) => {
     try {
+        const siteId = c.req.header('X-Site-Id');
+        if (!siteId) {
+            return c.json({ error: 'Missing X-Site-Id header' }, 400);
+        }
         const applicationId = c.req.param('applicationId');
         const userId = c.req.header('X-User-Id');
-        console.log(`[STUB] Approving application ${applicationId} by user ${userId}`);
-        // TODO: Implement actual approval logic
-        // - Update application status to 'approved'
-        // - Create stage transition record
-        // - Send approval notification email
-        // - Create tenant record if needed
+        const lead = await getLeadById(c.env.DB, siteId, applicationId);
+        if (!lead) {
+            return c.json({ error: 'Not found', message: 'Application not found' }, 404);
+        }
+        await updateLead(c.env.DB, siteId, applicationId, { status: 'approved' });
+        await recordLeadHistory(c.env.DB, siteId, applicationId, 'application_approved', {
+            previousStatus: lead.status,
+            approvedBy: userId ?? null,
+        });
         return c.json({
             success: true,
-            message: 'Application approved (stub)',
+            message: 'Application approved',
         });
     }
     catch (error) {
@@ -648,23 +655,33 @@ opsApplicationsRoutes.post('/applications/:applicationId/approve', async (c) => 
 });
 /**
  * POST /api/ops/applications/:applicationId/reject
- * Reject an application (stub)
+ * Reject an application
  */
 opsApplicationsRoutes.post('/applications/:applicationId/reject', async (c) => {
     try {
+        const siteId = c.req.header('X-Site-Id');
+        if (!siteId) {
+            return c.json({ error: 'Missing X-Site-Id header' }, 400);
+        }
         const applicationId = c.req.param('applicationId');
         const userId = c.req.header('X-User-Id');
         const body = await c.req.json();
-        const reason = body.reason || 'No reason provided';
-        console.log(`[STUB] Rejecting application ${applicationId} by user ${userId}. Reason: ${reason}`);
-        // TODO: Implement actual rejection logic
-        // - Update application status to 'rejected'
-        // - Create stage transition record with reason
-        // - Send rejection notification email
-        // - Log rejection reason in internal notes
+        const reason = typeof body?.reason === 'string' && body.reason.trim().length > 0
+            ? body.reason.trim()
+            : 'No reason provided';
+        const lead = await getLeadById(c.env.DB, siteId, applicationId);
+        if (!lead) {
+            return c.json({ error: 'Not found', message: 'Application not found' }, 404);
+        }
+        await updateLead(c.env.DB, siteId, applicationId, { status: 'rejected' });
+        await recordLeadHistory(c.env.DB, siteId, applicationId, 'application_rejected', {
+            previousStatus: lead.status,
+            rejectedBy: userId ?? null,
+            reason,
+        });
         return c.json({
             success: true,
-            message: 'Application rejected (stub)',
+            message: 'Application rejected',
         });
     }
     catch (error) {
