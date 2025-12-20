@@ -8,11 +8,19 @@ import { json } from '@remix-run/cloudflare';
 import { useLoaderData, Link, useSearchParams } from '@remix-run/react';
 import { useState, useMemo } from 'react';
 import { getSiteId } from '~/lib/site.server';
+import { requireAuth } from '~/lib/auth.server';
 import { fetchPropertiesWithApplicationCountsFromWorker, fetchGeneralInquiriesCountFromWorker } from '~/lib/worker-client';
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
   const env = context.cloudflare.env;
-  const siteId = getSiteId(request);
+  const workerEnv = {
+    WORKER_URL: env.WORKER_URL,
+    WORKER_INTERNAL_KEY: env.WORKER_INTERNAL_KEY,
+  };
+  const secret = env.SESSION_SECRET as string;
+  const hostnameSiteId = getSiteId(request);
+  const user = await requireAuth(request, workerEnv, secret, hostnameSiteId);
+  const siteId = user.siteId;
 
   // Fetch properties with application counts
   // Only show properties with available units

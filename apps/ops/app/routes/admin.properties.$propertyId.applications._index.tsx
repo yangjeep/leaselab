@@ -7,6 +7,7 @@ import type { LoaderFunctionArgs } from '@remix-run/cloudflare';
 import { json } from '@remix-run/cloudflare';
 import { useLoaderData, Link, useSearchParams, useNavigate } from '@remix-run/react';
 import { getSiteId } from '~/lib/site.server';
+import { requireAuth } from '~/lib/auth.server';
 import {
   fetchPropertyFromWorker,
   fetchPropertyApplicationsFromWorker,
@@ -14,7 +15,14 @@ import {
 
 export async function loader({ request, params, context }: LoaderFunctionArgs) {
   const env = context.cloudflare.env;
-  const siteId = getSiteId(request);
+  const workerEnv = {
+    WORKER_URL: env.WORKER_URL,
+    WORKER_INTERNAL_KEY: env.WORKER_INTERNAL_KEY,
+  };
+  const secret = env.SESSION_SECRET as string;
+  const hostnameSiteId = getSiteId(request);
+  const user = await requireAuth(request, workerEnv, secret, hostnameSiteId);
+  const siteId = user.siteId;
   const { propertyId } = params;
 
   if (!propertyId) {

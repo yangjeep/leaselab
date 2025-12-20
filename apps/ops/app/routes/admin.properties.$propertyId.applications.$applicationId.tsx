@@ -29,7 +29,14 @@ import { AiEvaluationPane } from '~/components/ai/AiEvaluationPane';
 
 export async function loader({ request, params, context }: LoaderFunctionArgs) {
   const env = context.cloudflare.env;
-  const siteId = getSiteId(request);
+  const workerEnv = {
+    WORKER_URL: env.WORKER_URL,
+    WORKER_INTERNAL_KEY: env.WORKER_INTERNAL_KEY,
+  };
+  const secret = env.SESSION_SECRET as string;
+  const hostnameSiteId = getSiteId(request);
+  const user = await requireAuth(request, workerEnv, secret, hostnameSiteId);
+  const siteId = user.siteId;
   const { propertyId, applicationId } = params;
 
   if (!propertyId || !applicationId) {
@@ -57,7 +64,7 @@ export async function loader({ request, params, context }: LoaderFunctionArgs) {
 
 export async function action({ request, params, context }: ActionFunctionArgs) {
   const env = context.cloudflare.env;
-  const siteId = getSiteId(request);
+  const hostnameSiteId = getSiteId(request);
   const { propertyId, applicationId } = params;
 
   if (!propertyId || !applicationId) {
@@ -69,7 +76,8 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
     WORKER_INTERNAL_KEY: env.WORKER_INTERNAL_KEY,
   };
   const secret = env.SESSION_SECRET as string;
-  const user = await requireAuth(request, workerEnv, secret, siteId);
+  const user = await requireAuth(request, workerEnv, secret, hostnameSiteId);
+  const siteId = user.siteId;
 
   const formData = await request.formData();
   const intent = formData.get('_action');
