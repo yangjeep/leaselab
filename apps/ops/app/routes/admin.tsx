@@ -33,9 +33,7 @@ const navItems = [
   { path: '/admin/leases', label: 'Leases', icon: '📋' },
   { path: '/admin/financial', label: 'Financial', icon: '💰' },
   { path: '/admin/work-orders', label: 'Work Orders', icon: '🔧' },
-  { path: '/admin/users', label: 'Users', icon: '👥' },
   { path: '/admin/settings', label: 'Settings', icon: '⚙️' },
-  { path: '/admin/theme', label: 'Theme Studio', icon: '🎨' },
 ];
 
 export default function AdminLayout() {

@@ -74,7 +74,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
                 isSuperAdmin,
             });
 
-            return redirect('/admin/users');
+            return redirect('/admin/settings/users');
         } catch (error) {
             console.error('Error creating user:', error);
             return json({
@@ -192,7 +192,7 @@ export default function UsersIndex() {
                                     </td>
                                     <td className="px-6 py-4 text-right">
                                         <Link
-                                            to={`/admin/users/${user.id}`}
+                                            to={`/admin/settings/users/${user.id}`}
                                             className="text-indigo-600 hover:text-indigo-700 text-sm font-medium"
                                         >
                                             Edit

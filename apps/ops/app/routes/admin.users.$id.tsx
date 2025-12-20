@@ -97,7 +97,7 @@ export async function action({ params, request, context }: ActionFunctionArgs) {
         await revokeSiteAccessToWorker(workerEnv, id, targetSiteId);
     }
 
-    return redirect(`/admin/users/${id}`);
+    return redirect(`/admin/settings/users/${id}`);
 }
 
 export default function UserEdit() {

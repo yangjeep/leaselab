@@ -50,7 +50,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
     defaultMode: (formData.get("default_mode") as string) || "dark",
   });
 
-  return redirect("/admin/theme");
+  return redirect("/admin/settings/storefront-theme");
 }
 
 export default function ThemeStudio() {
@@ -66,7 +66,7 @@ export default function ThemeStudio() {
   return (
     <div className="p-8 space-y-8">
       <div className="space-y-2">
-        <h1 className="text-3xl font-semibold text-gray-900">Theme Studio</h1>
+        <h1 className="text-3xl font-semibold text-gray-900">Storefront Theme</h1>
         <p className="text-muted-foreground max-w-2xl">
           Configure the storefront experience for this site. Changes go live instantly on the public site once you save.
         </p>
