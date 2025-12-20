@@ -71,7 +71,7 @@ export default function AdminDashboard() {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900">Recent Applications</h2>
           <Link
-            to="/admin/leads"
+            to="/admin/applications"
             className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
           >
             View all
@@ -97,7 +97,7 @@ export default function AdminDashboard() {
                   <tr key={lead.id}>
                     <td className="py-3">
                       <Link
-                        to={`/admin/leads/${lead.id}`}
+                        to={lead.propertyId ? `/admin/properties/${lead.propertyId}/applications/${lead.id}` : `/admin/applications`}
                         className="font-medium text-gray-900 hover:text-indigo-600"
                       >
                         {lead.firstName} {lead.lastName}

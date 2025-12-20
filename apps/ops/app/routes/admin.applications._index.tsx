@@ -91,10 +91,10 @@ export default function ApplicationBoard() {
           </p>
         </div>
         <Link
-          to="/admin/leads/new"
+          to="/admin/properties"
           className="inline-flex items-center px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
         >
-          New Application
+          View Properties
         </Link>
       </div>
 
