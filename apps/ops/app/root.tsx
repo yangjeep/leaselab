@@ -13,7 +13,6 @@ import { getSiteId } from "~/lib/site.server";
 import { getSessionCookie, verifySessionCookie } from "~/lib/session-cookie.server";
 import { fetchUserAccessibleSitesFromWorker, fetchUserHasAccessToSiteFromWorker } from "~/lib/worker-client";
 import { setActiveSite } from "~/lib/auth.server";
-import { SiteSwitcher } from "~/components/SiteSwitcher";
 
 import "./tailwind.css";
 
@@ -90,12 +89,6 @@ export default function App() {
   const { siteId, accessibleSites } = useLoaderData<typeof loader>();
   return (
     <div className="flex min-h-screen flex-col">
-      <div className="border-b border-gray-200/70 bg-white/80 shadow-sm backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-2">
-          <h1 className="text-lg font-semibold">LeaseLab Ops Dashboard</h1>
-          <SiteSwitcher currentSite={siteId || ''} availableSites={accessibleSites || []} />
-        </div>
-      </div>
       <main className="flex flex-1 min-h-0 flex-col">
         <Outlet context={{ siteId, accessibleSites }} />
       </main>
