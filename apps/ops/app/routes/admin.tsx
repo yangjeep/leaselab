@@ -45,8 +45,8 @@ export default function AdminLayout() {
   return (
     <div className="flex h-screen bg-gray-100">
       {/* Sidebar */}
-      <aside className="w-64 bg-white shadow-md flex flex-col">
-        <div className="p-6 border-b">
+      <aside className="w-64 bg-white shadow-md flex flex-col h-screen">
+        <div className="p-6 border-b flex-shrink-0">
           <Link to="/admin" className="block">
             <h1 className="text-xl font-bold text-gray-900 hover:text-gray-700 transition-colors cursor-pointer">
               Lease<span className="text-indigo-600">Lab</span>.io
@@ -63,7 +63,7 @@ export default function AdminLayout() {
           )}
         </div>
 
-        <nav className="flex-1 p-4">
+        <nav className="flex-1 p-4 overflow-y-auto">
           <ul className="space-y-1">
             {navItems.map((item) => {
               const isActive = location.pathname === item.path ||
@@ -87,7 +87,7 @@ export default function AdminLayout() {
           </ul>
         </nav>
 
-        <div className="p-4 border-t">
+        <div className="p-4 border-t flex-shrink-0">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-900">{user.name}</p>
