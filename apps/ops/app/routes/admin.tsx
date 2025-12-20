@@ -45,8 +45,8 @@ export default function AdminLayout() {
   return (
     <div className="flex flex-1 min-h-0 bg-gray-100">
       {/* Sidebar */}
-      <aside className="flex w-64 flex-shrink-0 flex-col bg-white shadow-md self-stretch">
-        <div className="p-6 border-b flex-shrink-0">
+      <aside className="flex w-64 flex-shrink-0 flex-col bg-white shadow-sm self-stretch border-r border-gray-200/70">
+        <div className="p-6 border-b border-gray-200/70 flex-shrink-0">
           <Link to="/admin" className="block">
             <h1 className="text-xl font-bold text-gray-900 hover:text-gray-700 transition-colors cursor-pointer">
               Lease<span className="text-indigo-600">Lab</span>.io
@@ -87,7 +87,7 @@ export default function AdminLayout() {
           </ul>
         </nav>
 
-        <div className="mt-auto flex-shrink-0 border-t p-4" data-testid="sidebar-user-profile">
+        <div className="mt-auto flex-shrink-0 border-t border-gray-200/70 p-4" data-testid="sidebar-user-profile">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-900">{user.name}</p>
@@ -142,8 +142,8 @@ export function ErrorBoundary() {
   return (
     <div className="flex flex-1 min-h-0 bg-gray-100">
       {/* Sidebar - minimal version */}
-      <aside className="flex w-64 flex-col bg-white shadow-md self-stretch">
-        <div className="p-6 border-b">
+      <aside className="flex w-64 flex-col bg-white shadow-sm self-stretch border-r border-gray-200/70">
+        <div className="p-6 border-b border-gray-200/70">
           <Link to="/admin">
             <h1 className="text-xl font-bold text-gray-900 hover:text-gray-700 transition-colors cursor-pointer">
               Lease<span className="text-indigo-600">Lab</span>.io

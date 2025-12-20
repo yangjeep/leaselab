@@ -90,7 +90,7 @@ export default function App() {
   const { siteId, accessibleSites } = useLoaderData<typeof loader>();
   return (
     <div className="flex min-h-screen flex-col">
-      <div className="border-b bg-white shadow-sm">
+      <div className="border-b border-gray-200/70 bg-white/80 shadow-sm backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-2">
           <h1 className="text-lg font-semibold">LeaseLab Ops Dashboard</h1>
           <SiteSwitcher currentSite={siteId || ''} availableSites={accessibleSites || []} />
