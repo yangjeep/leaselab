@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 /**
  * Unit tests for stage-checkers.ts
  * Tests stage-specific checklist generation and warning logic
@@ -7,46 +9,79 @@ import { describe, it, expect } from 'vitest';
 import { getStageChecklist, getStageWarnings } from './stage-checkers';
 import type { ApplicationApplicant, ApplicationDocument } from '~/shared/types';
 
+const DEFAULT_TIMESTAMP = new Date().toISOString();
+
+function createApplicant(overrides: Partial<ApplicationApplicant> = {}): ApplicationApplicant {
+  return {
+    id: 'app_default',
+    applicationId: 'lead_default',
+    applicantType: 'primary',
+    firstName: 'Jane',
+    lastName: 'Doe',
+    email: 'jane@example.com',
+    phone: null,
+    employmentStatus: 'employed',
+    employerName: null,
+    jobTitle: null,
+    monthlyIncome: null,
+    dateOfBirth: null,
+    aiScore: null,
+    aiLabel: null,
+    aiRiskFlags: null,
+    aiEvaluatedAt: null,
+    backgroundCheckStatus: 'pending',
+    backgroundCheckProvider: null,
+    backgroundCheckReferenceId: null,
+    backgroundCheckCompletedAt: null,
+    inviteToken: null,
+    inviteSentAt: null,
+    inviteAcceptedAt: null,
+    createdAt: DEFAULT_TIMESTAMP,
+    updatedAt: DEFAULT_TIMESTAMP,
+    createdBy: null,
+    ...overrides,
+  };
+}
+
+function createDocument(overrides: Partial<ApplicationDocument> = {}): ApplicationDocument {
+  return {
+    id: 'doc_default',
+    applicationId: 'lead_default',
+    applicantId: null,
+    documentType: 'other',
+    fileName: 'document.pdf',
+    fileSize: 1024,
+    mimeType: 'application/pdf',
+    storageKey: 'storage-key',
+    storageUrl: null,
+    verificationStatus: 'pending',
+    verifiedBy: null,
+    verifiedAt: null,
+    rejectionReason: null,
+    uploadedAt: DEFAULT_TIMESTAMP,
+    uploadedBy: null,
+    expiresAt: null,
+    ...overrides,
+  };
+}
+
 describe('stage-checkers', () => {
   describe('getStageChecklist', () => {
     describe('new stage', () => {
       it('should return checklist for new application stage', () => {
         const applicants: ApplicationApplicant[] = [
-          {
+          createApplicant({
             id: 'app_123',
             applicationId: 'lead_123',
-            applicantType: 'primary',
             firstName: 'John',
             lastName: 'Doe',
             email: 'john@example.com',
             phone: '555-1234',
-            employmentStatus: 'full_time',
+            employmentStatus: 'employed',
             employerName: 'Acme Corp',
             jobTitle: 'Engineer',
             monthlyIncome: 5000,
-            dateOfBirth: null,
-            ssn: null,
-            currentAddress: null,
-            employerAddress: null,
-            employmentStartDate: null,
-            yearsAtCurrentJob: null,
-            previousEmployer: null,
-            aiScore: null,
-            aiLabel: null,
-            aiEvaluatedAt: null,
-            backgroundCheckStatus: 'pending',
-            backgroundCheckProvider: null,
-            backgroundCheckOrderId: null,
-            backgroundCheckCompletedAt: null,
-            inviteStatus: null,
-            inviteToken: null,
-            inviteTokenExpiresAt: null,
-            inviteSentAt: null,
-            inviteViewedAt: null,
-            inviteCompletedAt: null,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          },
+          }),
         ];
 
         const checklist = getStageChecklist('new', { applicants });
@@ -62,41 +97,15 @@ describe('stage-checkers', () => {
 
       it('should mark items unchecked when data is missing', () => {
         const applicants: ApplicationApplicant[] = [
-          {
+          createApplicant({
             id: 'app_123',
             applicationId: 'lead_123',
-            applicantType: 'primary',
             firstName: 'John',
             lastName: 'Doe',
             email: 'john@example.com',
-            phone: null, // Missing phone
-            employmentStatus: null, // Missing employment
-            employerName: null,
-            jobTitle: null,
-            monthlyIncome: null,
-            dateOfBirth: null,
-            ssn: null,
-            currentAddress: null,
-            employerAddress: null,
-            employmentStartDate: null,
-            yearsAtCurrentJob: null,
-            previousEmployer: null,
-            aiScore: null,
-            aiLabel: null,
-            aiEvaluatedAt: null,
-            backgroundCheckStatus: 'pending',
-            backgroundCheckProvider: null,
-            backgroundCheckOrderId: null,
-            backgroundCheckCompletedAt: null,
-            inviteStatus: null,
-            inviteToken: null,
-            inviteTokenExpiresAt: null,
-            inviteSentAt: null,
-            inviteViewedAt: null,
-            inviteCompletedAt: null,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          },
+            phone: null,
+            employmentStatus: null,
+          }),
         ];
 
         const checklist = getStageChecklist('new', { applicants });

@@ -70,16 +70,16 @@ export default function ApplicationDetail() {
     setSearchParams(params);
   };
 
+  const currentUserId = 'user_123'; // TODO: Replace with authenticated user from session
+
   const handleApprove = async () => {
     setActionLoading('approve');
     setActionMessage(null);
     try {
-      // TODO: Get actual user ID from session
-      const userId = 'user_123';
       const env = (window as any).ENV;
       const siteId = 'site_123'; // TODO: Get from context
 
-      await approveApplicationToWorker(env, siteId, userId, application.id);
+      await approveApplicationToWorker(env, siteId, currentUserId, application.id);
       setActionMessage({ type: 'success', message: 'Application approved successfully!' });
       setTimeout(() => setActionMessage(null), 3000);
     } catch (error) {
@@ -96,11 +96,10 @@ export default function ApplicationDetail() {
     setActionLoading('reject');
     setActionMessage(null);
     try {
-      const userId = 'user_123';
       const env = (window as any).ENV;
       const siteId = 'site_123';
 
-      await rejectApplicationToWorker(env, siteId, userId, application.id, reason);
+      await rejectApplicationToWorker(env, siteId, currentUserId, application.id, reason);
       setActionMessage({ type: 'success', message: 'Application rejected' });
       setTimeout(() => setActionMessage(null), 3000);
     } catch (error) {
@@ -119,11 +118,10 @@ export default function ApplicationDetail() {
     setActionLoading('email');
     setActionMessage(null);
     try {
-      const userId = 'user_123';
       const env = (window as any).ENV;
       const siteId = 'site_123';
 
-      await sendApplicationEmailToWorker(env, siteId, userId, application.id, {
+      await sendApplicationEmailToWorker(env, siteId, currentUserId, application.id, {
         subject,
         message,
       });
@@ -354,7 +352,7 @@ export default function ApplicationDetail() {
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Applicants</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {applicants.map((applicant: any) => (
-                  <ApplicantCard key={applicant.id} applicant={applicant} />
+                  <ApplicantCard key={applicant.id} applicant={applicant} applicationId={application.id} />
                 ))}
               </div>
             </div>
@@ -453,7 +451,7 @@ export default function ApplicationDetail() {
 
         {activeTab === 'notes' && (
           <div className="max-w-5xl mx-auto">
-            <InternalNotes applicationId={application.id} notes={notes} />
+            <InternalNotes applicationId={application.id} notes={notes} currentUserId={currentUserId} />
           </div>
         )}
       </div>

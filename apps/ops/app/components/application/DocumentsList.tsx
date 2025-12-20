@@ -34,13 +34,12 @@ export function DocumentsList({
     bank_statement: 'Bank Statement',
     employment_letter: 'Employment Letter',
     tax_return: 'Tax Return',
-    reference_letter: 'Reference Letter',
-    proof_of_income: 'Proof of Income',
     credit_report: 'Credit Report',
+    background_check: 'Background Check',
     other: 'Other Document',
   };
 
-  const verificationColors: Record<ApplicationDocument['verificationStatus'], string> = {
+  const verificationColors: Record<NonNullable<ApplicationDocument['verificationStatus']>, string> = {
     pending: 'bg-yellow-100 text-yellow-800 border-yellow-200',
     verified: 'bg-green-100 text-green-800 border-green-200',
     rejected: 'bg-red-100 text-red-800 border-red-200',
@@ -49,10 +48,14 @@ export function DocumentsList({
 
   const groupedDocs = documents.reduce((acc, doc) => {
     const type = doc.documentType;
-    if (!acc[type]) acc[type] = [];
-    acc[type].push(doc);
+    (acc[type] ||= []).push(doc);
     return acc;
-  }, {} as Record<string, ApplicationDocument[]>);
+  }, {} as Partial<Record<ApplicationDocument['documentType'], ApplicationDocument[]>>);
+
+  const groupedEntries = Object.entries(groupedDocs) as [
+    ApplicationDocument['documentType'],
+    ApplicationDocument[]
+  ][];
 
   const handleReject = (documentId: string) => {
     if (onReject && rejectReason.trim()) {
@@ -76,13 +79,13 @@ export function DocumentsList({
       )}
 
       {/* Document Groups */}
-      {Object.entries(groupedDocs).map(([docType, docs]) => (
+      {groupedEntries.map(([docType, docs]) => (
         <div key={docType} className="bg-white border border-gray-200 rounded-lg overflow-hidden">
           {/* Group Header */}
           <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <h4 className="font-medium text-gray-900">
-                {documentTypeLabels[docType as ApplicationDocument['documentType']] || docType}
+                {documentTypeLabels[docType] || docType}
               </h4>
               <span className="text-sm text-gray-500">{docs.length} file{docs.length !== 1 ? 's' : ''}</span>
             </div>
@@ -90,9 +93,13 @@ export function DocumentsList({
 
           {/* Document Items */}
           <div className="divide-y divide-gray-200">
-            {docs.map((doc) => (
-              <div key={doc.id} className="p-4">
-                <div className="flex items-start gap-3">
+            {docs.map((doc) => {
+              const verificationStatus: NonNullable<ApplicationDocument['verificationStatus']> =
+                doc.verificationStatus ?? 'pending';
+
+              return (
+                <div key={doc.id} className="p-4">
+                  <div className="flex items-start gap-3">
                   {/* File Icon */}
                   <div className="flex-shrink-0">
                     <svg className="w-10 h-10 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -110,10 +117,10 @@ export function DocumentsList({
                           </h5>
                           <span
                             className={`px-2 py-0.5 rounded text-xs font-medium border ${
-                              verificationColors[doc.verificationStatus]
+                              verificationColors[verificationStatus]
                             }`}
                           >
-                            {doc.verificationStatus}
+                            {verificationStatus}
                           </span>
                         </div>
 
@@ -129,15 +136,9 @@ export function DocumentsList({
                           )}
                         </div>
 
-                        {doc.uploadedByApplicantId && (
+                        {doc.applicantId && (
                           <div className="mt-1 text-xs text-gray-500">
                             Uploaded by applicant
-                          </div>
-                        )}
-
-                        {doc.notes && (
-                          <div className="mt-2 text-xs text-gray-600 bg-gray-50 p-2 rounded">
-                            {doc.notes}
                           </div>
                         )}
 
@@ -152,7 +153,7 @@ export function DocumentsList({
                       {!isReadOnly && (
                         <div className="flex items-center gap-2">
                           {/* Download */}
-                          {doc.r2Key && (
+                          {doc.storageKey && (
                             <a
                               href={`/api/documents/${doc.id}/download`}
                               download
@@ -247,7 +248,8 @@ export function DocumentsList({
                   </div>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       ))}

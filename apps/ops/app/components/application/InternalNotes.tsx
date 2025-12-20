@@ -6,6 +6,9 @@
 import type { ApplicationInternalNote } from '~/shared/types';
 import { useState } from 'react';
 
+type NoteCategory = NonNullable<ApplicationInternalNote['noteCategory']>;
+type NotePriority = NonNullable<ApplicationInternalNote['priority']>;
+
 type InternalNotesProps = {
   notes: ApplicationInternalNote[];
   applicationId: string;
@@ -27,21 +30,21 @@ export function InternalNotes({
 }: InternalNotesProps) {
   const [isAdding, setIsAdding] = useState(false);
   const [newNoteText, setNewNoteText] = useState('');
-  const [newNoteCategory, setNewNoteCategory] = useState<ApplicationInternalNote['noteCategory']>('general');
-  const [newNotePriority, setNewNotePriority] = useState<ApplicationInternalNote['priority']>('low');
+  const [newNoteCategory, setNewNoteCategory] = useState<NoteCategory>('general');
+  const [newNotePriority, setNewNotePriority] = useState<NotePriority>('low');
   const [newNoteIsSensitive, setNewNoteIsSensitive] = useState(false);
-  const [filterCategory, setFilterCategory] = useState<string>('all');
+  const [filterCategory, setFilterCategory] = useState<'all' | NoteCategory>('all');
 
-  const categories: { value: ApplicationInternalNote['noteCategory']; label: string; color: string }[] = [
+  const categories: { value: NoteCategory; label: string; color: string }[] = [
     { value: 'general', label: 'General', color: 'bg-gray-100 text-gray-800' },
-    { value: 'red_flag', label: 'Red Flag', color: 'bg-red-100 text-red-800' },
-    { value: 'follow_up', label: 'Follow Up', color: 'bg-yellow-100 text-yellow-800' },
-    { value: 'verification', label: 'Verification', color: 'bg-blue-100 text-blue-800' },
-    { value: 'communication', label: 'Communication', color: 'bg-purple-100 text-purple-800' },
+    { value: 'documents', label: 'Documents', color: 'bg-blue-100 text-blue-800' },
+    { value: 'ai_screening', label: 'AI Screening', color: 'bg-indigo-100 text-indigo-800' },
+    { value: 'background_check', label: 'Background Check', color: 'bg-yellow-100 text-yellow-800' },
     { value: 'decision', label: 'Decision', color: 'bg-green-100 text-green-800' },
+    { value: 'lease_prep', label: 'Lease Prep', color: 'bg-purple-100 text-purple-800' },
   ];
 
-  const priorities: { value: ApplicationInternalNote['priority']; label: string; icon: string }[] = [
+  const priorities: { value: NotePriority; label: string; icon: string }[] = [
     { value: 'low', label: 'Low', icon: '○' },
     { value: 'medium', label: 'Medium', icon: '◐' },
     { value: 'high', label: 'High', icon: '◉' },
@@ -146,7 +149,7 @@ export function InternalNotes({
               </label>
               <select
                 value={newNoteCategory}
-                onChange={(e) => setNewNoteCategory(e.target.value as ApplicationInternalNote['noteCategory'])}
+                onChange={(e) => setNewNoteCategory(e.target.value as NoteCategory)}
                 className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
                 {categories.map(cat => (
@@ -161,7 +164,7 @@ export function InternalNotes({
               </label>
               <select
                 value={newNotePriority}
-                onChange={(e) => setNewNotePriority(e.target.value as ApplicationInternalNote['priority'])}
+                onChange={(e) => setNewNotePriority(e.target.value as NotePriority)}
                 className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
                 {priorities.map(p => (

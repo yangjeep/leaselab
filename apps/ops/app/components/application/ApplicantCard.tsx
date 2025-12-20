@@ -5,6 +5,7 @@
 
 import type { ApplicationApplicant } from '~/shared/types';
 import { Link } from '@remix-run/react';
+import { deriveApplicantInviteStatus, type DerivedInviteStatus } from '~/lib/applicant-utils';
 
 type ApplicantCardProps = {
   applicant: ApplicationApplicant;
@@ -25,12 +26,10 @@ export function ApplicantCard({
     guarantor: { label: 'Guarantor', color: 'bg-purple-100 text-purple-800 border-purple-200' },
   };
 
-  const statusLabels: Record<ApplicationApplicant['inviteStatus'], { label: string; color: string }> = {
+  const statusLabels: Record<DerivedInviteStatus, { label: string; color: string }> = {
     pending: { label: 'Invite Pending', color: 'bg-yellow-100 text-yellow-800' },
     sent: { label: 'Invite Sent', color: 'bg-blue-100 text-blue-800' },
-    viewed: { label: 'Viewed', color: 'bg-cyan-100 text-cyan-800' },
     completed: { label: 'Completed', color: 'bg-green-100 text-green-800' },
-    expired: { label: 'Expired', color: 'bg-red-100 text-red-800' },
   };
 
   const aiGradeColors: Record<string, string> = {
@@ -40,16 +39,16 @@ export function ApplicantCard({
     D: 'bg-red-100 text-red-800 border-red-200',
   };
 
-  const backgroundCheckColors: Record<ApplicationApplicant['backgroundCheckStatus'], string> = {
+  const backgroundCheckColors: Record<Exclude<ApplicationApplicant['backgroundCheckStatus'], null>, string> = {
     pending: 'bg-gray-100 text-gray-700',
     in_progress: 'bg-blue-100 text-blue-700',
-    clear: 'bg-green-100 text-green-700',
-    review_required: 'bg-yellow-100 text-yellow-700',
+    completed: 'bg-green-100 text-green-700',
     failed: 'bg-red-100 text-red-700',
   };
 
   const typeInfo = typeLabels[applicant.applicantType];
-  const statusInfo = applicant.inviteStatus ? statusLabels[applicant.inviteStatus] : null;
+  const inviteStatus = deriveApplicantInviteStatus(applicant);
+  const statusInfo = inviteStatus ? statusLabels[inviteStatus] : null;
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
@@ -229,7 +228,7 @@ export function ApplicantCard({
         )}
 
         {/* Invite Link (if applicable) */}
-        {applicant.inviteStatus && applicant.inviteStatus !== 'completed' && applicant.inviteToken && (
+        {inviteStatus && inviteStatus !== 'completed' && applicant.inviteToken && (
           <div className="mt-4 pt-4 border-t border-gray-200">
             <button
               onClick={() => {

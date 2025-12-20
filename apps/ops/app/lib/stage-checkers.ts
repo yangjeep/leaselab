@@ -5,6 +5,7 @@
 
 import type { ChecklistItem } from '~/components/application/StageChecker';
 import type { LeadStatus, ApplicationDocument, ApplicationApplicant } from '~/shared/types';
+import { deriveApplicantInviteStatus } from '~/lib/applicant-utils';
 
 /**
  * Get checklist items for a specific stage
@@ -86,9 +87,8 @@ function getDocumentsPendingChecklist(data: {
     data.documents?.some((doc) => doc.documentType === type)
   );
 
-  const allApplicantsCompleted = data.applicants?.every(
-    (a) => a.inviteStatus === 'completed' || a.applicantType === 'primary'
-  ) ?? false;
+  const allApplicantsCompleted =
+    data.applicants?.every((a) => deriveApplicantInviteStatus(a) === 'completed' || a.applicantType === 'primary') ?? false;
 
   return [
     {
@@ -109,7 +109,7 @@ function getDocumentsPendingChecklist(data: {
       id: 'co_applicants_completed',
       label: 'Co-applicants completed their submissions',
       description: 'All invited co-applicants and guarantors have submitted',
-      required: data.applicants && data.applicants.length > 1,
+      required: Boolean(data.applicants && data.applicants.length > 1),
       checked: allApplicantsCompleted,
     },
   ];
@@ -219,9 +219,14 @@ function getScreeningChecklist(data: {
   backgroundCheckStatus?: string;
   applicants?: ApplicationApplicant[];
 }): ChecklistItem[] {
-  const allChecksComplete = data.applicants?.every(
-    (a) => a.backgroundCheckStatus && a.backgroundCheckStatus !== 'pending'
-  ) ?? false;
+  const allChecksComplete = data.applicants
+    ? data.applicants.every(
+        (a) =>
+          a.backgroundCheckStatus !== null &&
+          a.backgroundCheckStatus !== undefined &&
+          a.backgroundCheckStatus !== 'pending'
+      )
+    : false;
 
   return [
     {
@@ -326,12 +331,7 @@ export function getStageWarnings(
       warnings.push('One or more applicants have failed background checks.');
     }
 
-    const hasReviewRequired = data.applicants?.some(
-      (a) => a.backgroundCheckStatus === 'review_required'
-    );
-    if (hasReviewRequired) {
-      warnings.push('Background check requires manual review before approval.');
-    }
+    // Additional review warnings can be added when new statuses are introduced.
   }
 
   // Skipping stages
