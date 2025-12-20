@@ -30,7 +30,8 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
 }
 
 export default function ApplicationBoard() {
-  const { properties, generalInquiriesCount } = useLoaderData<typeof loader>();
+  const { properties: rawProperties, generalInquiriesCount } = useLoaderData<typeof loader>();
+  const properties = rawProperties ?? [];
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '');
 
@@ -63,8 +64,8 @@ export default function ApplicationBoard() {
       // Search filter
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
-        const matchesName = property.name.toLowerCase().includes(query);
-        const matchesCity = property.city.toLowerCase().includes(query);
+        const matchesName = String(property?.name ?? '').toLowerCase().includes(query);
+        const matchesCity = String(property?.city ?? '').toLowerCase().includes(query);
         if (!matchesName && !matchesCity) {
           return false;
         }
@@ -72,12 +73,12 @@ export default function ApplicationBoard() {
 
       // Type filter
       if (filterType === 'high_volume') {
-        return property.pendingCount >= 10;
+        return (property?.pendingCount ?? 0) >= 10;
       } else if (filterType === 'needs_review') {
         // Properties with applications that don't have AI scores
         // For now, we'll show properties with any pending applications
         // TODO: Add AI score tracking to determine which need review
-        return property.pendingCount > 0;
+        return (property?.pendingCount ?? 0) > 0;
       }
 
       return true;
@@ -276,6 +277,8 @@ function PropertyCard({ property }: { property: any }) {
   // Get counts from API data
   const pendingCount = property.pendingCount || 0;
   const shortlistedCount = property.shortlistedCount || 0;
+  const name = property?.name ?? 'Unnamed property';
+  const addressLine = [property?.address, property?.city].filter(Boolean).join(', ');
 
   return (
     <Link
@@ -301,10 +304,10 @@ function PropertyCard({ property }: { property: any }) {
 
       <div className="p-6">
         <h3 className="text-xl font-semibold text-gray-900 mb-2">
-          {property.name}
+          {name}
         </h3>
         <p className="text-sm text-gray-600 mb-4">
-          {property.address}, {property.city}
+          {addressLine || '—'}
         </p>
 
         <div className="flex items-center gap-3">
