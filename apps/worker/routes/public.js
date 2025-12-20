@@ -6,7 +6,8 @@
  */
 import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth';
-import { getPropertyById, createLead, getPublicListings, getUnitWithDetails, createTempLeadFile, countLeadFiles, getImagesByEntityWithVerification, } from '../lib/db';
+import { getPropertyById, createLead, getPublicListings, getUnitWithDetails, createTempLeadFile, countLeadFiles, getImagesByEntityWithVerification, getThemeConfiguration, } from '../lib/db';
+import { buildThemePayload } from '../lib/theme-response';
 import { FILE_UPLOAD_CONSTRAINTS } from '../../../shared/config';
 import { generateId } from '../../../shared/utils';
 const publicRoutes = new Hono();
@@ -127,13 +128,13 @@ publicRoutes.get('/units/:id', async (c) => {
 });
 /**
  * GET /api/public/site-config
- * Fetch site configuration (branding, about page, etc.)
- * TODO: Create site_configs table and migrate data
+ * Fetch site configuration (branding, about page, theme)
  */
 publicRoutes.get('/site-config', async (c) => {
     try {
         const siteId = c.get('siteId');
-        // Return default config (site_configs table doesn't exist yet)
+        const themeRecord = await getThemeConfiguration(c.env.DB, siteId);
+        const theme = buildThemePayload(themeRecord, siteId);
         return c.json({
             success: true,
             data: {
@@ -149,18 +150,41 @@ publicRoutes.get('/site-config', async (c) => {
                     ],
                 },
                 branding: {
-                    logoUrl: null,
-                    primaryColor: '#3B82F6',
+                    logoUrl: theme.brandLogoUrl,
+                    primaryColor: theme.customColors?.primary || '#3B82F6',
                 },
                 contact: {
                     email: 'info@leaselab.io',
                     phone: '+1-555-0100',
                 },
+                theme,
             },
         });
     }
     catch (error) {
         console.error('Error fetching site config:', error);
+        return c.json({
+            error: 'Internal server error',
+            message: error instanceof Error ? error.message : 'Unknown error',
+        }, 500);
+    }
+});
+/**
+ * GET /api/public/theme
+ * Fetch theme configuration for storefront rendering
+ */
+publicRoutes.get('/theme', async (c) => {
+    try {
+        const siteId = c.get('siteId');
+        const record = await getThemeConfiguration(c.env.DB, siteId);
+        const theme = buildThemePayload(record, siteId);
+        return c.json({
+            success: true,
+            data: theme,
+        });
+    }
+    catch (error) {
+        console.error('Error fetching theme:', error);
         return c.json({
             error: 'Internal server error',
             message: error instanceof Error ? error.message : 'Unknown error',
@@ -290,6 +314,8 @@ publicRoutes.post('/leads', async (c) => {
     try {
         const siteId = c.get('siteId');
         const body = await c.req.json();
+        // Check if this is a General Inquiry
+        const isGeneralInquiry = body.propertyId === 'general';
         // Validate required fields
         const requiredFields = ['propertyId', 'firstName', 'lastName', 'email', 'phone'];
         for (const field of requiredFields) {
@@ -299,6 +325,13 @@ publicRoutes.post('/leads', async (c) => {
                     message: `Missing required field: ${field}`,
                 }, 400);
             }
+        }
+        // General Inquiries should not have file attachments
+        if (isGeneralInquiry && body.fileIds && body.fileIds.length > 0) {
+            return c.json({
+                error: 'Validation error',
+                message: 'File attachments are not allowed for general inquiries',
+            }, 400);
         }
         // Create the lead
         const lead = await createLead(c.env.DB, siteId, body);

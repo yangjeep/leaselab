@@ -125,6 +125,8 @@ export async function createLead(dbInput, siteId, data) {
     const db = normalizeDb(dbInput);
     const id = generateId('lead');
     const now = new Date().toISOString();
+    // Check if this is a General Inquiry (employment_status and move_in_date are optional for general inquiries)
+    const isGeneralInquiry = data.propertyId === 'general';
     await db.execute(`
     INSERT INTO leads (id, site_id, property_id, first_name, last_name, email, phone, current_address, employment_status, move_in_date, message, status, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'new', ?, ?)
@@ -137,19 +139,23 @@ export async function createLead(dbInput, siteId, data) {
         data.email,
         data.phone,
         data.currentAddress || null,
-        data.employmentStatus,
-        data.moveInDate,
+        isGeneralInquiry ? null : data.employmentStatus,
+        isGeneralInquiry ? null : data.moveInDate,
         data.message || null,
         now,
         now
     ]);
     // Record history
-    await recordLeadHistory(db, siteId, id, 'lead_created', {
+    const historyData = {
         propertyId: data.propertyId,
-        employmentStatus: data.employmentStatus,
-        moveInDate: data.moveInDate,
         message: data.message || null
-    });
+    };
+    // Only include these fields in history for non-general inquiries
+    if (!isGeneralInquiry) {
+        historyData.employmentStatus = data.employmentStatus;
+        historyData.moveInDate = data.moveInDate;
+    }
+    await recordLeadHistory(db, siteId, id, 'lead_created', historyData);
     return (await getLeadById(db, siteId, id));
 }
 export async function updateLead(dbInput, siteId, id, data) {
@@ -324,4 +330,55 @@ export async function recordLeadHistory(dbInput, siteId, leadId, eventType, even
     INSERT INTO lead_history (id, lead_id, site_id, event_type, event_data)
     VALUES (?, ?, ?, ?, ?)
   `, [id, leadId, siteId, eventType, JSON.stringify(eventData)]);
+}
+/**
+ * Get General Inquiries count (leads with property_id = 'general')
+ */
+export async function getGeneralInquiriesCount(dbInput, siteId, options) {
+    const db = normalizeDb(dbInput);
+    const { status, includeArchived = false } = options || {};
+    const buildQuery = (capabilities) => {
+        let query = `
+            SELECT
+                COUNT(*) as total_count,
+                COUNT(CASE WHEN status IN ('new', 'documents_pending', 'documents_received', 'ai_evaluated', 'screening') THEN 1 END) as pending_count,
+                COUNT(CASE WHEN status IN ('approved', 'rejected') THEN 1 END) as resolved_count
+            FROM leads
+            WHERE site_id = ? AND property_id = 'general'
+        `;
+        const params = [siteId];
+        if (!includeArchived && capabilities.hasLeadIsActive) {
+            query += ' AND is_active = 1';
+        }
+        if (status) {
+            query += ' AND status = ?';
+            params.push(status);
+        }
+        return { query, params };
+    };
+    const capabilities = { hasLeadIsActive: true };
+    const tryQuery = async () => {
+        const { query, params } = buildQuery(capabilities);
+        return db.queryOne(query, params);
+    };
+    let result;
+    try {
+        result = await tryQuery();
+    }
+    catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        if (message.includes('no such column: is_active')) {
+            capabilities.hasLeadIsActive = false;
+            result = await tryQuery();
+        }
+        else {
+            throw error;
+        }
+    }
+    const row = result;
+    return {
+        totalCount: Number(row?.total_count) || 0,
+        pendingCount: Number(row?.pending_count) || 0,
+        resolvedCount: Number(row?.resolved_count) || 0,
+    };
 }

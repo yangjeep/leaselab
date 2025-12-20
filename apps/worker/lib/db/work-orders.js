@@ -27,6 +27,7 @@ function mapWorkOrderWithDetailsFromDb(row) {
         ...mapWorkOrderFromDb(row),
         propertyName: r.property_name,
         unitNumber: r.unit_number,
+        tenantName: r.tenant_name,
     };
 }
 export async function getWorkOrders(dbInput, siteId, options) {
@@ -37,7 +38,8 @@ export async function getWorkOrders(dbInput, siteId, options) {
         SELECT
             wo.*,
             p.name as property_name,
-            u.unit_number as unit_number
+            u.unit_number as unit_number,
+            (t.first_name || ' ' || t.last_name) as tenant_name
         FROM work_orders wo
         INNER JOIN properties p ON wo.property_id = p.id
         LEFT JOIN tenants t ON wo.tenant_id = t.id
@@ -69,6 +71,8 @@ export async function getWorkOrders(dbInput, siteId, options) {
         'property_name': 'p.name',
         'unitNumber': 'u.unit_number',
         'unit_number': 'u.unit_number',
+        'tenantName': 't.last_name',
+        'tenant_name': 't.last_name',
     };
     const dbSortField = sortFieldMap[sortBy] || 'wo.created_at';
     query += ` ORDER BY ${dbSortField} ${sortOrder.toUpperCase()}`;

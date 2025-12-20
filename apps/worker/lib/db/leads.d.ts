@@ -53,4 +53,15 @@ export declare function getAIEvaluation(dbInput: DatabaseInput, siteId: string, 
 export declare function createAIEvaluation(dbInput: DatabaseInput, siteId: string, data: Omit<LeadAIResult, 'id' | 'evaluatedAt'>): Promise<LeadAIResult>;
 export declare function getLeadHistory(dbInput: DatabaseInput, siteId: string, leadId: string): Promise<LeadHistory[]>;
 export declare function recordLeadHistory(dbInput: DatabaseInput, siteId: string, leadId: string, eventType: string, eventData: Record<string, unknown>): Promise<void>;
+/**
+ * Get General Inquiries count (leads with property_id = 'general')
+ */
+export declare function getGeneralInquiriesCount(dbInput: DatabaseInput, siteId: string, options?: {
+    status?: string;
+    includeArchived?: boolean;
+}): Promise<{
+    totalCount: number;
+    pendingCount: number;
+    resolvedCount: number;
+}>;
 //# sourceMappingURL=leads.d.ts.map

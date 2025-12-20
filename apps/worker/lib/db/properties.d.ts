@@ -40,4 +40,16 @@ export declare function getPublicListings(dbInput: DatabaseInput, siteId: string
     city?: string;
     status?: string;
 }, r2PublicUrl?: string, bucket?: any): Promise<any[]>;
+/**
+ * Get properties with application counts for the application board
+ * Returns properties with counts of pending/active applications
+ */
+export declare function getPropertiesWithApplicationCounts(dbInput: DatabaseInput, siteId: string, options?: {
+    isActive?: boolean;
+    onlyAvailable?: boolean;
+}): Promise<Array<Property & {
+    applicationCount: number;
+    pendingCount: number;
+    shortlistedCount: number;
+}>>;
 //# sourceMappingURL=properties.d.ts.map

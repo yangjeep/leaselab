@@ -406,26 +406,48 @@ export async function getGeneralInquiriesCount(dbInput: DatabaseInput, siteId: s
     const db = normalizeDb(dbInput);
     const { status, includeArchived = false } = options || {};
 
-    let query = `
-        SELECT
-            COUNT(*) as total_count,
-            COUNT(CASE WHEN status IN ('new', 'documents_pending', 'documents_received', 'ai_evaluated', 'screening') THEN 1 END) as pending_count,
-            COUNT(CASE WHEN status IN ('approved', 'rejected') THEN 1 END) as resolved_count
-        FROM leads
-        WHERE site_id = ? AND property_id = 'general'
-    `;
-    const params: (string | number)[] = [siteId];
+    const buildQuery = (capabilities: { hasLeadIsActive: boolean }) => {
+        let query = `
+            SELECT
+                COUNT(*) as total_count,
+                COUNT(CASE WHEN status IN ('new', 'documents_pending', 'documents_received', 'ai_evaluated', 'screening') THEN 1 END) as pending_count,
+                COUNT(CASE WHEN status IN ('approved', 'rejected') THEN 1 END) as resolved_count
+            FROM leads
+            WHERE site_id = ? AND property_id = 'general'
+        `;
+        const params: (string | number)[] = [siteId];
 
-    if (!includeArchived) {
-        query += ' AND is_active = 1';
+        if (!includeArchived && capabilities.hasLeadIsActive) {
+            query += ' AND is_active = 1';
+        }
+
+        if (status) {
+            query += ' AND status = ?';
+            params.push(status);
+        }
+
+        return { query, params };
+    };
+
+    const capabilities = { hasLeadIsActive: true };
+
+    const tryQuery = async () => {
+        const { query, params } = buildQuery(capabilities);
+        return db.queryOne(query, params);
+    };
+
+    let result: any;
+    try {
+        result = await tryQuery();
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        if (message.includes('no such column: is_active')) {
+            capabilities.hasLeadIsActive = false;
+            result = await tryQuery();
+        } else {
+            throw error;
+        }
     }
-
-    if (status) {
-        query += ' AND status = ?';
-        params.push(status);
-    }
-
-    const result = await db.queryOne(query, params);
     const row = result as any;
 
     return {

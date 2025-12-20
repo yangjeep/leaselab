@@ -3,6 +3,7 @@ import type { DatabaseInput } from './helpers';
 export type WorkOrderWithDetails = WorkOrder & {
     propertyName?: string;
     unitNumber?: string;
+    tenantName?: string;
 };
 export declare function getWorkOrders(dbInput: DatabaseInput, siteId: string, options?: {
     status?: string;
