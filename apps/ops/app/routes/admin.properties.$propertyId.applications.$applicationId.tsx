@@ -9,7 +9,7 @@
 
 import type { LoaderFunctionArgs, ActionFunctionArgs } from '@remix-run/cloudflare';
 import { json } from '@remix-run/cloudflare';
-import { useLoaderData, Link, useNavigate, useSearchParams, useFetcher } from '@remix-run/react';
+import { useLoaderData, Link, useNavigate, useSearchParams, useRouteLoaderData } from '@remix-run/react';
 import { useState } from 'react';
 import { getSiteId } from '~/lib/site.server';
 import {
@@ -58,6 +58,9 @@ export default function ApplicationDetail() {
   const { property, application, applicants, documents, transitions, notes } = useLoaderData<typeof loader>();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const adminData = useRouteLoaderData<typeof import('./admin').loader>('routes/admin');
+  const currentUserId = adminData?.user?.id;
+  const currentSiteId = adminData?.currentSite;
   const [showAiPane, setShowAiPane] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -70,16 +73,27 @@ export default function ApplicationDetail() {
     setSearchParams(params);
   };
 
-  const currentUserId = 'user_123'; // TODO: Replace with authenticated user from session
+  if (!currentUserId || !currentSiteId) {
+    return (
+      <div className="p-6">
+        <p className="text-sm text-red-600">
+          Unable to determine your session context. Please refresh and try again.
+        </p>
+      </div>
+    );
+  }
 
   const handleApprove = async () => {
+    const env = (window as any).ENV;
+    if (!env) {
+      setActionMessage({ type: 'error', message: 'Environment configuration missing.' });
+      return;
+    }
+
     setActionLoading('approve');
     setActionMessage(null);
     try {
-      const env = (window as any).ENV;
-      const siteId = 'site_123'; // TODO: Get from context
-
-      await approveApplicationToWorker(env, siteId, currentUserId, application.id);
+      await approveApplicationToWorker(env, currentSiteId, currentUserId, application.id);
       setActionMessage({ type: 'success', message: 'Application approved successfully!' });
       setTimeout(() => setActionMessage(null), 3000);
     } catch (error) {
@@ -92,14 +106,16 @@ export default function ApplicationDetail() {
   const handleReject = async () => {
     const reason = prompt('Please provide a reason for rejection:');
     if (!reason) return;
+    const env = (window as any).ENV;
+    if (!env) {
+      setActionMessage({ type: 'error', message: 'Environment configuration missing.' });
+      return;
+    }
 
     setActionLoading('reject');
     setActionMessage(null);
     try {
-      const env = (window as any).ENV;
-      const siteId = 'site_123';
-
-      await rejectApplicationToWorker(env, siteId, currentUserId, application.id, reason);
+      await rejectApplicationToWorker(env, currentSiteId, currentUserId, application.id, reason);
       setActionMessage({ type: 'success', message: 'Application rejected' });
       setTimeout(() => setActionMessage(null), 3000);
     } catch (error) {
@@ -114,14 +130,16 @@ export default function ApplicationDetail() {
     if (!subject) return;
     const message = prompt('Email message:');
     if (!message) return;
+    const env = (window as any).ENV;
+    if (!env) {
+      setActionMessage({ type: 'error', message: 'Environment configuration missing.' });
+      return;
+    }
 
     setActionLoading('email');
     setActionMessage(null);
     try {
-      const env = (window as any).ENV;
-      const siteId = 'site_123';
-
-      await sendApplicationEmailToWorker(env, siteId, currentUserId, application.id, {
+      await sendApplicationEmailToWorker(env, currentSiteId, currentUserId, application.id, {
         subject,
         message,
       });
