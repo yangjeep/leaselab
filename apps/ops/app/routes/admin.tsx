@@ -43,9 +43,9 @@ export default function AdminLayout() {
   const location = useLocation();
 
   return (
-    <div className="flex h-full min-h-0 bg-gray-100">
+    <div className="flex flex-1 min-h-0 bg-gray-100">
       {/* Sidebar */}
-      <aside className="flex h-full w-64 flex-shrink-0 flex-col bg-white shadow-md">
+      <aside className="flex w-64 flex-shrink-0 flex-col bg-white shadow-md self-stretch">
         <div className="p-6 border-b flex-shrink-0">
           <Link to="/admin" className="block">
             <h1 className="text-xl font-bold text-gray-900 hover:text-gray-700 transition-colors cursor-pointer">
@@ -87,7 +87,7 @@ export default function AdminLayout() {
           </ul>
         </nav>
 
-        <div className="flex-shrink-0 border-t p-4" data-testid="sidebar-user-profile">
+        <div className="mt-auto flex-shrink-0 border-t p-4" data-testid="sidebar-user-profile">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-900">{user.name}</p>
@@ -140,9 +140,9 @@ export function ErrorBoundary() {
   }
 
   return (
-    <div className="flex min-h-full bg-gray-100">
+    <div className="flex flex-1 min-h-0 bg-gray-100">
       {/* Sidebar - minimal version */}
-      <aside className="flex h-full w-64 flex-col bg-white shadow-md">
+      <aside className="flex w-64 flex-col bg-white shadow-md self-stretch">
         <div className="p-6 border-b">
           <Link to="/admin">
             <h1 className="text-xl font-bold text-gray-900 hover:text-gray-700 transition-colors cursor-pointer">
