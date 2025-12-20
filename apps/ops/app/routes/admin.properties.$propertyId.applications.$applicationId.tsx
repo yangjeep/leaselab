@@ -9,9 +9,10 @@
 
 import type { LoaderFunctionArgs, ActionFunctionArgs } from '@remix-run/cloudflare';
 import { json } from '@remix-run/cloudflare';
-import { useLoaderData, Link, useNavigate, useSearchParams, useRouteLoaderData } from '@remix-run/react';
-import { useState } from 'react';
+import { useLoaderData, Link, useNavigate, useSearchParams, useRouteLoaderData, useFetcher } from '@remix-run/react';
+import { useEffect, useState } from 'react';
 import { getSiteId } from '~/lib/site.server';
+import { requireAuth } from '~/lib/auth.server';
 import {
   fetchPropertyFromWorker,
   fetchLeadFromWorker,
@@ -54,6 +55,57 @@ export async function loader({ request, params, context }: LoaderFunctionArgs) {
   });
 }
 
+export async function action({ request, params, context }: ActionFunctionArgs) {
+  const env = context.cloudflare.env;
+  const siteId = getSiteId(request);
+  const { propertyId, applicationId } = params;
+
+  if (!propertyId || !applicationId) {
+    return json({ success: false, error: 'Property ID and Application ID required' }, { status: 400 });
+  }
+
+  const workerEnv = {
+    WORKER_URL: env.WORKER_URL,
+    WORKER_INTERNAL_KEY: env.WORKER_INTERNAL_KEY,
+  };
+  const secret = env.SESSION_SECRET as string;
+  const user = await requireAuth(request, workerEnv, secret, siteId);
+
+  const formData = await request.formData();
+  const intent = formData.get('_action');
+
+  try {
+    switch (intent) {
+      case 'approve': {
+        await approveApplicationToWorker(env, siteId, user.id, applicationId);
+        return json({ success: true, message: 'Application approved successfully!' });
+      }
+      case 'reject': {
+        const reason = formData.get('reason');
+        if (!reason || typeof reason !== 'string') {
+          return json({ success: false, error: 'Rejection reason is required.' }, { status: 400 });
+        }
+        await rejectApplicationToWorker(env, siteId, user.id, applicationId, reason);
+        return json({ success: true, message: 'Application rejected.' });
+      }
+      case 'sendEmail': {
+        const subject = formData.get('subject');
+        const message = formData.get('message');
+        if (!subject || typeof subject !== 'string' || !message || typeof message !== 'string') {
+          return json({ success: false, error: 'Subject and message are required.' }, { status: 400 });
+        }
+        await sendApplicationEmailToWorker(env, siteId, user.id, applicationId, { subject, message });
+        return json({ success: true, message: 'Email sent successfully!' });
+      }
+      default:
+        return json({ success: false, error: 'Unsupported action.' }, { status: 400 });
+    }
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return json({ success: false, error: errorMessage }, { status: 500 });
+  }
+}
+
 export default function ApplicationDetail() {
   const { property, application, applicants, documents, transitions, notes } = useLoaderData<typeof loader>();
   const navigate = useNavigate();
@@ -64,6 +116,7 @@ export default function ApplicationDetail() {
   const [showAiPane, setShowAiPane] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const actionFetcher = useFetcher<{ success?: boolean; message?: string; error?: string }>();
 
   const activeTab = searchParams.get('tab') || 'overview';
 
@@ -83,46 +136,39 @@ export default function ApplicationDetail() {
     );
   }
 
-  const handleApprove = async () => {
-    const env = (window as any).ENV;
-    if (!env) {
-      setActionMessage({ type: 'error', message: 'Environment configuration missing.' });
-      return;
+  useEffect(() => {
+    if (actionFetcher.state === 'idle' && actionFetcher.data && actionLoading) {
+      if (actionFetcher.data.success) {
+        setActionMessage({ type: 'success', message: actionFetcher.data.message || 'Action completed successfully.' });
+      } else if (actionFetcher.data.error) {
+        setActionMessage({ type: 'error', message: actionFetcher.data.error });
+      } else {
+        setActionMessage({ type: 'error', message: 'Unexpected response from server.' });
+      }
+      setActionLoading(null);
+      const timeout = setTimeout(() => setActionMessage(null), 3000);
+      return () => clearTimeout(timeout);
     }
+  }, [actionFetcher.state, actionFetcher.data, actionLoading]);
 
+  const handleApprove = async () => {
     setActionLoading('approve');
     setActionMessage(null);
-    try {
-      await approveApplicationToWorker(env, currentSiteId, currentUserId, application.id);
-      setActionMessage({ type: 'success', message: 'Application approved successfully!' });
-      setTimeout(() => setActionMessage(null), 3000);
-    } catch (error) {
-      setActionMessage({ type: 'error', message: 'Failed to approve application' });
-    } finally {
-      setActionLoading(null);
-    }
+    const formData = new FormData();
+    formData.append('_action', 'approve');
+    actionFetcher.submit(formData, { method: 'post' });
   };
 
   const handleReject = async () => {
     const reason = prompt('Please provide a reason for rejection:');
     if (!reason) return;
-    const env = (window as any).ENV;
-    if (!env) {
-      setActionMessage({ type: 'error', message: 'Environment configuration missing.' });
-      return;
-    }
 
     setActionLoading('reject');
     setActionMessage(null);
-    try {
-      await rejectApplicationToWorker(env, currentSiteId, currentUserId, application.id, reason);
-      setActionMessage({ type: 'success', message: 'Application rejected' });
-      setTimeout(() => setActionMessage(null), 3000);
-    } catch (error) {
-      setActionMessage({ type: 'error', message: 'Failed to reject application' });
-    } finally {
-      setActionLoading(null);
-    }
+    const formData = new FormData();
+    formData.append('_action', 'reject');
+    formData.append('reason', reason);
+    actionFetcher.submit(formData, { method: 'post' });
   };
 
   const handleSendEmail = async () => {
@@ -130,26 +176,14 @@ export default function ApplicationDetail() {
     if (!subject) return;
     const message = prompt('Email message:');
     if (!message) return;
-    const env = (window as any).ENV;
-    if (!env) {
-      setActionMessage({ type: 'error', message: 'Environment configuration missing.' });
-      return;
-    }
 
     setActionLoading('email');
     setActionMessage(null);
-    try {
-      await sendApplicationEmailToWorker(env, currentSiteId, currentUserId, application.id, {
-        subject,
-        message,
-      });
-      setActionMessage({ type: 'success', message: 'Email sent successfully!' });
-      setTimeout(() => setActionMessage(null), 3000);
-    } catch (error) {
-      setActionMessage({ type: 'error', message: 'Failed to send email' });
-    } finally {
-      setActionLoading(null);
-    }
+    const formData = new FormData();
+    formData.append('_action', 'sendEmail');
+    formData.append('subject', subject);
+    formData.append('message', message);
+    actionFetcher.submit(formData, { method: 'post' });
   };
 
   // Get primary applicant for header display

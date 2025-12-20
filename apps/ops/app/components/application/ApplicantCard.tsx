@@ -44,6 +44,7 @@ export function ApplicantCard({
     in_progress: 'bg-blue-100 text-blue-700',
     completed: 'bg-green-100 text-green-700',
     failed: 'bg-red-100 text-red-700',
+    review_required: 'bg-yellow-100 text-yellow-800',
   };
 
   const typeInfo = typeLabels[applicant.applicantType];

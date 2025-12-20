@@ -455,7 +455,7 @@ export interface ApplicationApplicant {
   aiEvaluatedAt: string | null;
 
   // Background check
-  backgroundCheckStatus: 'pending' | 'in_progress' | 'completed' | 'failed' | null;
+  backgroundCheckStatus: 'pending' | 'in_progress' | 'completed' | 'failed' | 'review_required' | null;
   backgroundCheckProvider: string | null;
   backgroundCheckReferenceId: string | null;
   backgroundCheckCompletedAt: string | null;
