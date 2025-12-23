@@ -564,6 +564,7 @@ export default function ApplicationDetail() {
         leadId={application.id}
         leadName={`${primaryApplicant?.firstName || ''} ${primaryApplicant?.lastName || ''}`.trim() || 'Applicant'}
         currentEvaluation={application.aiEvaluation}
+        materials={documents}
         onClose={() => setShowAiPane(false)}
       />
     </div>

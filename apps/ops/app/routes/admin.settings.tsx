@@ -33,10 +33,12 @@ export default function SettingsLayout() {
           <NavLink to="/admin/settings/storefront-theme" className={tabClassName}>
             Storefront Theme
           </NavLink>
+          <NavLink to="/admin/settings/ai" className={tabClassName}>
+            AI
+          </NavLink>
         </nav>
       </div>
       <Outlet />
     </div>
   );
 }
-
