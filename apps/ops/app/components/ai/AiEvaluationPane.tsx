@@ -1,9 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useFetcher } from '@remix-run/react';
 import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
   Badge,
   Button,
   Card,
@@ -17,10 +14,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
   Textarea,
 } from '@leaselab/ui-components';
 
@@ -31,9 +24,8 @@ interface AiEvaluationPaneProps {
   leadName: string;
   currentEvaluation?: any;
   isSuperAdmin?: boolean;
+  materials?: any[];
 }
-
-type TabType = 'evaluation' | 'quota' | 'settings';
 
 export function AiEvaluationPane({
   open,
@@ -42,19 +34,19 @@ export function AiEvaluationPane({
   leadName,
   currentEvaluation,
   isSuperAdmin = false,
+  materials = [],
 }: AiEvaluationPaneProps) {
   const jobFetcher = useFetcher();
   const usageFetcher = useFetcher<any>();
   const [showForceModal, setShowForceModal] = useState(false);
   const [forceReason, setForceReason] = useState('');
-  const [activeTab, setActiveTab] = useState<TabType>('evaluation');
 
-  // Fetch usage data when pane opens or tab changes
+  // Fetch usage data when pane opens
   useEffect(() => {
-    if (open && activeTab === 'quota' && usageFetcher.state === 'idle' && !usageFetcher.data) {
+    if (open && usageFetcher.state === 'idle' && !usageFetcher.data) {
       usageFetcher.load('/api/ai-usage');
     }
-  }, [open, activeTab]);
+  }, [open]);
 
   // Close on Escape key
   useEffect(() => {
@@ -106,6 +98,16 @@ export function AiEvaluationPane({
 
   const status = getStatus();
 
+  const normalizedMaterials = (materials || [])
+    .filter(Boolean)
+    .map((m: any, idx: number) => ({
+      id: m.id || m.fileId || m.r2Key || m.storageKey || `${m.fileName || m.uploadedAt || 'doc'}:${idx}`,
+      fileName: m.fileName || m.filename || m.name || 'Document',
+      type: m.documentType || m.fileType || m.mimeType || 'document',
+      uploadedAt: m.uploadedAt || m.createdAt || null,
+    }))
+    .slice(0, 25);
+
   return (
     <>
       {/* Slide-over panel */}
@@ -132,25 +134,15 @@ export function AiEvaluationPane({
           </div>
         </div>
 
-        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as TabType)} className="flex h-full flex-col">
-          <div className="border-b border-gray-200 px-6">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="evaluation">Evaluation</TabsTrigger>
-              <TabsTrigger value="quota">Quota</TabsTrigger>
-              <TabsTrigger value="settings">Settings</TabsTrigger>
-            </TabsList>
-          </div>
-
-          {/* Content */}
-          <div className="flex-1 space-y-6 overflow-y-auto px-6 py-6">
-            <TabsContent value="evaluation" className="space-y-6">
+        {/* Content */}
+        <div className="flex-1 space-y-6 overflow-y-auto px-6 py-6">
           {/* Action Row */}
           {status !== 'duplicate' && (
             <div className="space-y-2">
               <Button
                 onClick={() => handleRunEvaluation(false)}
                 disabled={isLoading || status === 'queued'}
-                className="w-full"
+                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-60 disabled:hover:bg-indigo-600"
               >
                 {isLoading && (
                   <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -168,6 +160,37 @@ export function AiEvaluationPane({
               )}
             </div>
           )}
+
+          {/* Materials */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium">Materials sent to AI</CardTitle>
+              <CardDescription>
+                Review what will be submitted before starting the evaluation.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {normalizedMaterials.length === 0 ? (
+                <p className="text-sm text-gray-500">
+                  No documents found. AI will evaluate based on application information only.
+                </p>
+              ) : (
+                <ul className="divide-y divide-gray-100">
+                  {normalizedMaterials.map((m) => (
+                    <li key={m.id} className="py-3 flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">{m.fileName}</p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {String(m.type).replace(/_/g, ' ')}
+                          {m.uploadedAt ? ` • ${new Date(m.uploadedAt).toLocaleDateString()}` : ''}
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Status Timeline */}
           <Card role="status" aria-live="polite">
@@ -374,163 +397,133 @@ export function AiEvaluationPane({
               </CardContent>
             </Card>
           )}
-            </TabsContent>
+          {/* Usage / Quota */}
+          <Card>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-sm font-medium text-foreground">Monthly Usage</CardTitle>
+              <CardDescription>Track how many evaluations are available this month.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {usageFetcher.state === 'loading' && (
+                <div className="flex items-center justify-center py-8">
+                  <svg className="animate-spin h-8 w-8 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                </div>
+              )}
 
-            <TabsContent value="quota" className="space-y-6">
-              <Card>
-                <CardHeader className="pb-4">
-                  <CardTitle className="text-sm font-medium text-foreground">Monthly Usage</CardTitle>
-                  <CardDescription>Track how many evaluations are available this month.</CardDescription>
-                </CardHeader>
-                <CardContent>
-
-                {usageFetcher.state === 'loading' && (
-                  <div className="flex items-center justify-center py-8">
-                    <svg className="animate-spin h-8 w-8 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
+              {usageFetcher.data?.success && (
+                <>
+                  {/* Progress Circle */}
+                  <div className="flex items-center justify-center mb-6">
+                    <div className="relative inline-flex items-center justify-center w-40 h-40">
+                      <svg className="w-40 h-40 transform -rotate-90">
+                        <circle
+                          cx="80"
+                          cy="80"
+                          r="70"
+                          stroke="currentColor"
+                          strokeWidth="12"
+                          fill="none"
+                          className="text-gray-200"
+                        />
+                        <circle
+                          cx="80"
+                          cy="80"
+                          r="70"
+                          stroke="currentColor"
+                          strokeWidth="12"
+                          fill="none"
+                          strokeDasharray={`${(usageFetcher.data.data.percentage / 100) * 439.82} 439.82`}
+                          className={
+                            usageFetcher.data.data.percentage >= 100
+                              ? 'text-red-500'
+                              : usageFetcher.data.data.percentage >= 80
+                              ? 'text-orange-500'
+                              : 'text-green-500'
+                          }
+                        />
+                      </svg>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center">
+                        <div className="text-3xl font-bold text-gray-900">{usageFetcher.data.data.percentage}%</div>
+                        <div className="text-sm text-gray-500">used</div>
+                      </div>
+                    </div>
                   </div>
-                )}
 
-                {usageFetcher.data?.success && (
-                  <>
-                    {/* Progress Circle */}
-                    <div className="flex items-center justify-center mb-6">
-                      <div className="relative inline-flex items-center justify-center w-40 h-40">
-                        <svg className="w-40 h-40 transform -rotate-90">
-                          <circle
-                            cx="80"
-                            cy="80"
-                            r="70"
-                            stroke="currentColor"
-                            strokeWidth="12"
-                            fill="none"
-                            className="text-gray-200"
-                          />
-                          <circle
-                            cx="80"
-                            cy="80"
-                            r="70"
-                            stroke="currentColor"
-                            strokeWidth="12"
-                            fill="none"
-                            strokeDasharray={`${(usageFetcher.data.data.percentage / 100) * 439.82} 439.82`}
-                            className={
-                              usageFetcher.data.data.percentage >= 100
-                                ? 'text-red-500'
-                                : usageFetcher.data.data.percentage >= 80
-                                ? 'text-orange-500'
-                                : 'text-green-500'
-                            }
-                          />
+                  {/* Usage Stats */}
+                  <div className="text-center mb-6">
+                    <p className="text-lg font-semibold text-gray-900">
+                      {usageFetcher.data.data.evaluation_count} / {usageFetcher.data.data.quota_limit} evaluations
+                    </p>
+                    <p className="text-sm text-gray-500 mt-1">
+                      {usageFetcher.data.data.month} • {usageFetcher.data.data.remaining} remaining
+                    </p>
+                    <p className="text-xs text-gray-400 mt-2">
+                      Resets on {new Date(usageFetcher.data.data.reset_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                    </p>
+                  </div>
+
+                  {/* Warning Messages */}
+                  {usageFetcher.data.data.percentage >= 100 && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                      <div className="flex">
+                        <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                         </svg>
-                        <div className="absolute inset-0 flex flex-col items-center justify-center">
-                          <div className="text-3xl font-bold text-gray-900">{usageFetcher.data.data.percentage}%</div>
-                          <div className="text-sm text-gray-500">used</div>
+                        <div className="ml-3">
+                          <h3 className="text-sm font-medium text-red-800">Monthly quota exhausted</h3>
+                          <p className="mt-1 text-sm text-red-700">
+                            You've used all {usageFetcher.data.data.quota_limit} evaluations for this month.
+                            <a href="/admin/settings" className="font-semibold underline ml-1">Upgrade to Pro</a>
+                          </p>
                         </div>
                       </div>
                     </div>
+                  )}
 
-                    {/* Usage Stats */}
-                    <div className="text-center mb-6">
-                      <p className="text-lg font-semibold text-gray-900">
-                        {usageFetcher.data.data.evaluation_count} / {usageFetcher.data.data.quota_limit} evaluations
-                      </p>
-                      <p className="text-sm text-gray-500 mt-1">
-                        {usageFetcher.data.data.month} • {usageFetcher.data.data.remaining} remaining
-                      </p>
-                      <p className="text-xs text-gray-400 mt-2">
-                        Resets on {new Date(usageFetcher.data.data.reset_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-                      </p>
-                    </div>
-
-                    {/* Warning Messages */}
-                    {usageFetcher.data.data.percentage >= 100 && (
-                      <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-                        <div className="flex">
-                          <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                          </svg>
-                          <div className="ml-3">
-                            <h3 className="text-sm font-medium text-red-800">Monthly quota exhausted</h3>
-                            <p className="mt-1 text-sm text-red-700">
-                              You've used all {usageFetcher.data.data.quota_limit} evaluations for this month.
-                              <a href="/admin/settings" className="font-semibold underline ml-1">Upgrade to Pro</a>
-                            </p>
-                          </div>
+                  {usageFetcher.data.data.percentage >= 80 && usageFetcher.data.data.percentage < 100 && (
+                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
+                      <div className="flex">
+                        <svg className="h-5 w-5 text-orange-400" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        <div className="ml-3">
+                          <h3 className="text-sm font-medium text-orange-800">Approaching quota limit</h3>
+                          <p className="mt-1 text-sm text-orange-700">
+                            You've used {usageFetcher.data.data.evaluation_count} of {usageFetcher.data.data.quota_limit} evaluations.
+                            <a href="/admin/settings" className="font-semibold underline ml-1">Upgrade for more</a>
+                          </p>
                         </div>
                       </div>
-                    )}
-
-                    {usageFetcher.data.data.percentage >= 80 && usageFetcher.data.data.percentage < 100 && (
-                      <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
-                        <div className="flex">
-                          <svg className="h-5 w-5 text-orange-400" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                          </svg>
-                          <div className="ml-3">
-                            <h3 className="text-sm font-medium text-orange-800">Approaching quota limit</h3>
-                            <p className="mt-1 text-sm text-orange-700">
-                              You've used {usageFetcher.data.data.evaluation_count} of {usageFetcher.data.data.quota_limit} evaluations.
-                              <a href="/admin/settings" className="font-semibold underline ml-1">Upgrade for more</a>
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Refresh Button */}
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      onClick={() => usageFetcher.load('/api/ai-usage')}
-                      disabled={usageFetcher.state === 'loading'}
-                      className="w-full"
-                    >
-                      {usageFetcher.state === 'loading' ? 'Refreshing...' : 'Refresh Usage'}
-                    </Button>
-                  </>
-                )}
-
-                {usageFetcher.data?.success === false && (
-                  <div className="text-center py-8">
-                    <p className="text-sm text-red-600 mb-4">{usageFetcher.data.message || 'Failed to load usage data'}</p>
-                    <Button type="button" variant="outline" onClick={() => usageFetcher.load('/api/ai-usage')}>
-                      Retry
-                    </Button>
-                  </div>
-                )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="settings" className="space-y-6">
-              <Card>
-                <CardHeader className="pb-4">
-                  <CardTitle className="text-sm font-medium text-foreground">AI Settings</CardTitle>
-                  <CardDescription>Settings and configuration options will be available here in a future update.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-700">AI Evaluations Enabled</p>
-                      <p className="text-xs text-gray-500">Allow AI evaluations for this site</p>
                     </div>
-                    <Badge variant="outline">Coming soon</Badge>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-700">Auto-run on Documents</p>
-                      <p className="text-xs text-gray-500">Automatically evaluate when documents are uploaded</p>
-                    </div>
-                    <Badge variant="outline">Coming soon</Badge>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </div>
-        </Tabs>
+                  )}
+
+                  {/* Refresh Button */}
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => usageFetcher.load('/api/ai-usage')}
+                    disabled={usageFetcher.state === 'loading'}
+                    className="w-full"
+                  >
+                    {usageFetcher.state === 'loading' ? 'Refreshing...' : 'Refresh Usage'}
+                  </Button>
+                </>
+              )}
+
+              {usageFetcher.data?.success === false && (
+                <div className="text-center py-8">
+                  <p className="text-sm text-red-600 mb-4">{usageFetcher.data.message || 'Failed to load usage data'}</p>
+                  <Button type="button" variant="outline" onClick={() => usageFetcher.load('/api/ai-usage')}>
+                    Retry
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       <Dialog

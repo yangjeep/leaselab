@@ -5,7 +5,7 @@
 
 import type { LoaderFunctionArgs } from '@remix-run/cloudflare';
 import { json } from '@remix-run/cloudflare';
-import { useLoaderData, Link, useSearchParams, useNavigate } from '@remix-run/react';
+import { useLoaderData, Link, useSearchParams } from '@remix-run/react';
 import { useMemo } from 'react';
 import { getSiteId } from '~/lib/site.server';
 import { requireAuth } from '~/lib/auth.server';
@@ -54,7 +54,6 @@ export async function loader({ request, params, context }: LoaderFunctionArgs) {
 export default function PropertyApplicationList() {
   const { property, applications, filters } = useLoaderData<typeof loader>();
   const [searchParams, setSearchParams] = useSearchParams();
-  const navigate = useNavigate();
 
   const orderedApplications = useMemo(() => {
     const rejected: any[] = [];
@@ -79,14 +78,52 @@ export default function PropertyApplicationList() {
     setSearchParams(params);
   };
 
+  const activeView = searchParams.get('view') === 'shortlist' ? 'shortlist' : 'all';
+
+  const visibleApplications = useMemo(() => {
+    if (activeView === 'all') return orderedApplications;
+
+    return orderedApplications.filter((app: any) => {
+      if (app?.status === 'rejected') return false;
+      const aiScore = typeof app?.aiScore === 'number' ? app.aiScore : null;
+      const aiLabel = app?.aiLabel;
+      const hasHighScore = aiScore !== null && aiScore >= 70;
+      const hasGoodLabel = aiLabel === 'A' || aiLabel === 'B';
+      const needsEvaluation = app?.status === 'documents_received' && (aiScore === null || aiScore === undefined);
+      return hasHighScore || hasGoodLabel || needsEvaluation;
+    });
+  }, [activeView, orderedApplications]);
+
+  const handleViewChange = (view: 'all' | 'shortlist') => {
+    const params = new URLSearchParams(searchParams);
+    if (view === 'shortlist') {
+      params.set('view', 'shortlist');
+    } else {
+      params.delete('view');
+    }
+    setSearchParams(params);
+  };
+
+  const showClearFilters =
+    filters.status ||
+    filters.sortBy !== 'ai_score' ||
+    filters.sortOrder !== 'desc';
+
+  const handleClearFilters = () => {
+    const params = new URLSearchParams(searchParams);
+    params.delete('status');
+    params.delete('sortBy');
+    params.delete('sortOrder');
+    setSearchParams(params);
+  };
+
   return (
-    <div className="flex h-screen bg-gray-50">
-      {/* Filters Sidebar */}
-      <aside className="w-64 bg-white border-r border-gray-200 p-4 overflow-y-auto">
+    <div className="p-8 bg-gray-50 min-h-screen">
+      <div className="max-w-7xl mx-auto">
         <div className="mb-6">
           <Link
             to="/admin/applications"
-            className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-2"
+            className="text-sm text-indigo-600 hover:text-indigo-700 inline-flex items-center gap-2"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -95,89 +132,106 @@ export default function PropertyApplicationList() {
           </Link>
         </div>
 
-        <h2 className="font-semibold text-gray-900 mb-4">Filters</h2>
-
-        <div className="space-y-4">
-          {/* Stage Filter */}
+        <div className="flex items-start justify-between gap-6 mb-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Stage
-            </label>
-            <select
-              value={filters.status || ''}
-              onChange={(e) => handleFilterChange('status', e.target.value)}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">All Stages</option>
-              <option value="new">New</option>
-              <option value="documents_pending">Documents Pending</option>
-              <option value="documents_received">Documents Received</option>
-              <option value="ai_evaluated">AI Evaluated</option>
-              <option value="screening">Background Check</option>
-              <option value="approved">Approved</option>
-            </select>
-          </div>
-
-          {/* Sort By */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Sort By
-            </label>
-            <select
-              value={filters.sortBy}
-              onChange={(e) => handleFilterChange('sortBy', e.target.value)}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="ai_score">AI Score</option>
-              <option value="created_at">Date Applied</option>
-              <option value="updated_at">Last Updated</option>
-            </select>
-          </div>
-
-          {/* Sort Order */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Order
-            </label>
-            <select
-              value={filters.sortOrder}
-              onChange={(e) => handleFilterChange('sortOrder', e.target.value)}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="desc">High to Low</option>
-              <option value="asc">Low to High</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Clear Filters */}
-        {(filters.status || filters.sortBy !== 'ai_score' || filters.sortOrder !== 'desc') && (
-          <button
-            onClick={() => setSearchParams({})}
-            className="mt-4 w-full text-sm text-blue-600 hover:text-blue-700 font-medium"
-          >
-            Clear Filters
-          </button>
-        )}
-      </aside>
-
-      {/* Application List */}
-      <main className="flex-1 overflow-y-auto">
-        <div className="p-6">
-          {/* Header */}
-          <div className="mb-6">
             <h1 className="text-2xl font-bold text-gray-900">{property.name}</h1>
             <p className="text-gray-600 mt-1">
               {property.address}, {property.city}
             </p>
             <p className="text-sm text-gray-500 mt-1">
-              {orderedApplications.length} application{orderedApplications.length !== 1 ? 's' : ''}
+              {visibleApplications.length} application{visibleApplications.length !== 1 ? 's' : ''} •{' '}
+              {activeView === 'shortlist' ? 'Shortlist' : 'All'}
             </p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          {/* Toolbar */}
+          <div className="border-b border-gray-200 px-6 py-4">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <div className="inline-flex rounded-lg bg-gray-100 p-1 w-fit">
+                <button
+                  type="button"
+                  onClick={() => handleViewChange('all')}
+                  className={[
+                    'px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
+                    activeView === 'all' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900',
+                  ].join(' ')}
+                >
+                  All
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleViewChange('shortlist')}
+                  className={[
+                    'px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
+                    activeView === 'shortlist' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900',
+                  ].join(' ')}
+                >
+                  Shortlist
+                </button>
+              </div>
+
+              <div className="flex flex-wrap items-end gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Stage</label>
+                  <select
+                    value={filters.status || ''}
+                    onChange={(e) => handleFilterChange('status', e.target.value)}
+                    className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="">All</option>
+                    <option value="new">New</option>
+                    <option value="documents_pending">Docs Pending</option>
+                    <option value="documents_received">Docs Received</option>
+                    <option value="ai_evaluated">AI Evaluated</option>
+                    <option value="screening">Background Check</option>
+                    <option value="approved">Approved</option>
+                    <option value="rejected">Rejected</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Sort</label>
+                  <select
+                    value={filters.sortBy}
+                    onChange={(e) => handleFilterChange('sortBy', e.target.value)}
+                    className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="ai_score">AI Score</option>
+                    <option value="created_at">Date Applied</option>
+                    <option value="updated_at">Last Updated</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Order</label>
+                  <select
+                    value={filters.sortOrder}
+                    onChange={(e) => handleFilterChange('sortOrder', e.target.value)}
+                    className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="desc">High → Low</option>
+                    <option value="asc">Low → High</option>
+                  </select>
+                </div>
+
+                {showClearFilters && (
+                  <button
+                    type="button"
+                    onClick={handleClearFilters}
+                    className="px-3 py-2 text-sm font-medium text-indigo-600 hover:text-indigo-700"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Applications */}
-          {orderedApplications.length === 0 ? (
-            <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
+          {visibleApplications.length === 0 ? (
+            <div className="text-center py-12">
               <div className="text-gray-400 mb-4">
                 <svg
                   className="mx-auto h-12 w-12"
@@ -197,29 +251,37 @@ export default function PropertyApplicationList() {
                 No applications found
               </h3>
               <p className="text-gray-500">
-                {filters.status
+                {filters.status || activeView === 'shortlist'
                   ? 'Try adjusting your filters'
                   : 'Applications will appear here once submitted'}
               </p>
             </div>
           ) : (
-            <div className="space-y-3">
-              {orderedApplications.map((app: any) => (
-                <ApplicationListItem
-                  key={app.id}
-                  application={app}
-                  propertyId={property.id}
-                />
-              ))}
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3">Applicant</th>
+                    <th className="px-6 py-3">Status</th>
+                    <th className="px-6 py-3">AI</th>
+                    <th className="px-6 py-3">Applied</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {visibleApplications.map((app: any) => (
+                    <ApplicationRow key={app.id} application={app} propertyId={property.id} />
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </div>
-      </main>
+      </div>
     </div>
   );
 }
 
-function ApplicationListItem({
+function ApplicationRow({
   application,
   propertyId,
 }: {
@@ -249,81 +311,46 @@ function ApplicationListItem({
   };
 
   return (
-    <Link
-      to={`/admin/properties/${propertyId}/applications/${application.id}`}
-      className="block p-4 bg-white border border-gray-200 rounded-lg hover:shadow-md hover:border-gray-300 transition-all"
-    >
-      <div className="flex items-center justify-between">
-        <div className="flex-1 min-w-0">
-          {/* Name and Badges */}
-          <div className="flex items-center gap-3 mb-2">
-            <h3 className="font-semibold text-lg text-gray-900 truncate">
-              {application.firstName} {application.lastName}
-            </h3>
-
-            {application.aiLabel && (
-              <span
-                className={`px-2 py-1 rounded text-xs font-medium border ${
-                  aiLabelColors[application.aiLabel] || 'bg-gray-100 text-gray-800 border-gray-200'
-                }`}
-              >
-                Grade {application.aiLabel}
-              </span>
-            )}
-
+    <tr className="hover:bg-gray-50">
+      <td className="px-6 py-4">
+        <Link
+          to={`/admin/properties/${propertyId}/applications/${application.id}`}
+          className="font-medium text-gray-900 hover:text-indigo-600"
+        >
+          {application.firstName} {application.lastName}
+        </Link>
+        <div className="text-sm text-gray-500 mt-1">{application.email}</div>
+      </td>
+      <td className="px-6 py-4">
+        <div className="flex flex-wrap items-center gap-2">
+          {application.aiLabel && (
             <span
               className={`px-2 py-1 rounded text-xs font-medium border ${
-                statusColors[application.status] || 'bg-gray-100 text-gray-700 border-gray-200'
+                aiLabelColors[application.aiLabel] || 'bg-gray-100 text-gray-800 border-gray-200'
               }`}
             >
-              {statusLabels[application.status] || application.status}
+              Grade {application.aiLabel}
             </span>
-          </div>
-
-          {/* Details */}
-          <div className="flex items-center gap-4 text-sm text-gray-600">
-            <span className="flex items-center gap-1">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                />
-              </svg>
-              {application.email}
-            </span>
-
-            {application.phone && (
-              <span className="flex items-center gap-1">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
-                  />
-                </svg>
-                {application.phone}
-              </span>
-            )}
-
-            <span className="text-gray-400">
-              Applied {new Date(application.createdAt).toLocaleDateString()}
-            </span>
-          </div>
+          )}
+          <span
+            className={`px-2 py-1 rounded text-xs font-medium border ${
+              statusColors[application.status] || 'bg-gray-100 text-gray-700 border-gray-200'
+            }`}
+          >
+            {statusLabels[application.status] || application.status}
+          </span>
         </div>
-
-        {/* AI Score */}
-        {application.aiScore !== null && application.aiScore !== undefined && (
-          <div className="ml-4 text-right">
-            <div className="text-3xl font-bold text-gray-900">
-              {Math.round(application.aiScore)}
-            </div>
-            <div className="text-xs text-gray-500 uppercase tracking-wide">AI Score</div>
-          </div>
+      </td>
+      <td className="px-6 py-4">
+        {application.aiScore !== null && application.aiScore !== undefined ? (
+          <span className="font-medium text-gray-900">{Math.round(application.aiScore)}</span>
+        ) : (
+          <span className="text-gray-400">—</span>
         )}
-      </div>
-    </Link>
+      </td>
+      <td className="px-6 py-4 text-sm text-gray-500">
+        {new Date(application.createdAt).toLocaleDateString()}
+      </td>
+    </tr>
   );
 }

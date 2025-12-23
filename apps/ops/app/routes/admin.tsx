@@ -30,6 +30,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
 const navItems = [
   { path: '/admin', label: 'Dashboard', icon: '📊' },
   { path: '/admin/applications', label: 'Applications', icon: '📝' },
+  { path: '/admin/general-inquiries', label: 'General Inquiries', icon: '💬' },
   { path: '/admin/properties', label: 'Properties', icon: '🏠' },
   { path: '/admin/tenants', label: 'Tenants', icon: '🔑' },
   { path: '/admin/leases', label: 'Leases', icon: '📋' },
