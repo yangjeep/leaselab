@@ -13,6 +13,8 @@ import {
   fetchPropertyFromWorker,
   fetchPropertyApplicationsFromWorker,
 } from '~/lib/worker-client';
+import { ViewToggle, useViewToggle } from '~/components/ViewToggle';
+import { UnitGroupedApplicationList } from '~/components/application/UnitGroupedApplicationList';
 
 export async function loader({ request, params, context }: LoaderFunctionArgs) {
   const env = context.cloudflare.env;
@@ -34,6 +36,7 @@ export async function loader({ request, params, context }: LoaderFunctionArgs) {
   const status = url.searchParams.get('status') || undefined;
   const sortBy = url.searchParams.get('sortBy') || 'ai_score';
   const sortOrder = (url.searchParams.get('sortOrder') as 'asc' | 'desc') || 'desc';
+  const groupBy = url.searchParams.get('groupBy') === 'unit' ? 'unit' : 'property';
 
   const [property, applications] = await Promise.all([
     fetchPropertyFromWorker(env, siteId, propertyId),
@@ -41,6 +44,7 @@ export async function loader({ request, params, context }: LoaderFunctionArgs) {
       status,
       sortBy,
       sortOrder,
+      groupBy,
     }),
   ]);
 
@@ -48,12 +52,14 @@ export async function loader({ request, params, context }: LoaderFunctionArgs) {
     property,
     applications,
     filters: { status, sortBy, sortOrder },
+    groupBy,
   });
 }
 
 export default function PropertyApplicationList() {
-  const { property, applications, filters } = useLoaderData<typeof loader>();
+  const { property, applications, filters, groupBy } = useLoaderData<typeof loader>();
   const [searchParams, setSearchParams] = useSearchParams();
+  const [currentGroupView, setCurrentGroupView] = useViewToggle('application_group_view', 'unit');
 
   const orderedApplications = useMemo(() => {
     const rejected: any[] = [];
@@ -104,6 +110,17 @@ export default function PropertyApplicationList() {
     setSearchParams(params);
   };
 
+  const handleGroupViewChange = (view: 'unit' | 'property') => {
+    setCurrentGroupView(view);
+    const params = new URLSearchParams(searchParams);
+    if (view === 'unit') {
+      params.set('groupBy', 'unit');
+    } else {
+      params.delete('groupBy');
+    }
+    setSearchParams(params);
+  };
+
   const showClearFilters =
     filters.status ||
     filters.sortBy !== 'ai_score' ||
@@ -149,27 +166,35 @@ export default function PropertyApplicationList() {
           {/* Toolbar */}
           <div className="border-b border-gray-200 px-6 py-4">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-              <div className="inline-flex rounded-lg bg-gray-100 p-1 w-fit">
-                <button
-                  type="button"
-                  onClick={() => handleViewChange('all')}
-                  className={[
-                    'px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
-                    activeView === 'all' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900',
-                  ].join(' ')}
-                >
-                  All
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleViewChange('shortlist')}
-                  className={[
-                    'px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
-                    activeView === 'shortlist' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900',
-                  ].join(' ')}
-                >
-                  Shortlist
-                </button>
+              <div className="flex items-center gap-3">
+                <div className="inline-flex rounded-lg bg-gray-100 p-1 w-fit">
+                  <button
+                    type="button"
+                    onClick={() => handleViewChange('all')}
+                    className={[
+                      'px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
+                      activeView === 'all' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900',
+                    ].join(' ')}
+                  >
+                    All
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleViewChange('shortlist')}
+                    className={[
+                      'px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
+                      activeView === 'shortlist' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900',
+                    ].join(' ')}
+                  >
+                    Shortlist
+                  </button>
+                </div>
+
+                <ViewToggle
+                  currentView={currentGroupView}
+                  onViewChange={handleGroupViewChange}
+                  labels={{ unit: 'By Unit', property: 'List View' }}
+                />
               </div>
 
               <div className="flex flex-wrap items-end gap-3">
@@ -230,7 +255,7 @@ export default function PropertyApplicationList() {
           </div>
 
           {/* Applications */}
-          {visibleApplications.length === 0 ? (
+          {visibleApplications.length === 0 && groupBy === 'property' ? (
             <div className="text-center py-12">
               <div className="text-gray-400 mb-4">
                 <svg
@@ -255,6 +280,10 @@ export default function PropertyApplicationList() {
                   ? 'Try adjusting your filters'
                   : 'Applications will appear here once submitted'}
               </p>
+            </div>
+          ) : groupBy === 'unit' ? (
+            <div className="p-6">
+              <UnitGroupedApplicationList groups={applications} propertyId={property.id} />
             </div>
           ) : (
             <div className="overflow-x-auto">
