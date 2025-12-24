@@ -1608,18 +1608,25 @@ export async function deleteNoteToWorker(
 
 /**
  * Get property applications with sorting/filtering
+ * @param groupBy - 'unit' to get applications grouped by unit, 'property' for flat list (default)
  */
 export async function fetchPropertyApplicationsFromWorker(
   env: WorkerEnv,
   siteId: string,
   propertyId: string,
-  options?: { status?: string; sortBy?: string; sortOrder?: 'asc' | 'desc' }
+  options?: {
+    status?: string;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+    groupBy?: 'unit' | 'property';
+  }
 ): Promise<any[]> {
   let url = `${env.WORKER_URL}/api/ops/properties/${propertyId}/applications`;
   const params = new URLSearchParams();
   if (options?.status) params.set('status', options.status);
   if (options?.sortBy) params.set('sortBy', options.sortBy);
   if (options?.sortOrder) params.set('sortOrder', options.sortOrder);
+  if (options?.groupBy) params.set('groupBy', options.groupBy);
   if (params.toString()) url += `?${params.toString()}`;
 
   const response = await workerFetch(url, env, {}, siteId);
