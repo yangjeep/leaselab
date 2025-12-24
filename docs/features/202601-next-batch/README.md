@@ -331,29 +331,17 @@ Introduce role-based access control for new and existing Ops surfaces.
 
 ---
 
-## 12) Ops UX & Workflow Improvements
-
-**See detailed documentation: [202601-ops-ux-workflow-improvements](../202601-ops-ux-workflow-improvements/)**
-
-### Overview
-Streamline core workflows in the Ops dashboard to reduce friction and improve operational efficiency. These improvements focus on better defaults, multi-select capabilities, and clearer separation of active vs. historical records.
-
-### Features Summary
-
-- **[01 - Unit-Level Application View](../202601-ops-ux-workflow-improvements/01-unit-level-application-view.md)**: Applications organized by unit by default, with toggle to property view
-- **[02 - Multi-Select Operations for Applications](../202601-ops-ux-workflow-improvements/02-multiselect-applications.md)**: Bulk operations and "Proceed to Lease" from Shortlist
-- **[03 - Multi-Select for Lease and Tenant Views](../202601-ops-ux-workflow-improvements/03-multiselect-lease-tenant.md)**: Extend bulk operations to leases and tenants
-- **[04 - Separate Views: Leases vs. Leases in Progress](../202601-ops-ux-workflow-improvements/04-leases-in-progress.md)**: Distinct workflows for active lease management vs. new lease onboarding
-- **[05 - Work Orders Default View](../202601-ops-ux-workflow-improvements/05-work-orders-default-view.md)**: Default to "Open & In-Progress" work orders only
-
----
-
 ## Cross-Feature Dependencies
 
 - #4 (Work order media) depends on file storage primitives already implemented.
 - #5 (Tenant portal) depends on #6 (RBAC) for clean authorization boundaries.
 - #2 (Notices) benefits from #1 (Email) for delivery + reminders.
 - #9 (Renewal support) depends on #2 (N1) for timelines and optional notice generation.
-- #12.2 (Proceed to Lease from Shortlist) depends on #12.4 (Leases in Progress workflow).
-- #12.4 (Leases in Progress) may integrate with #8 (AI lease execution) for guided workflows.
+
+---
+
+## Related Feature Sets
+
+For Ops UX & Workflow improvements (application views, multi-select operations, lease workflows), see:
+- **[202601-ops-ux-workflow-improvements](../202601-ops-ux-workflow-improvements/)**: 5 features focused on streamlining daily operations
 
