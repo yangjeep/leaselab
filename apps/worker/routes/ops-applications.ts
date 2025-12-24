@@ -588,6 +588,12 @@ opsApplicationsRoutes.delete('/notes/:noteId', async (c: Context) => {
 /**
  * GET /api/ops/properties/:propertyId/applications
  * Get all applications for a property with sorting/filtering
+ *
+ * Query parameters:
+ * - groupBy: 'unit' | 'property' (default: 'property') - Group applications by unit or return flat list
+ * - sortBy: 'ai_score' | 'created_at' | 'updated_at' (default: 'ai_score')
+ * - sortOrder: 'asc' | 'desc' (default: 'desc')
+ * - status: Filter by application status
  */
 opsApplicationsRoutes.get('/properties/:propertyId/applications', async (c: Context) => {
   try {
@@ -598,18 +604,43 @@ opsApplicationsRoutes.get('/properties/:propertyId/applications', async (c: Cont
       return c.json({ error: 'Missing X-Site-Id header' }, 400);
     }
 
+    const groupBy = c.req.query('groupBy') || 'property';
+    const sortBy = c.req.query('sortBy') || 'ai_score';
+    const sortOrder = (c.req.query('sortOrder') as 'asc' | 'desc') || 'desc';
+    const status = c.req.query('status') || undefined;
+
+    // Use grouped view if requested
+    if (groupBy === 'unit') {
+      const { getLeadsGroupedByUnit } = await import('../lib/db/leads');
+
+      const groupedApplications = await getLeadsGroupedByUnit(c.env.DB, siteId, {
+        propertyId,
+        sortBy,
+        sortOrder,
+        status,
+      });
+
+      return c.json({
+        success: true,
+        data: groupedApplications,
+        groupedBy: 'unit',
+      });
+    }
+
+    // Default: flat list view
     const { getLeads } = await import('../lib/db/leads');
 
     const applications = await getLeads(c.env.DB, siteId, {
       propertyId,
-      sortBy: c.req.query('sortBy') || 'ai_score',
-      sortOrder: (c.req.query('sortOrder') as 'asc' | 'desc') || 'desc',
-      status: c.req.query('status') || undefined,
+      sortBy,
+      sortOrder,
+      status,
     });
 
     return c.json({
       success: true,
       data: applications,
+      groupedBy: 'property',
     });
   } catch (error) {
     console.error('Error fetching property applications:', error);
