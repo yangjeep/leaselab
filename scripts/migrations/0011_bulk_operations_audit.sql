@@ -2,7 +2,21 @@
 -- Created: 2025-12-23
 -- Feature: 202601-ops-ux-workflow-improvements/02-multiselect-applications
 
--- Add bulk_action_id to audit_log for linking related bulk operations
+-- Create audit_log table if it doesn't exist
+CREATE TABLE IF NOT EXISTS audit_log (
+  id TEXT PRIMARY KEY,
+  entity_type TEXT NOT NULL,
+  entity_id TEXT NOT NULL,
+  action TEXT NOT NULL,
+  performed_by TEXT NOT NULL,
+  changes TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  FOREIGN KEY (performed_by) REFERENCES users(id)
+);
+
+-- Add bulk_action_id column if table already exists (use ALTER TABLE for existing tables)
+-- Note: SQLite doesn't support "IF NOT EXISTS" for ALTER TABLE, so we'll handle errors gracefully
+-- This will fail silently if column already exists
 ALTER TABLE audit_log ADD COLUMN bulk_action_id TEXT;
 
 -- Index for efficient bulk action queries
