@@ -909,4 +909,303 @@ opsApplicationsRoutes.post('/applications/:applicationId/send-email', async (c: 
   }
 });
 
+/**
+ * POST /api/ops/applications/bulk
+ * Perform bulk operations on multiple applications
+ */
+opsApplicationsRoutes.post('/applications/bulk', async (c: Context) => {
+  try {
+    const siteId = c.get('siteId');
+    const userId = c.get('userId');
+
+    if (!siteId || !userId) {
+      return c.json({ error: 'Missing siteId or userId' }, 401);
+    }
+
+    const body = await c.req.json();
+    const { application_ids, action, params = {} } = body;
+
+    // Validation
+    if (!application_ids || !Array.isArray(application_ids) || application_ids.length === 0) {
+      return c.json({ error: 'Invalid application_ids: must be non-empty array' }, 400);
+    }
+
+    if (application_ids.length > 50) {
+      return c.json({ error: 'Maximum 50 applications per bulk action' }, 400);
+    }
+
+    const validActions = ['reject', 'move_to_stage', 'archive', 'send_email'];
+    if (!validActions.includes(action)) {
+      return c.json({ error: `Invalid action. Must be one of: ${validActions.join(', ')}` }, 400);
+    }
+
+    // Verify all applications exist and belong to the same unit
+    const { getLeads } = await import('../lib/db/leads');
+    const applications = await getLeads(c.env.DB, siteId, { limit: 1000 });
+
+    const selectedApps = applications.filter((app: any) => application_ids.includes(app.id));
+
+    if (selectedApps.length !== application_ids.length) {
+      return c.json({ error: 'Some applications not found' }, 404);
+    }
+
+    const unitIds = new Set(selectedApps.map((app: any) => app.unitId).filter(Boolean));
+    if (unitIds.size > 1) {
+      return c.json({
+        error: 'All applications must belong to the same unit',
+        details: 'Multi-select across units is not supported'
+      }, 400);
+    }
+
+    // Create bulk action record
+    const { createBulkAction, updateBulkActionResults } = await import('../lib/db/bulk-actions');
+    const bulkActionId = await createBulkAction(
+      c.env.DB,
+      userId,
+      action,
+      application_ids.length,
+      params
+    );
+
+    // Execute bulk action
+    const results = [];
+    let successCount = 0;
+    let failureCount = 0;
+
+    const { updateLead } = await import('../lib/db/leads');
+    const { logAuditEntry } = await import('../lib/db/bulk-actions');
+
+    for (const appId of application_ids) {
+      try {
+        switch (action) {
+          case 'reject':
+            await updateLead(c.env.DB, siteId, appId, {
+              status: 'rejected',
+            });
+            await logAuditEntry(c.env.DB, {
+              entityType: 'application',
+              entityId: appId,
+              action: 'reject',
+              performedBy: userId,
+              bulkActionId,
+              changes: {
+                status: 'rejected',
+                reason: params.reason || 'Bulk rejection',
+                rejected_at: new Date().toISOString(),
+                rejected_by: userId,
+              },
+            });
+            results.push({ application_id: appId, status: 'success' });
+            successCount++;
+            break;
+
+          case 'move_to_stage':
+            if (!params.stage) {
+              throw new Error('Stage parameter required for move_to_stage action');
+            }
+            await updateLead(c.env.DB, siteId, appId, { status: params.stage });
+            await logAuditEntry(c.env.DB, {
+              entityType: 'application',
+              entityId: appId,
+              action: 'move_to_stage',
+              performedBy: userId,
+              bulkActionId,
+              changes: { status: params.stage },
+            });
+            results.push({ application_id: appId, status: 'success' });
+            successCount++;
+            break;
+
+          case 'archive':
+            await updateLead(c.env.DB, siteId, appId, { isActive: false });
+            await logAuditEntry(c.env.DB, {
+              entityType: 'application',
+              entityId: appId,
+              action: 'archive',
+              performedBy: userId,
+              bulkActionId,
+              changes: { is_active: false },
+            });
+            results.push({ application_id: appId, status: 'success' });
+            successCount++;
+            break;
+
+          case 'send_email':
+            // TODO: Integrate with email system (Feature #1 from 202601-next-batch)
+            console.log(`[STUB] Sending email to application ${appId}`);
+            await logAuditEntry(c.env.DB, {
+              entityType: 'application',
+              entityId: appId,
+              action: 'send_email',
+              performedBy: userId,
+              bulkActionId,
+              changes: { email_template: params.template_id },
+            });
+            results.push({ application_id: appId, status: 'success' });
+            successCount++;
+            break;
+        }
+      } catch (error) {
+        console.error(`Error processing application ${appId}:`, error);
+        results.push({
+          application_id: appId,
+          status: 'failed',
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
+        failureCount++;
+      }
+    }
+
+    // Update bulk action results
+    await updateBulkActionResults(c.env.DB, bulkActionId, successCount, failureCount);
+
+    return c.json({
+      bulk_action_id: bulkActionId,
+      success_count: successCount,
+      failure_count: failureCount,
+      results,
+    });
+  } catch (error) {
+    console.error('Error performing bulk action:', error);
+    return c.json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    }, 500);
+  }
+});
+
+/**
+ * POST /api/ops/applications/:applicationId/proceed-to-lease
+ * Initiate lease creation from approved application
+ */
+opsApplicationsRoutes.post('/applications/:applicationId/proceed-to-lease', async (c: Context) => {
+  try {
+    const siteId = c.get('siteId');
+    const userId = c.get('userId');
+    const applicationId = c.req.param('applicationId');
+
+    if (!siteId || !userId) {
+      return c.json({ error: 'Missing siteId or userId' }, 401);
+    }
+
+    const body = await c.req.json();
+    const { lease_start_date, lease_term_months } = body;
+
+    // Validation
+    if (!lease_start_date || !lease_term_months) {
+      return c.json({ error: 'lease_start_date and lease_term_months required' }, 400);
+    }
+
+    // Verify application exists and is suitable for lease
+    const { getLeadById } = await import('../lib/db/leads');
+    const application = await getLeadById(c.env.DB, siteId, applicationId);
+
+    if (!application) {
+      return c.json({ error: 'Application not found' }, 404);
+    }
+
+    // Check if application is shortlisted (AI evaluated with good score/label)
+    const isShortlisted =
+      application.status === 'ai_evaluated' &&
+      (application.aiLabel === 'A' || application.aiLabel === 'B' || (application.aiScore && application.aiScore >= 70));
+
+    if (!isShortlisted) {
+      return c.json({
+        error: 'Application must be shortlisted',
+        details: 'Only applications with AI grade A/B or score ≥70 can proceed to lease'
+      }, 400);
+    }
+
+    // Check unit assignment and availability
+    if (!application.unitId) {
+      return c.json({ error: 'Application must have a unit assigned' }, 400);
+    }
+
+    const { getUnitById } = await import('../lib/db/units');
+    const unit = await getUnitById(c.env.DB, siteId, application.unitId);
+
+    if (!unit) {
+      return c.json({ error: 'Unit not found' }, 404);
+    }
+
+    if (unit.status !== 'available') {
+      return c.json({
+        error: 'Unit is not available',
+        details: `Unit status: ${unit.status}. Only available units can be leased.`
+      }, 400);
+    }
+
+    // Create tenant record from application data
+    const { createTenant } = await import('../lib/db/tenants');
+    const tenant = await createTenant(c.env.DB, siteId, {
+      leadId: applicationId,
+      firstName: application.firstName,
+      lastName: application.lastName,
+      email: application.email,
+      phone: application.phone || '',
+      emergencyContact: undefined,
+      emergencyPhone: undefined,
+      status: 'moving_in', // Tenant approved, in process of finalizing lease
+    });
+
+    // Create lease record (using existing lease table structure)
+    // Note: This creates a "lease in progress" that needs to be completed with documents
+    const { createLease } = await import('../lib/db/leases');
+    const lease = await createLease(c.env.DB, siteId, {
+      propertyId: application.propertyId,
+      unitId: application.unitId,
+      tenantId: tenant.id,
+      status: 'draft', // Draft until lease documents are uploaded
+      startDate: lease_start_date,
+      endDate: calculateLeaseEndDate(lease_start_date, lease_term_months),
+      monthlyRent: unit.rentAmount,
+      securityDeposit: unit.depositAmount || unit.rentAmount, // Use deposit or default to 1 month rent
+    });
+    const leaseId = lease.id;
+
+    // Update application status to approved
+    const { updateLead } = await import('../lib/db/leads');
+    await updateLead(c.env.DB, siteId, applicationId, {
+      status: 'approved',
+    });
+
+    // Log audit entry with approval metadata
+    const { logAuditEntry } = await import('../lib/db/bulk-actions');
+    await logAuditEntry(c.env.DB, {
+      entityType: 'application',
+      entityId: applicationId,
+      action: 'proceed_to_lease',
+      performedBy: userId,
+      changes: {
+        status: 'approved',
+        approved_at: new Date().toISOString(),
+        approved_by: userId,
+        lease_id: leaseId,
+        lease_start_date,
+        lease_term_months,
+      },
+    });
+
+    return c.json({
+      lease_id: leaseId,
+      redirect_url: `/admin/leases/${leaseId}`,
+      message: 'Lease initiated successfully',
+    });
+  } catch (error) {
+    console.error('Error proceeding to lease:', error);
+    return c.json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    }, 500);
+  }
+});
+
+// Helper function to calculate lease end date
+function calculateLeaseEndDate(startDate: string, termMonths: number): string {
+  const start = new Date(startDate);
+  const end = new Date(start);
+  end.setMonth(end.getMonth() + termMonths);
+  return end.toISOString().split('T')[0]; // Return YYYY-MM-DD format
+}
+
 export default opsApplicationsRoutes;
