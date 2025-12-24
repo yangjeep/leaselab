@@ -333,158 +333,18 @@ Introduce role-based access control for new and existing Ops surfaces.
 
 ## 12) Ops UX & Workflow Improvements
 
+**See detailed documentation: [202601-ops-ux-workflow-improvements](../202601-ops-ux-workflow-improvements/)**
+
 ### Overview
 Streamline core workflows in the Ops dashboard to reduce friction and improve operational efficiency. These improvements focus on better defaults, multi-select capabilities, and clearer separation of active vs. historical records.
 
----
+### Features Summary
 
-### 12.1) Unit-Level Application View (Default)
-
-**Problem Statement**
-Currently applications may be organized at the property level, which creates extra navigation steps when properties have multiple units. Most operational decisions happen at the unit level.
-
-**User Stories**
-
-- **As a property manager**, I want to see applications organized by unit by default, so that I can quickly identify which specific unit each applicant is interested in without additional clicks.
-
-- **As an ops admin**, I want the ability to toggle between unit-level and property-level views, so that I can choose the grouping that makes sense for my current task (e.g., property-level when reviewing overall demand).
-
-- **As a property manager reviewing applications**, I want each application card/row to prominently display the unit identifier (e.g., "Unit 2B"), so that I can immediately understand which unit is being applied for.
-
-**Acceptance Criteria**
-
-- Default view for `/applications` route is grouped/filtered by unit.
-- Each application displays unit information prominently in list and detail views.
-- A view toggle (unit vs. property) is available and persists user preference (session/localStorage).
-- Filtering and sorting work correctly in both unit and property views.
-
-**Open Questions**
-
-- Should "unit view" be a nested route (`/properties/:id/units/:unitId/applications`) or a filter/grouping option?
-- How to handle properties with no explicit units (e.g., single-family homes)?
-
----
-
-### 12.2) Multi-Select Operations for Applications + "Proceed to Lease" in Shortlist
-
-**Problem Statement**
-Processing multiple applications for the same property/unit involves repetitive actions. The "Shortlist" stage is the natural point to transition to lease creation, but this action is currently not streamlined.
-
-**User Stories**
-
-- **As a property manager**, I want to select multiple applications within the same property/unit using checkboxes, so that I can perform bulk actions like rejection or status updates without clicking each one individually.
-
-- **As a property manager in the Shortlist view**, I want a "Proceed to Lease" button for selected applications, so that I can quickly initiate lease creation for approved applicants.
-
-- **As a property manager**, I want multi-select to be restricted to applications within the same property/unit, so that I don't accidentally perform incompatible bulk actions across different units.
-
-- **As an ops admin**, I want bulk actions to include: bulk reject, bulk move to next stage, bulk archive, and bulk email, so that I can handle common workflows efficiently.
-
-**Acceptance Criteria**
-
-- Checkboxes appear on application list items; selecting multiple applications enables bulk action toolbar.
-- Bulk actions are scoped to a single property/unit (UI prevents cross-unit multi-select).
-- "Proceed to Lease" button is available in Shortlist view when exactly one application is selected (or configurable for multiple if co-tenants supported).
-- Bulk actions show a confirmation modal with a summary of affected applications.
-- All bulk actions are audited (who performed, which applications, when).
-
-**Open Questions**
-
-- Should "Proceed to Lease" support multiple applicants (roommates/co-tenants) in one action?
-- What happens to other shortlisted applications for the same unit when one proceeds to lease?
-
----
-
-### 12.3) Multi-Select and Bulk Operations in Lease and Tenant Views
-
-**Problem Statement**
-Similar to applications, lease and tenant management involves repetitive tasks that would benefit from batch processing.
-
-**User Stories**
-
-- **As a property manager**, I want to select multiple leases using checkboxes, so that I can perform bulk operations like sending renewal reminders, updating status, or generating reports.
-
-- **As an ops admin**, I want to select multiple tenant records, so that I can bulk send notices, update contact information templates, or export tenant data.
-
-- **As a property manager**, I want bulk operations on leases to include: bulk status update, bulk document generation (e.g., renewal letters), bulk email, and bulk export, so that I can handle end-of-term workflows efficiently.
-
-- **As an ops admin**, I want bulk operations on tenants to include: bulk email, bulk document send, bulk tag/categorize, and bulk export, so that I can communicate with or organize groups of tenants quickly.
-
-**Acceptance Criteria**
-
-- Checkboxes appear on lease and tenant list views.
-- Multi-select enables a bulk action toolbar with relevant operations.
-- Bulk actions are transaction-safe (all succeed or all fail with clear error messaging).
-- Audit log records all bulk operations with user, timestamp, and affected records.
-- UI provides clear feedback during bulk operations (progress indicator, success/failure summary).
-
-**Open Questions**
-
-- Should bulk operations be limited by quantity (e.g., max 50 at once) to prevent performance issues?
-- Which bulk operations should require additional confirmation (e.g., bulk termination)?
-
----
-
-### 12.4) Separate Views: Existing Leases vs. Leases in Progress
-
-**Problem Statement**
-The current "Lease" section mixes active/historical leases with new leases being created from applications. This creates clutter and makes it harder to track in-progress onboarding vs. ongoing lease management.
-
-**User Stories**
-
-- **As a property manager**, I want a clear separation between "Leases" (active and historical) and "Leases in Progress" (applications converting to leases), so that I can focus on the right workflow at the right time.
-
-- **As an ops admin starting a new lease from an approved application**, I want to land in a "Leases in Progress" view with a guided workflow (checklist, missing docs, signatures), so that I can track onboarding completion clearly.
-
-- **As a property manager managing existing leases**, I want the "Leases" view to default to active leases with easy access to historical/terminated leases, so that my primary workspace isn't cluttered with past records.
-
-- **As an ops admin**, I want "Leases in Progress" to show a progress indicator (e.g., "3 of 7 steps complete") for each pending lease, so that I can prioritize which leases need attention.
-
-**Acceptance Criteria**
-
-- Two distinct routes/tabs: `/leases` (existing, active/historical) and `/leases/in-progress` (new leases from applications).
-- "Leases in Progress" view includes:
-  - Checklist or progress indicator per lease
-  - Ability to request missing documents, send signature requests
-  - Transition to "Leases" upon completion
-- "Leases" view defaults to active leases; filter/toggle to show terminated/historical.
-- Clear navigation between the two views (e.g., tabs, sidebar sections).
-- Badge/count on "Leases in Progress" shows number of pending leases.
-
-**Open Questions**
-
-- At what point does a "Lease in Progress" become an active "Lease"? (First signature? All signatures? Move-in date?)
-- Should "Leases in Progress" integrate with the AI lease execution workflow (feature #8)?
-
----
-
-### 12.5) Work Orders: Default View "Open & In-Progress"
-
-**Problem Statement**
-The current work order list may default to showing all work orders (including completed/closed), which makes it harder to focus on actionable items.
-
-**User Stories**
-
-- **As a property manager**, I want the work orders page to default to showing only "Open" and "In-Progress" work orders, so that I immediately see what requires my attention.
-
-- **As an ops admin**, I want quick access to filter toggles for "All", "Open & In-Progress", "Completed", and "Cancelled", so that I can switch contexts when needed (e.g., reviewing history).
-
-- **As a property manager**, I want the work order list to visually distinguish between "Open" (not started) and "In-Progress" (actively being worked on), so that I can prioritize follow-ups appropriately.
-
-- **As a property manager**, I want to see a count/badge of "Open & In-Progress" work orders in the navigation, so that I'm aware of pending workload at a glance.
-
-**Acceptance Criteria**
-
-- `/work-orders` route defaults to showing only `status IN ('open', 'in_progress')`.
-- Filter controls allow toggling to "All", "Completed", "Cancelled" views; selection persists in session.
-- Visual distinction between "Open" and "In-Progress" (e.g., color coding, icons).
-- Navigation badge shows count of open + in-progress work orders.
-- Default view is performant even with many historical work orders (proper indexing/pagination).
-
-**Open Questions**
-
-- Should "Urgent" or "Emergency" work orders be surfaced separately or just within the "Open & In-Progress" view with visual priority indicators?
-- Should there be a separate "Overdue" filter/view for work orders past their expected completion date?
+- **[01 - Unit-Level Application View](../202601-ops-ux-workflow-improvements/01-unit-level-application-view.md)**: Applications organized by unit by default, with toggle to property view
+- **[02 - Multi-Select Operations for Applications](../202601-ops-ux-workflow-improvements/02-multiselect-applications.md)**: Bulk operations and "Proceed to Lease" from Shortlist
+- **[03 - Multi-Select for Lease and Tenant Views](../202601-ops-ux-workflow-improvements/03-multiselect-lease-tenant.md)**: Extend bulk operations to leases and tenants
+- **[04 - Separate Views: Leases vs. Leases in Progress](../202601-ops-ux-workflow-improvements/04-leases-in-progress.md)**: Distinct workflows for active lease management vs. new lease onboarding
+- **[05 - Work Orders Default View](../202601-ops-ux-workflow-improvements/05-work-orders-default-view.md)**: Default to "Open & In-Progress" work orders only
 
 ---
 
