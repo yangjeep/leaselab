@@ -10,3 +10,8 @@ export { StageConfirmationDialog } from './StageConfirmationDialog';
 export type { StageTransition } from './StageConfirmationDialog';
 export { DocumentsList } from './DocumentsList';
 export { InternalNotes } from './InternalNotes';
+export { UnitGroupedApplicationList } from './UnitGroupedApplicationList';
+export { BulkActionToolbar } from './BulkActionToolbar';
+export type { BulkActionToolbarProps } from './BulkActionToolbar';
+export { BulkActionConfirmModal } from './BulkActionConfirmModal';
+export type { BulkActionConfirmModalProps } from './BulkActionConfirmModal';

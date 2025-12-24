@@ -1,10 +1,15 @@
 /**
  * UnitGroupedApplicationList Component
  * Displays applications grouped by unit with unit details
+ * Supports multi-select operations with bulk actions
  */
 
-import { Link } from '@remix-run/react';
+import { useState } from 'react';
+import { Link, useRevalidator } from '@remix-run/react';
 import type { UnitApplicationGroup } from '~/shared/types';
+import { useMultiSelect } from '~/lib/useMultiSelect';
+import { BulkActionToolbar } from './BulkActionToolbar';
+import { BulkActionConfirmModal } from './BulkActionConfirmModal';
 
 interface UnitGroupedApplicationListProps {
   groups: UnitApplicationGroup[];
@@ -14,6 +19,8 @@ interface UnitGroupedApplicationListProps {
 interface ApplicationRowProps {
   application: any;
   propertyId: string;
+  isSelected: boolean;
+  onToggleSelection: () => void;
 }
 
 /**
@@ -59,9 +66,79 @@ export function UnitGroupedApplicationList({
 
 /**
  * Individual unit group with header and applications table
+ * Includes multi-select functionality and bulk actions
  */
 function UnitGroup({ group, propertyId }: { group: UnitApplicationGroup; propertyId: string }) {
   const { unit, applications, count } = group;
+  const multiSelect = useMultiSelect();
+  const revalidator = useRevalidator();
+  const [modalAction, setModalAction] = useState<'reject' | 'move_to_stage' | 'archive' | 'send_email' | 'proceed_to_lease' | null>(null);
+
+  // Check if any selected application is shortlisted (AI grade A/B or score >= 70)
+  const hasShortlistedSelection = applications.some(
+    (app: any) =>
+      multiSelect.isSelected(app.id) &&
+      (app.aiLabel === 'A' || app.aiLabel === 'B' || (app.aiScore && app.aiScore >= 70))
+  );
+
+  const showProceedToLease = multiSelect.count === 1 && hasShortlistedSelection;
+
+  const selectedApplications = applications.filter((app: any) => multiSelect.isSelected(app.id));
+
+  const handleBulkAction = async (action: string, params?: Record<string, any>) => {
+    try {
+      if (action === 'proceed_to_lease' && selectedApplications.length === 1) {
+        // Proceed to lease endpoint
+        const response = await fetch(`/api/ops/applications/${selectedApplications[0].id}/proceed-to-lease`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(params),
+        });
+
+        if (!response.ok) {
+          const error = (await response.json()) as { error: string };
+          alert(`Error: ${error.error}`);
+          return;
+        }
+
+        const result = (await response.json()) as { lease_id: string; redirect_url: string };
+        alert(`Lease created successfully! Redirecting to lease...`);
+        window.location.href = result.redirect_url;
+      } else {
+        // Bulk operations endpoint
+        const response = await fetch('/api/ops/applications/bulk', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            application_ids: multiSelect.selectedIds,
+            action,
+            params,
+          }),
+        });
+
+        if (!response.ok) {
+          const error = (await response.json()) as { error: string };
+          alert(`Error: ${error.error}`);
+          return;
+        }
+
+        const result = (await response.json()) as { success_count: number; application_count: number };
+        alert(`Successfully processed ${result.success_count} of ${result.application_count} applications`);
+
+        // Clear selection and reload data
+        multiSelect.clearSelection();
+        revalidator.revalidate();
+      }
+    } catch (error) {
+      console.error('Bulk action error:', error);
+      alert('An error occurred. Please try again.');
+    }
+  };
+
+  const handleSelectAll = () => {
+    const allIds = applications.map((app: any) => app.id);
+    multiSelect.selectAll(allIds, unit?.id);
+  };
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
@@ -128,11 +205,34 @@ function UnitGroup({ group, propertyId }: { group: UnitApplicationGroup; propert
         </div>
       </div>
 
+      {/* Bulk Action Toolbar */}
+      <div className="px-6 pt-4">
+        <BulkActionToolbar
+          selectedCount={multiSelect.count}
+          onClearSelection={multiSelect.clearSelection}
+          onReject={() => setModalAction('reject')}
+          onMoveToStage={() => setModalAction('move_to_stage')}
+          onArchive={() => setModalAction('archive')}
+          onSendEmail={() => setModalAction('send_email')}
+          onProceedToLease={showProceedToLease ? () => setModalAction('proceed_to_lease') : undefined}
+          showProceedToLease={showProceedToLease}
+        />
+      </div>
+
       {/* Applications Table */}
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead className="bg-gray-50">
             <tr className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 w-12">
+                <input
+                  type="checkbox"
+                  checked={applications.length > 0 && applications.every((app: any) => multiSelect.isSelected(app.id))}
+                  onChange={handleSelectAll}
+                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+                  aria-label="Select all applications"
+                />
+              </th>
               <th className="px-6 py-3">Applicant</th>
               <th className="px-6 py-3">Status</th>
               <th className="px-6 py-3">AI Score</th>
@@ -140,20 +240,40 @@ function UnitGroup({ group, propertyId }: { group: UnitApplicationGroup; propert
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {applications.map((app) => (
-              <ApplicationRow key={app.id} application={app} propertyId={propertyId} />
+            {applications.map((app: any) => (
+              <ApplicationRow
+                key={app.id}
+                application={app}
+                propertyId={propertyId}
+                isSelected={multiSelect.isSelected(app.id)}
+                onToggleSelection={() => multiSelect.toggleSelection(app.id, app.unitId)}
+              />
             ))}
           </tbody>
         </table>
       </div>
+
+      {/* Bulk Action Confirm Modal */}
+      <BulkActionConfirmModal
+        isOpen={modalAction !== null}
+        onClose={() => setModalAction(null)}
+        onConfirm={(params) => handleBulkAction(modalAction!, params)}
+        action={modalAction}
+        applicationCount={multiSelect.count}
+        applications={selectedApplications.map((app: any) => ({
+          id: app.id,
+          firstName: app.firstName,
+          lastName: app.lastName,
+        }))}
+      />
     </div>
   );
 }
 
 /**
- * Individual application row in the table
+ * Individual application row in the table with checkbox
  */
-function ApplicationRow({ application, propertyId }: ApplicationRowProps) {
+function ApplicationRow({ application, propertyId, isSelected, onToggleSelection }: ApplicationRowProps) {
   const aiLabelColors: Record<string, string> = {
     A: 'bg-green-100 text-green-800 border-green-200',
     B: 'bg-blue-100 text-blue-800 border-blue-200',
@@ -177,7 +297,16 @@ function ApplicationRow({ application, propertyId }: ApplicationRowProps) {
   };
 
   return (
-    <tr className="hover:bg-gray-50 transition-colors">
+    <tr className={`hover:bg-gray-50 transition-colors ${isSelected ? 'bg-blue-50' : ''}`}>
+      <td className="px-6 py-4">
+        <input
+          type="checkbox"
+          checked={isSelected}
+          onChange={onToggleSelection}
+          className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+          aria-label={`Select ${application.firstName} ${application.lastName}`}
+        />
+      </td>
       <td className="px-6 py-4">
         <Link
           to={`/admin/properties/${propertyId}/applications/${application.id}`}
