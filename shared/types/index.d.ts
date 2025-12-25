@@ -105,6 +105,20 @@ export interface LeadHistory {
 export type LeadStatus = 'new' | 'documents_pending' | 'documents_received' | 'ai_evaluating' | 'ai_evaluated' | 'screening' | 'approved' | 'rejected' | 'lease_sent' | 'lease_signed';
 export type EmploymentStatus = 'employed' | 'self_employed' | 'unemployed' | 'retired' | 'student';
 export type AILabel = 'A' | 'B' | 'C' | 'D';
+export interface UnitApplicationGroup {
+    unit: {
+        id: string;
+        propertyId: string;
+        unitNumber: string;
+        bedrooms?: number;
+        bathrooms?: number;
+        squareFeet?: number;
+        monthlyRent?: number;
+        status?: string;
+    } | null;
+    applications: Lead[];
+    count: number;
+}
 export interface LeadFile {
     id: string;
     leadId: string;

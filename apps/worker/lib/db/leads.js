@@ -106,6 +106,74 @@ export async function getLeads(dbInput, siteId, options) {
     const results = await db.query(query, params);
     return results.map(mapLeadWithOccupancyFromDb);
 }
+/**
+ * Get leads grouped by unit
+ * Returns applications organized by unit for better UX in property management
+ */
+export async function getLeadsGroupedByUnit(dbInput, siteId, options) {
+    const db = normalizeDb(dbInput);
+    const { status, propertyId, sortBy = 'created_at', sortOrder = 'desc', includeArchived = false } = options || {};
+    // First get all matching leads with unit information
+    const leads = await getLeads(dbInput, siteId, {
+        status,
+        propertyId,
+        sortBy,
+        sortOrder,
+        includeArchived,
+        limit: 1000, // Get all for grouping
+    });
+    // Group leads by unit
+    const unitGroups = new Map();
+    const noUnitLeads = [];
+    for (const lead of leads) {
+        if (lead.unitId) {
+            const existing = unitGroups.get(lead.unitId) || [];
+            existing.push(lead);
+            unitGroups.set(lead.unitId, existing);
+        }
+        else {
+            noUnitLeads.push(lead);
+        }
+    }
+    // Get unit details for all units that have applications
+    const unitIds = Array.from(unitGroups.keys());
+    const units = unitIds.length > 0
+        ? await db.query(`SELECT * FROM units WHERE id IN (${unitIds.map(() => '?').join(',')})`, unitIds)
+        : [];
+    // Map unit details
+    const unitMap = new Map(units.map((u) => [u.id, {
+            id: u.id,
+            propertyId: u.property_id,
+            unitNumber: u.unit_number,
+            bedrooms: u.bedrooms,
+            bathrooms: u.bathrooms,
+            squareFeet: u.square_feet,
+            monthlyRent: u.monthly_rent,
+            status: u.status,
+        }]));
+    // Build response with units and their applications
+    const groupedResults = Array.from(unitGroups.entries()).map(([unitId, applications]) => ({
+        unit: unitMap.get(unitId) || null,
+        applications,
+        count: applications.length,
+    }));
+    // Sort groups by unit number or by first application's sort field
+    groupedResults.sort((a, b) => {
+        if (a.unit?.unitNumber && b.unit?.unitNumber) {
+            return a.unit.unitNumber.localeCompare(b.unit.unitNumber);
+        }
+        return 0;
+    });
+    // Add no-unit group if exists
+    if (noUnitLeads.length > 0) {
+        groupedResults.push({
+            unit: null,
+            applications: noUnitLeads,
+            count: noUnitLeads.length,
+        });
+    }
+    return groupedResults;
+}
 export async function getLeadById(dbInput, siteId, id) {
     const db = normalizeDb(dbInput);
     const query = `

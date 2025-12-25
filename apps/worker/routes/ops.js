@@ -10,11 +10,14 @@ import { getProperties, getPropertyById, getPropertyBySlug, getPropertyWithUnits
 import { buildThemePayload } from '../lib/theme-response';
 // Import application workflow routes
 import opsApplicationsRoutes from './ops-applications';
+import opsLeasesRoutes from './ops-leases';
 const opsRoutes = new Hono();
 // Apply internal auth middleware to all ops routes
 opsRoutes.use('*', internalAuthMiddleware);
 // Mount application workflow routes
 opsRoutes.route('/', opsApplicationsRoutes);
+// Mount lease operations routes
+opsRoutes.route('/', opsLeasesRoutes);
 // ==================== PROPERTIES ====================
 /**
  * GET /api/ops/properties
