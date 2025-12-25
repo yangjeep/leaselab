@@ -96,6 +96,7 @@ import type { CloudflareEnv } from '../../../shared/config';
 // Import application workflow routes
 import opsApplicationsRoutes from './ops-applications';
 import opsLeasesRoutes from './ops-leases';
+import opsTenantsRoutes from './ops-tenants';
 
 // Use shared bindings type
 type Bindings = CloudflareEnv;
@@ -110,6 +111,9 @@ opsRoutes.route('/', opsApplicationsRoutes);
 
 // Mount lease operations routes
 opsRoutes.route('/', opsLeasesRoutes);
+
+// Mount tenant operations routes
+opsRoutes.route('/', opsTenantsRoutes);
 
 // ==================== PROPERTIES ====================
 
