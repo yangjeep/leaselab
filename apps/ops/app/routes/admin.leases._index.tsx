@@ -65,12 +65,55 @@ export default function LeasesIndex() {
   // Handle bulk actions
   const handleBulkAction = async (action: string, params?: Record<string, any>) => {
     try {
-      // TODO: This will be implemented in Phase 2
-      // For now, stub with console.log
-      console.log('Bulk action:', action, 'Params:', params, 'Lease IDs:', multiSelect.selectedIds);
+      const response = await fetch('/api/ops/leases/bulk', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          lease_ids: multiSelect.selectedIds,
+          action,
+          params,
+        }),
+      });
 
-      // Simulate API call
-      alert(`Bulk action "${action}" will be implemented in Phase 2.\n\nSelected ${multiSelect.count} lease(s).`);
+      if (!response.ok) {
+        const error = (await response.json()) as { error: string };
+        throw new Error(error.error || 'Bulk action failed');
+      }
+
+      // Handle export action (CSV download)
+      if (action === 'export') {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `leases-export-${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      } else {
+        const result = (await response.json()) as {
+          bulk_action_id: string;
+          success_count: number;
+          failure_count: number;
+          results: Array<{ lease_id: string; status: string; error?: string }>;
+        };
+
+        // Show results
+        if (result.failure_count > 0) {
+          alert(
+            `Bulk action completed with some failures:\n\n` +
+              `✓ Success: ${result.success_count}\n` +
+              `✗ Failed: ${result.failure_count}\n\n` +
+              `Check the console for details.`
+          );
+          console.log('Bulk action results:', result.results);
+        } else {
+          alert(`Bulk action completed successfully!\n\n✓ ${result.success_count} lease(s) updated.`);
+        }
+      }
 
       // Clear selection and close modal
       multiSelect.clearSelection();
@@ -80,7 +123,7 @@ export default function LeasesIndex() {
       revalidator.revalidate();
     } catch (error) {
       console.error('Bulk action failed:', error);
-      alert('Bulk action failed. Please try again.');
+      alert(`Bulk action failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
