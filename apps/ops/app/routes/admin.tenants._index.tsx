@@ -1,10 +1,13 @@
 import type { LoaderFunctionArgs, MetaFunction } from '@remix-run/cloudflare';
 import { json } from '@remix-run/cloudflare';
-import { useLoaderData, Link, useSearchParams } from '@remix-run/react';
+import { useLoaderData, Link, useSearchParams, useRevalidator } from '@remix-run/react';
+import { useState } from 'react';
 import { fetchTenantsFromWorker, fetchPropertiesFromWorker, fetchUnitsFromWorker } from '~/lib/worker-client';
 import { formatPhoneNumber } from '~/shared/utils';
 import { getSiteId } from '~/lib/site.server';
 import { SortableTableHeader, NonSortableTableHeader } from '~/components/SortableTableHeader';
+import { useMultiSelect } from '~/lib/useMultiSelect';
+import { TenantBulkActionToolbar, TenantBulkActionConfirmModal } from '~/components/tenant';
 
 export const meta: MetaFunction = () => {
   return [{ title: 'Tenants - LeaseLab.io' }];
@@ -33,9 +36,45 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
 export default function TenantsIndex() {
   const { tenants, properties, units } = useLoaderData<typeof loader>();
   const [searchParams, setSearchParams] = useSearchParams();
+  const revalidator = useRevalidator();
+
+  // Multi-select state
+  const multiSelect = useMultiSelect();
+  const [modalAction, setModalAction] = useState<'send_email' | 'send_document' | 'add_tag' | 'export' | null>(null);
 
   const currentPropertyId = searchParams.get('propertyId') || 'all';
   const currentUnitId = searchParams.get('unitId') || 'all';
+
+  // Get selected tenants for modal display
+  const selectedTenants = tenants
+    .filter((tenant: any) => multiSelect.isSelected(tenant.id))
+    .map((tenant: any) => ({
+      id: tenant.id,
+      name: `${tenant.firstName} ${tenant.lastName}`,
+      email: tenant.email,
+    }));
+
+  // Handle bulk actions
+  const handleBulkAction = async (action: string, params?: Record<string, any>) => {
+    try {
+      // TODO: This will be implemented in Phase 4
+      // For now, stub with console.log
+      console.log('Bulk action:', action, 'Params:', params, 'Tenant IDs:', multiSelect.selectedIds);
+
+      // Simulate API call
+      alert(`Bulk action "${action}" will be implemented in Phase 4 (tenant bulk operations backend).\n\nSelected ${multiSelect.count} tenant(s).`);
+
+      // Clear selection and close modal
+      multiSelect.clearSelection();
+      setModalAction(null);
+
+      // Revalidate to refresh data
+      revalidator.revalidate();
+    } catch (error) {
+      console.error('Bulk action failed:', error);
+      alert(`Bulk action failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
 
   const statuses = [
     { value: 'all', label: 'All' },
@@ -166,6 +205,16 @@ export default function TenantsIndex() {
         )}
       </div>
 
+      {/* Bulk Action Toolbar */}
+      <TenantBulkActionToolbar
+        selectedCount={multiSelect.count}
+        onClearSelection={multiSelect.clearSelection}
+        onSendEmail={() => setModalAction('send_email')}
+        onSendDocument={() => setModalAction('send_document')}
+        onAddTag={() => setModalAction('add_tag')}
+        onExport={() => setModalAction('export')}
+      />
+
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         {tenants.length === 0 ? (
           <div className="p-8 text-center text-gray-500">
@@ -175,6 +224,21 @@ export default function TenantsIndex() {
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
+                <th className="px-6 py-3 text-left">
+                  <input
+                    type="checkbox"
+                    checked={multiSelect.count > 0 && multiSelect.count === tenants.length}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        multiSelect.selectAll(tenants.map((t: any) => t.id));
+                      } else {
+                        multiSelect.clearSelection();
+                      }
+                    }}
+                    className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                    aria-label="Select all tenants"
+                  />
+                </th>
                 <SortableTableHeader column="firstName" label="Name" />
                 <SortableTableHeader column="propertyName" label="Property / Unit" />
                 <SortableTableHeader column="email" label="Contact" />
@@ -187,12 +251,28 @@ export default function TenantsIndex() {
             <tbody className="divide-y divide-gray-100">
               {tenants.map((tenant) => {
                 const hasActiveWorkOrders = tenant.activeWorkOrderCount && tenant.activeWorkOrderCount > 0;
+                const isSelected = multiSelect.isSelected(tenant.id);
                 return (
                   <tr
                     key={tenant.id}
-                    className={`hover:bg-gray-50 cursor-pointer ${hasActiveWorkOrders ? 'bg-yellow-50' : ''}`}
+                    className={`cursor-pointer transition-colors ${
+                      isSelected
+                        ? 'bg-blue-50 hover:bg-blue-100'
+                        : hasActiveWorkOrders
+                        ? 'bg-yellow-50 hover:bg-yellow-100'
+                        : 'hover:bg-gray-50'
+                    }`}
                     onClick={() => window.location.href = `/admin/tenants/${tenant.id}`}
                   >
+                    <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => multiSelect.toggleSelection(tenant.id, undefined)}
+                        className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                        aria-label={`Select tenant ${tenant.firstName} ${tenant.lastName}`}
+                      />
+                    </td>
                     <td className="px-6 py-4">
                       <p className="font-medium text-gray-900">
                         {tenant.firstName} {tenant.lastName}
@@ -243,6 +323,16 @@ export default function TenantsIndex() {
           </table>
         )}
       </div>
+
+      {/* Bulk Action Confirmation Modal */}
+      <TenantBulkActionConfirmModal
+        isOpen={modalAction !== null}
+        onClose={() => setModalAction(null)}
+        onConfirm={handleBulkAction}
+        action={modalAction}
+        tenantCount={multiSelect.count}
+        tenants={selectedTenants}
+      />
     </div>
   );
 }
