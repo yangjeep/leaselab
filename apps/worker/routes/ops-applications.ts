@@ -1148,8 +1148,8 @@ opsApplicationsRoutes.post('/applications/:applicationId/proceed-to-lease', asyn
       status: 'moving_in', // Tenant approved, in process of finalizing lease
     });
 
-    // Create lease record (using existing lease table structure)
-    // Note: This creates a "lease in progress" that needs to be completed with documents
+    // Create lease record with draft status
+    // Note: This creates a "lease in progress" that needs to complete onboarding checklist
     const { createLease } = await import('../lib/db/leases');
     const lease = await createLease(c.env.DB, siteId, {
       propertyId: application.propertyId,
@@ -1162,6 +1162,17 @@ opsApplicationsRoutes.post('/applications/:applicationId/proceed-to-lease', asyn
       securityDeposit: unit.depositAmount || unit.rentAmount, // Use deposit or default to 1 month rent
     });
     const leaseId = lease.id;
+
+    // Set onboarding status to in_progress via direct DB update
+    // (updateLease doesn't support onboarding_status yet, so we use direct SQL)
+    await c.env.DB
+      .prepare('UPDATE leases SET onboarding_status = ? WHERE id = ?')
+      .bind('in_progress', leaseId)
+      .run();
+
+    // Create onboarding checklist for the new lease
+    const { createLeaseChecklist, DEFAULT_CHECKLIST_STEPS } = await import('../lib/db/lease-onboarding');
+    await createLeaseChecklist(c.env.DB, leaseId, DEFAULT_CHECKLIST_STEPS);
 
     // Update application status to approved
     const { updateLead } = await import('../lib/db/leads');
@@ -1188,8 +1199,8 @@ opsApplicationsRoutes.post('/applications/:applicationId/proceed-to-lease', asyn
 
     return c.json({
       lease_id: leaseId,
-      redirect_url: `/admin/leases/${leaseId}`,
-      message: 'Lease initiated successfully',
+      redirect_url: `/admin/leases/in-progress`,
+      message: 'Lease created successfully. Complete the onboarding checklist to activate.',
     });
   } catch (error) {
     console.error('Error proceeding to lease:', error);

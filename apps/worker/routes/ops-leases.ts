@@ -12,6 +12,12 @@ import { Hono } from 'hono';
 import type { Context } from 'hono';
 import { getLeases, updateLease } from '../lib/db/leases';
 import { createBulkAction, updateBulkActionResults, logAuditEntry } from '../lib/db/bulk-actions';
+import {
+  getLeasesInProgress,
+  getLeaseChecklist,
+  updateChecklistStep,
+  completeLeaseOnboarding,
+} from '../lib/db/lease-onboarding';
 import type { CloudflareEnv } from '../../../shared/config';
 
 type Bindings = CloudflareEnv;
@@ -319,6 +325,192 @@ opsLeasesRoutes.post('/leases/bulk', async (c: Context) => {
         message: error instanceof Error ? error.message : 'Unknown error',
       },
       500
+    );
+  }
+});
+
+// ==================== LEASE ONBOARDING ENDPOINTS ====================
+
+/**
+ * GET /api/ops/leases/in-progress
+ * Fetch all leases with in_progress onboarding status
+ *
+ * Response:
+ * {
+ *   leases: [
+ *     {
+ *       id: string,
+ *       tenant: { id, firstName, lastName, email },
+ *       unit: { id, unitNumber, propertyName },
+ *       progress: { total_steps, completed_steps, percentage },
+ *       checklist: ChecklistStep[],
+ *       startDate, monthlyRent, createdAt, updatedAt
+ *     }
+ *   ]
+ * }
+ */
+opsLeasesRoutes.get('/leases/in-progress', async (c: Context) => {
+  try {
+    const siteId = c.get('siteId');
+
+    if (!siteId) {
+      return c.json({ error: 'Missing siteId' }, 401);
+    }
+
+    const leases = await getLeasesInProgress(c.env.DB, siteId);
+
+    return c.json({ leases });
+  } catch (error) {
+    console.error('Error fetching leases in progress:', error);
+    return c.json(
+      {
+        error: 'Internal server error',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      },
+      500
+    );
+  }
+});
+
+/**
+ * PATCH /api/ops/leases/:id/checklist
+ * Update a single checklist step for a lease
+ *
+ * Request body:
+ * {
+ *   step_id: string,
+ *   completed: boolean,
+ *   notes?: string
+ * }
+ *
+ * Response:
+ * {
+ *   success: true,
+ *   checklist: ChecklistStep[],
+ *   progress: { total_steps, completed_steps, percentage }
+ * }
+ */
+opsLeasesRoutes.patch('/leases/:id/checklist', async (c: Context) => {
+  try {
+    const siteId = c.get('siteId');
+    const userId = c.get('userId');
+    const leaseId = c.req.param('id');
+
+    if (!siteId || !userId) {
+      return c.json({ error: 'Missing siteId or userId' }, 401);
+    }
+
+    const body = await c.req.json();
+    const { step_id, completed, notes } = body;
+
+    if (!step_id || typeof completed !== 'boolean') {
+      return c.json({ error: 'step_id and completed are required' }, 400);
+    }
+
+    // Update the checklist step
+    const updatedChecklist = await updateChecklistStep(
+      c.env.DB,
+      leaseId,
+      step_id,
+      completed,
+      notes
+    );
+
+    // Log audit entry
+    await logAuditEntry(c.env.DB, {
+      entityType: 'lease',
+      entityId: leaseId,
+      action: 'update_checklist',
+      performedBy: userId,
+      changes: {
+        step_id,
+        completed,
+        notes,
+        completed_steps: updatedChecklist.completed_steps,
+        total_steps: updatedChecklist.total_steps,
+      },
+    });
+
+    return c.json({
+      success: true,
+      checklist: updatedChecklist.steps,
+      progress: {
+        total_steps: updatedChecklist.total_steps,
+        completed_steps: updatedChecklist.completed_steps,
+        percentage: Math.round(
+          (updatedChecklist.completed_steps / updatedChecklist.total_steps) * 100
+        ),
+      },
+    });
+  } catch (error) {
+    console.error('Error updating checklist:', error);
+    return c.json(
+      {
+        error: 'Internal server error',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      },
+      500
+    );
+  }
+});
+
+/**
+ * POST /api/ops/leases/:id/complete-onboarding
+ * Complete lease onboarding (all required steps done)
+ *
+ * Request body (optional):
+ * {
+ *   set_active_status?: boolean (default: true)
+ * }
+ *
+ * Response:
+ * {
+ *   success: true,
+ *   lease_id: string,
+ *   message: string
+ * }
+ */
+opsLeasesRoutes.post('/leases/:id/complete-onboarding', async (c: Context) => {
+  try {
+    const siteId = c.get('siteId');
+    const userId = c.get('userId');
+    const leaseId = c.req.param('id');
+
+    if (!siteId || !userId) {
+      return c.json({ error: 'Missing siteId or userId' }, 401);
+    }
+
+    const body = await c.req.json().catch(() => ({}));
+    const { set_active_status = true } = body;
+
+    // Complete the onboarding
+    await completeLeaseOnboarding(c.env.DB, leaseId, set_active_status);
+
+    // Log audit entry
+    await logAuditEntry(c.env.DB, {
+      entityType: 'lease',
+      entityId: leaseId,
+      action: 'complete_onboarding',
+      performedBy: userId,
+      changes: {
+        onboarding_status: set_active_status ? null : 'completed',
+        lease_status: set_active_status ? 'active' : undefined,
+      },
+    });
+
+    return c.json({
+      success: true,
+      lease_id: leaseId,
+      message: 'Lease onboarding completed successfully',
+    });
+  } catch (error) {
+    console.error('Error completing onboarding:', error);
+    return c.json(
+      {
+        error: 'Failed to complete onboarding',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      },
+      400
     );
   }
 });

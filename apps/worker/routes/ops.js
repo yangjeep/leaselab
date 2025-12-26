@@ -11,6 +11,7 @@ import { buildThemePayload } from '../lib/theme-response';
 // Import application workflow routes
 import opsApplicationsRoutes from './ops-applications';
 import opsLeasesRoutes from './ops-leases';
+import opsTenantsRoutes from './ops-tenants';
 const opsRoutes = new Hono();
 // Apply internal auth middleware to all ops routes
 opsRoutes.use('*', internalAuthMiddleware);
@@ -18,6 +19,8 @@ opsRoutes.use('*', internalAuthMiddleware);
 opsRoutes.route('/', opsApplicationsRoutes);
 // Mount lease operations routes
 opsRoutes.route('/', opsLeasesRoutes);
+// Mount tenant operations routes
+opsRoutes.route('/', opsTenantsRoutes);
 // ==================== PROPERTIES ====================
 /**
  * GET /api/ops/properties
