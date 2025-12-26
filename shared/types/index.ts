@@ -152,6 +152,22 @@ export type EmploymentStatus = 'employed' | 'self_employed' | 'unemployed' | 're
 
 export type AILabel = 'A' | 'B' | 'C' | 'D';
 
+// Grouped applications by unit (for unit-level view)
+export interface UnitApplicationGroup {
+  unit: {
+    id: string;
+    propertyId: string;
+    unitNumber: string;
+    bedrooms?: number;
+    bathrooms?: number;
+    squareFeet?: number;
+    monthlyRent?: number;
+    status?: string;
+  } | null; // null for applications without assigned unit
+  applications: Lead[];
+  count: number;
+}
+
 // Lead File Types
 export interface LeadFile {
   id: string;
@@ -421,4 +437,302 @@ export interface Session {
   id: string;
   userId: string;
   expiresAt: string;
+}
+
+// ============================================================================
+// Application Progress Workflow Types
+// ============================================================================
+
+// Application Applicants
+export type ApplicantType = 'primary' | 'co_applicant' | 'guarantor';
+
+export interface ApplicationApplicant {
+  id: string;
+  applicationId: string;
+  applicantType: ApplicantType;
+
+  // Personal info
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string | null;
+  dateOfBirth: string | null;
+
+  // Employment
+  employmentStatus: EmploymentStatus | null;
+  employerName: string | null;
+  jobTitle: string | null;
+  monthlyIncome: number | null;
+
+  // AI Evaluation
+  aiScore: number | null;
+  aiLabel: AILabel | null;
+  aiRiskFlags: string[] | null;
+  aiEvaluatedAt: string | null;
+
+  // Background check
+  backgroundCheckStatus: 'pending' | 'in_progress' | 'completed' | 'failed' | 'review_required' | null;
+  backgroundCheckProvider: string | null;
+  backgroundCheckReferenceId: string | null;
+  backgroundCheckCompletedAt: string | null;
+
+  // Invite system
+  inviteToken: string | null;
+  inviteSentAt: string | null;
+  inviteAcceptedAt: string | null;
+
+  // Metadata
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string | null;
+}
+
+export type DocumentType =
+  | 'government_id'
+  | 'paystub'
+  | 'bank_statement'
+  | 'tax_return'
+  | 'employment_letter'
+  | 'credit_report'
+  | 'background_check'
+  | 'other';
+
+export type DocumentVerificationStatus = 'pending' | 'verified' | 'rejected' | 'expired';
+
+export interface ApplicationDocument {
+  id: string;
+  applicationId: string;
+  applicantId: string | null;
+
+  // Document metadata
+  documentType: DocumentType;
+  fileName: string;
+  fileSize: number | null;
+  mimeType: string | null;
+
+  // Storage
+  storageKey: string;
+  storageUrl: string | null;
+
+  // Status
+  verificationStatus: DocumentVerificationStatus | null;
+  verifiedBy: string | null;
+  verifiedAt: string | null;
+  rejectionReason: string | null;
+
+  // Metadata
+  uploadedAt: string;
+  uploadedBy: string | null;
+  expiresAt: string | null;
+}
+
+export type StageTransitionType = 'manual' | 'automatic' | 'system';
+export type BypassCategory = 'ai_offline' | 'manual_override' | 'emergency' | 'other';
+
+export interface ApplicationStageTransition {
+  id: string;
+  applicationId: string;
+
+  // Stage change
+  fromStage: LeadStatus;
+  toStage: LeadStatus;
+  transitionType: StageTransitionType;
+
+  // Confirmation metadata
+  confirmationAcknowledged: boolean;
+  bypassReason: string | null;
+  bypassCategory: BypassCategory | null;
+
+  // Checklist state
+  checklistSnapshot: Record<string, any> | null;
+
+  // Notes
+  internalNotes: string | null;
+
+  // Metadata
+  transitionedAt: string;
+  transitionedBy: string;
+}
+
+export type NoteCategory =
+  | 'general'
+  | 'documents'
+  | 'ai_screening'
+  | 'background_check'
+  | 'decision'
+  | 'lease_prep';
+
+export type NotePriority = 'low' | 'medium' | 'high' | 'urgent';
+
+export interface ApplicationInternalNote {
+  id: string;
+  applicationId: string;
+  applicantId: string | null;
+
+  // Note content
+  noteText: string;
+  noteCategory: NoteCategory | null;
+
+  // Tags
+  taggedApplicants: string[] | null;
+  priority: NotePriority | null;
+
+  // Visibility
+  isSensitive: boolean;
+  visibleToRoles: string[] | null;
+
+  // Metadata
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string;
+}
+
+// Extended Lead interface with new fields
+export interface LeadExtended extends Lead {
+  primaryApplicantId: string | null;
+  shortlistedAt: string | null;
+  shortlistedBy: string | null;
+  decisionDeadline: string | null;
+  householdMonthlyIncome: number | null;
+  householdAiScore: number | null;
+  applicantCount: number;
+}
+
+// Stage workflow configuration types
+export interface StageCheckerItem {
+  id: string;
+  label: string;
+  checked: boolean;
+  required: boolean;
+  applicantId?: string;
+  applicantName?: string;
+  metadata?: Record<string, any>;
+}
+
+export interface StageChecker {
+  title: string;
+  description?: string;
+  items: StageCheckerItem[];
+  allComplete: boolean;
+  requiredComplete: boolean;
+}
+
+export interface StageDialogConfig {
+  title: string;
+  description: string;
+  warningMessage?: string;
+  requireBypassReason?: boolean;
+  bypassReasonOptions?: Array<{ value: string; label: string }>;
+  confirmButtonText: string;
+  confirmButtonVariant?: 'default' | 'destructive' | 'outline';
+}
+
+export interface StageActionConfig {
+  id: string;
+  label: string;
+  icon?: string;
+  variant?: 'default' | 'destructive' | 'outline' | 'secondary';
+  requiresChecker?: boolean;
+  requiresDialog?: boolean;
+  nextStage?: LeadStatus;
+}
+
+export interface StageConfig {
+  key: string;
+  label: string;
+  description: string;
+  checkers?: StageChecker[];
+  dialogs?: Record<string, StageDialogConfig>;
+  actions?: StageActionConfig[];
+}
+
+// Property-centric view types
+export interface PropertyApplicationSummary {
+  propertyId: string;
+  propertyName: string;
+  propertyAddress: string;
+  propertyImageUrl: string | null;
+  unitCount: number;
+  pendingApplicationCount: number;
+  shortlistedApplicationCount: number;
+  nextShowingDate: string | null;
+}
+
+export interface ApplicationListItem {
+  id: string;
+  propertyId: string;
+  unitId: string | null;
+  unitNumber: string | null;
+
+  // Primary applicant
+  primaryApplicantId: string;
+  primaryApplicantName: string;
+  primaryApplicantEmail: string;
+
+  // Household
+  applicantCount: number;
+  householdMonthlyIncome: number | null;
+  householdAiScore: number | null;
+
+  // Status
+  status: LeadStatus;
+  aiLabel: AILabel | null;
+  documentCompleteness: number; // 0-100 percentage
+
+  // Metadata
+  createdAt: string;
+  updatedAt: string;
+  shortlistedAt: string | null;
+}
+
+export interface ShortlistItem {
+  id: string;
+  propertyId: string;
+  unitId: string | null;
+  unitNumber: string | null;
+  rentAmount: number | null;
+
+  // Primary applicant
+  primaryApplicantName: string;
+  primaryApplicantEmail: string;
+
+  // Household
+  applicantCount: number;
+  householdMonthlyIncome: number | null;
+  householdAiScore: number | null;
+  aiLabel: AILabel | null;
+
+  // Documents
+  documentCompleteness: number;
+
+  // Metadata
+  shortlistedAt: string;
+  shortlistedBy: string;
+}
+
+// API request/response types for new endpoints
+export interface CreateApplicantRequest {
+  applicantType: ApplicantType;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  sendInvite?: boolean;
+}
+
+export interface StageTransitionRequest {
+  toStage: LeadStatus;
+  bypassReason?: string;
+  bypassCategory?: BypassCategory;
+  internalNotes?: string;
+  checklistSnapshot?: Record<string, any>;
+}
+
+export interface CreateInternalNoteRequest {
+  noteText: string;
+  noteCategory?: NoteCategory;
+  applicantId?: string;
+  taggedApplicants?: string[];
+  priority?: NotePriority;
+  isSensitive?: boolean;
 }

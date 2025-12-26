@@ -1,0 +1,19 @@
+# Temporary wrangler configuration for R2 migration script
+# This is used ONLY for running the migration script
+
+name = "r2-migration-script"
+main = "migrate-r2-buckets.ts"
+compatibility_date = "2024-11-01"
+
+# Bind all three buckets for migration
+[[r2_buckets]]
+binding = "OLD_BUCKET"
+bucket_name = "leaselab-files"
+
+[[r2_buckets]]
+binding = "PUBLIC_BUCKET"
+bucket_name = "leaselab-pub"
+
+[[r2_buckets]]
+binding = "PRIVATE_BUCKET"
+bucket_name = "leaselab-pri"

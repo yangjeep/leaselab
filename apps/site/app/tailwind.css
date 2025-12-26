@@ -1,17 +1,24 @@
 @import "./tailwind-config.css";
 
-:root {
-  --bg: #0b0c10;
-  --fg: #e5e7eb;
-}
+@layer base {
+  * {
+    border-color: hsl(var(--color-border));
+  }
 
-html, body {
-  color: var(--fg);
-  background: var(--bg);
-}
+  a {
+    text-decoration: none;
+  }
 
-a { text-decoration: none; }
-img { display: block; }
+  img {
+    display: block;
+  }
+
+  body {
+    background-color: hsl(var(--color-background));
+    color: hsl(var(--color-foreground));
+    font-family: var(--font-family-sans);
+  }
+}
 
 @utility container {
   margin-left: auto;
@@ -19,37 +26,4 @@ img { display: block; }
   max-width: 72rem;
   padding-left: 1.5rem;
   padding-right: 1.5rem;
-}
-
-@utility card {
-  border-radius: 1rem;
-  border: 1px solid rgb(255 255 255 / 0.1);
-  background-color: rgb(255 255 255 / 0.05);
-  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-}
-
-@utility btn {
-  border-radius: 0.75rem;
-  padding: 0.5rem 1rem;
-  border: 1px solid rgb(255 255 255 / 0.2);
-  transition-property: color, background-color;
-  &:hover {
-    background-color: rgb(255 255 255 / 0.1);
-  }
-}
-
-@utility input {
-  border-radius: 0.75rem;
-  border: 1px solid rgb(255 255 255 / 0.2);
-  background-color: transparent;
-  padding: 0.5rem 0.75rem;
-  &:focus {
-    outline: none;
-    border-color: rgb(255 255 255 / 0.4);
-  }
-}
-
-@utility label {
-  font-size: 0.875rem;
-  opacity: 0.7;
 }

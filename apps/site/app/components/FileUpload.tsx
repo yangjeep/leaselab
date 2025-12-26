@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { Alert, AlertDescription, AlertTitle, Button, Label } from "@leaselab/ui-components";
 import type { LeadFileType, FileUploadResponse } from "../../../../shared/types";
 
 // File constraints from PRD
@@ -203,12 +204,12 @@ export default function FileUpload({ onFilesChange }: FileUploadProps) {
   return (
     <div className="space-y-3">
       <div>
-        <label className="label block mb-2">
+        <Label className="mb-2 block">
           Supporting Documents (Optional)
-          <span className="text-sm font-normal text-white/60 ml-2">
+          <span className="ml-2 text-sm font-normal text-white/60">
             Max 5MB per file, {FILE_CONSTRAINTS.maxFiles} files total
           </span>
-        </label>
+        </Label>
 
         {/* File input */}
         <div className="flex items-center gap-3">
@@ -221,24 +222,23 @@ export default function FileUpload({ onFilesChange }: FileUploadProps) {
             className="hidden"
             id="file-upload-input"
           />
-          <label
-            htmlFor="file-upload-input"
-            className={`btn bg-white/10 hover:bg-white/20 cursor-pointer ${
-              files.length >= FILE_CONSTRAINTS.maxFiles ? 'opacity-50 cursor-not-allowed' : ''
-            }`}
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={files.length >= FILE_CONSTRAINTS.maxFiles}
           >
             Choose Files
-          </label>
-          <span className="text-sm text-white/60">
-            PDF, JPG, PNG, HEIC, DOC, DOCX
-          </span>
+          </Button>
+          <span className="text-sm text-white/60">PDF, JPG, PNG, HEIC, DOC, DOCX</span>
         </div>
 
         {/* Error message */}
         {error && (
-          <div className="mt-2 text-red-400 text-sm p-3 rounded-lg bg-red-400/10">
-            {error}
-          </div>
+          <Alert variant="destructive" className="mt-2">
+            <AlertTitle>Upload error</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
         )}
 
         {/* Help text */}
@@ -290,17 +290,19 @@ export default function FileUpload({ onFilesChange }: FileUploadProps) {
                     </div>
                   )}
                 </div>
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="icon"
                   onClick={() => removeFile(file.id)}
                   disabled={file.uploading}
-                  className="ml-3 text-white/60 hover:text-white disabled:opacity-50"
                   aria-label="Remove file"
+                  className="ml-3 text-white/70 hover:text-white"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
-                </button>
+                </Button>
               </div>
             ))}
           </div>

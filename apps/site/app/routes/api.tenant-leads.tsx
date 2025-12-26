@@ -30,10 +30,21 @@ export async function action({ request, context }: ActionFunctionArgs) {
     }
   }
 
+  // Check if this is a General Inquiry
+  const isGeneralInquiry = propertyId === "general";
+
   // Validate required fields
   if (!propertyId || !firstName || !lastName || !email || !phone) {
     return json(
       { error: "Property, name, email, and phone are required" },
+      { status: 400 }
+    );
+  }
+
+  // General Inquiries should not have attachments
+  if (isGeneralInquiry && fileIds.length > 0) {
+    return json(
+      { error: "File attachments are not allowed for general inquiries" },
       { status: 400 }
     );
   }
@@ -60,6 +71,24 @@ export async function action({ request, context }: ActionFunctionArgs) {
   }
 
   try {
+    // Prepare payload - General Inquiries have simplified requirements
+    const payload: any = {
+      propertyId,
+      firstName,
+      lastName,
+      email,
+      phone,
+      message,
+    };
+
+    // Only include these fields for non-general inquiries (actual applications)
+    if (!isGeneralInquiry) {
+      payload.unitId = unitId || undefined;
+      payload.employmentStatus = employmentStatus || "employed";
+      payload.moveInDate = moveInDate || new Date().toISOString().split("T")[0];
+      payload.fileIds = fileIds.length > 0 ? fileIds : undefined;
+    }
+
     // Submit to Worker API
     const response = await fetch(`${workerUrl}/api/public/leads`, {
       method: "POST",
@@ -67,19 +96,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${siteApiToken}`,
       },
-      body: JSON.stringify({
-        propertyId,
-        unitId: unitId || undefined,
-        firstName,
-        lastName,
-        email,
-        phone,
-        employmentStatus: employmentStatus || "employed",
-        // landlord/internal notes now handled in Ops; no monthlyIncome captured
-        moveInDate: moveInDate || new Date().toISOString().split("T")[0],
-        message,
-        fileIds: fileIds.length > 0 ? fileIds : undefined,
-      }),
+      body: JSON.stringify(payload),
     });
 
     if (!response.ok) {

@@ -1,3 +1,4 @@
+import { Card, CardContent, CardHeader, CardTitle } from "@leaselab/ui-components";
 import type { SiteConfig } from "~/lib/api-client";
 
 type AboutSectionProps = {
@@ -16,17 +17,21 @@ export default function AboutSection({ config }: AboutSectionProps) {
   ];
 
   return (
-    <div className="card p-6 space-y-4">
-      <h2 className="text-2xl font-semibold">{title}</h2>
-      <p className="opacity-80">{description}</p>
-      <div className="grid md:grid-cols-3 gap-4 pt-4">
-        {stats.map((stat, index) => (
-          <div key={index} className="text-center p-4">
-            <div className="text-3xl font-bold">{stat.value}</div>
-            <div className="text-sm opacity-70">{stat.label}</div>
-          </div>
-        ))}
-      </div>
-    </div>
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-2xl">{title}</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="opacity-80">{description}</p>
+        <div className="grid gap-4 pt-4 md:grid-cols-3">
+          {stats.map((stat, index) => (
+            <div key={index} className="rounded-lg border border-white/10 p-4 text-center">
+              <div className="text-3xl font-bold">{stat.value}</div>
+              <div className="text-sm opacity-70">{stat.label}</div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   );
 }

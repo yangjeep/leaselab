@@ -2,6 +2,7 @@
 // import type { LoaderFunctionArgs, MetaFunction } from "@remix-run/cloudflare";
 import { useLoaderData, useSearchParams, Link } from "@remix-run/react";
 import { useState } from "react";
+import { Card, CardContent } from "@leaselab/ui-components";
 import { fetchUnitById, fetchProperties, fetchSiteConfig } from "~/lib/api-client";
 import ListingGallery from "~/components/ListingGallery";
 import TabbedLayout from "~/components/TabbedLayout";
@@ -134,9 +135,11 @@ export default function UnitDetail() {
 
 function DetailItem({ label, value }: { label: string; value: string }) {
   return (
-    <div className="card p-3">
-      <div className="text-xs opacity-70">{label}</div>
-      <div className="font-medium">{value}</div>
-    </div>
+    <Card>
+      <CardContent className="p-3">
+        <div className="text-xs opacity-70">{label}</div>
+        <div className="font-medium">{value}</div>
+      </CardContent>
+    </Card>
   );
 }

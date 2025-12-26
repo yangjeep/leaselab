@@ -14,6 +14,7 @@ export {
     updateProperty,
     deleteProperty,
     getPublicListings,
+    getPropertiesWithApplicationCounts,
 } from './properties';
 
 // Re-export all unit operations
@@ -60,6 +61,7 @@ export {
     createAIEvaluation,
     getLeadHistory,
     recordLeadHistory,
+    getGeneralInquiriesCount,
 } from './leads';
 
 // Re-export all tenant operations
@@ -112,6 +114,14 @@ export {
 
 // Re-export site token types
 export type { SiteApiToken } from './site-tokens';
+
+// Re-export theme operations
+export {
+    getThemeConfiguration,
+    upsertThemeConfiguration,
+} from './themes';
+
+export type { ThemeConfigurationRecord } from './themes';
 
 // Re-export all lease operations
 export {

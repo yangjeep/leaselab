@@ -1,5 +1,19 @@
 import { useFetcher } from "@remix-run/react";
 import { useState, useEffect, useRef } from "react";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Input,
+  Label,
+  Select,
+  Textarea,
+} from "@leaselab/ui-components";
 import type { Listing } from "~/lib/types";
 import FileUpload from "./FileUpload";
 
@@ -23,12 +37,20 @@ export default function ContactForm({ listings = [], selectedProperty }: Contact
 
   const [selectedListingId, setSelectedListingId] = useState(selectedProperty || "");
   const [fileIds, setFileIds] = useState<string[]>([]);
+  const [employmentStatus, setEmploymentStatus] = useState("");
 
   useEffect(() => {
     if (selectedProperty) {
       setSelectedListingId(selectedProperty);
     }
   }, [selectedProperty]);
+
+  // Clear file uploads when switching to General Inquiries
+  useEffect(() => {
+    if (selectedListingId === "other") {
+      setFileIds([]);
+    }
+  }, [selectedListingId]);
 
   // Navigate to thank you page when submission succeeds
   // Check as soon as data is available (during loading state), not just idle
@@ -52,28 +74,33 @@ export default function ContactForm({ listings = [], selectedProperty }: Contact
     ? "general"
     : (selectedListing?.propertyId || selectedListingId);
   const unitIdToSubmit = selectedListingId === "other" ? undefined : selectedListingId;
+  const isGeneralInquiry = selectedListingId === "other";
 
   return (
-    <section className="card p-4">
-      <h2 className="mb-4 text-xl font-semibold">Apply / Inquire</h2>
-      <fetcher.Form method="post" action="/api/tenant-leads" className="space-y-4">
+    <Card>
+      <CardHeader>
+        <CardTitle>Apply / Inquire</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <fetcher.Form method="post" action="/api/tenant-leads" className="space-y-4">
         {fetcher.data?.error && (
-          <div className="text-red-400 text-sm p-3 rounded-lg bg-red-400/10">
-            {fetcher.data.error}
-          </div>
+          <Alert variant="destructive">
+            <AlertTitle>Submission failed</AlertTitle>
+            <AlertDescription>{fetcher.data.error}</AlertDescription>
+          </Alert>
         )}
 
         {/* Property Select */}
-        <div>
-          <label htmlFor="listingSelect" className="label block mb-1">
+        <div className="space-y-2">
+          <Label htmlFor="listingSelect">
             Property <span className="text-red-400">*</span>
-          </label>
-          <select
+          </Label>
+          <Select
             id="listingSelect"
-            value={selectedListingId}
-            onChange={(e) => setSelectedListingId(e.target.value)}
-            className="input w-full"
+            name="listingSelect"
             required
+            value={selectedListingId}
+            onChange={(event) => setSelectedListingId(event.target.value)}
           >
             <option value="">Select a property...</option>
             {listings.map((prop) => (
@@ -82,7 +109,7 @@ export default function ContactForm({ listings = [], selectedProperty }: Contact
               </option>
             ))}
             <option value="other">Other Inquiries</option>
-          </select>
+          </Select>
         </div>
 
         {/* Hidden inputs for propertyId and unitId */}
@@ -90,123 +117,91 @@ export default function ContactForm({ listings = [], selectedProperty }: Contact
         {unitIdToSubmit && <input type="hidden" name="unitId" value={unitIdToSubmit} />}
 
         {/* Name Fields */}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label htmlFor="firstName" className="label block mb-1">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="firstName">
               First Name <span className="text-red-400">*</span>
-            </label>
-            <input
-              type="text"
-              id="firstName"
-              name="firstName"
-              className="input w-full"
-              required
-            />
+            </Label>
+            <Input type="text" id="firstName" name="firstName" required />
           </div>
-          <div>
-            <label htmlFor="lastName" className="label block mb-1">
+          <div className="space-y-2">
+            <Label htmlFor="lastName">
               Last Name <span className="text-red-400">*</span>
-            </label>
-            <input
-              type="text"
-              id="lastName"
-              name="lastName"
-              className="input w-full"
-              required
-            />
+            </Label>
+            <Input type="text" id="lastName" name="lastName" required />
           </div>
         </div>
 
         {/* Email */}
-        <div>
-          <label htmlFor="email" className="label block mb-1">
+        <div className="space-y-2">
+          <Label htmlFor="email">
             Email <span className="text-red-400">*</span>
-          </label>
-          <input
-            type="email"
-            id="email"
-            name="email"
-            className="input w-full"
-            required
-          />
+          </Label>
+          <Input type="email" id="email" name="email" required />
         </div>
 
         {/* Phone */}
-        <div>
-          <label htmlFor="phone" className="label block mb-1">
+        <div className="space-y-2">
+          <Label htmlFor="phone">
             Phone <span className="text-red-400">*</span>
-          </label>
-          <input
-            type="tel"
-            id="phone"
-            name="phone"
-            className="input w-full"
-            required
-          />
+          </Label>
+          <Input type="tel" id="phone" name="phone" required />
         </div>
 
-        {/* Move-in Date */}
-        <div>
-          <label htmlFor="moveInDate" className="label block mb-1">
-            Ideal Move-in Date
-          </label>
-          <input
-            type="date"
-            id="moveInDate"
-            name="moveInDate"
-            defaultValue={getFirstDayOfNextMonth()}
-            className="input w-full"
-          />
-        </div>
+        {/* Move-in Date - Hidden for General Inquiries */}
+        {!isGeneralInquiry && (
+          <div className="space-y-2">
+            <Label htmlFor="moveInDate">Ideal Move-in Date</Label>
+            <Input type="date" id="moveInDate" name="moveInDate" defaultValue={getFirstDayOfNextMonth()} />
+          </div>
+        )}
 
-        {/* Employment Status */}
-        <div>
-          <label htmlFor="employmentStatus" className="label block mb-1">
-            Employment Status
-          </label>
-          <select
-            id="employmentStatus"
-            name="employmentStatus"
-            className="input w-full"
-          >
-            <option value="">Select...</option>
-            <option value="employed">Employed</option>
-            <option value="self_employed">Self-Employed</option>
-            <option value="student">Student</option>
-            <option value="retired">Retired</option>
-            <option value="unemployed">Unemployed</option>
-          </select>
-        </div>
+        {/* Employment Status - Hidden for General Inquiries */}
+        {!isGeneralInquiry && (
+          <div className="space-y-2">
+            <Label htmlFor="employmentStatus">Employment Status</Label>
+            <Select
+              id="employmentStatus"
+              name="employmentStatus"
+              value={employmentStatus}
+              onChange={(event) => setEmploymentStatus(event.target.value)}
+            >
+              <option value="">Select...</option>
+              <option value="employed">Employed</option>
+              <option value="self_employed">Self-Employed</option>
+              <option value="student">Student</option>
+              <option value="retired">Retired</option>
+              <option value="unemployed">Unemployed</option>
+            </Select>
+          </div>
+        )}
 
         {/* Monthly Income removed (internal-only now) */}
 
         {/* Message */}
-        <div>
-          <label htmlFor="message" className="label block mb-1">
-            Message
-          </label>
-          <textarea
-            id="message"
-            name="message"
-            rows={4}
-            className="input w-full"
-          />
+        <div className="space-y-2">
+          <Label htmlFor="message">Message</Label>
+          <Textarea id="message" name="message" rows={4} />
         </div>
 
-        {/* File Upload */}
-        <FileUpload onFilesChange={handleFilesChange} />
+        {/* File Upload - Hidden for General Inquiries */}
+        {!isGeneralInquiry && (
+          <>
+            <FileUpload onFilesChange={handleFilesChange} />
+            {/* Hidden input for fileIds */}
+            <input type="hidden" name="fileIds" value={JSON.stringify(fileIds)} />
+          </>
+        )}
 
-        {/* Hidden input for fileIds */}
-        <input type="hidden" name="fileIds" value={JSON.stringify(fileIds)} />
-
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="btn w-full bg-white/10 hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isSubmitting ? "Submitting..." : "Submit Application"}
-        </button>
+        <Button type="submit" disabled={isSubmitting} className="w-full">
+          {isSubmitting
+            ? "Submitting..."
+            : isGeneralInquiry
+              ? "Submit Inquiry"
+              : "Submit Application"}
+        </Button>
       </fetcher.Form>
-    </section>
+      </CardContent>
+    </Card>
   );
 }

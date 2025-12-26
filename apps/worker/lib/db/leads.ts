@@ -9,6 +9,7 @@ function mapLeadFromDb(row: unknown): Lead {
     return {
         id: r.id as string,
         propertyId: r.property_id as string,
+        unitId: r.unit_id as string | undefined,
         firstName: r.first_name as string,
         lastName: r.last_name as string,
         email: r.email as string,
@@ -127,6 +128,96 @@ export async function getLeads(dbInput: DatabaseInput, siteId: string, options?:
     return results.map(mapLeadWithOccupancyFromDb);
 }
 
+/**
+ * Get leads grouped by unit
+ * Returns applications organized by unit for better UX in property management
+ */
+export async function getLeadsGroupedByUnit(
+    dbInput: DatabaseInput,
+    siteId: string,
+    options?: {
+        status?: string;
+        propertyId?: string;
+        sortBy?: string;
+        sortOrder?: 'asc' | 'desc';
+        includeArchived?: boolean;
+    }
+) {
+    const db = normalizeDb(dbInput);
+    const { status, propertyId, sortBy = 'created_at', sortOrder = 'desc', includeArchived = false } = options || {};
+
+    // First get all matching leads with unit information
+    const leads = await getLeads(dbInput, siteId, {
+        status,
+        propertyId,
+        sortBy,
+        sortOrder,
+        includeArchived,
+        limit: 1000, // Get all for grouping
+    });
+
+    // Group leads by unit
+    const unitGroups = new Map<string, typeof leads>();
+    const noUnitLeads: typeof leads = [];
+
+    for (const lead of leads) {
+        if (lead.unitId) {
+            const existing = unitGroups.get(lead.unitId) || [];
+            existing.push(lead);
+            unitGroups.set(lead.unitId, existing);
+        } else {
+            noUnitLeads.push(lead);
+        }
+    }
+
+    // Get unit details for all units that have applications
+    const unitIds = Array.from(unitGroups.keys());
+    const units = unitIds.length > 0
+        ? await db.query(
+            `SELECT * FROM units WHERE id IN (${unitIds.map(() => '?').join(',')})`,
+            unitIds
+        )
+        : [];
+
+    // Map unit details
+    const unitMap = new Map(units.map((u: any) => [u.id, {
+        id: u.id,
+        propertyId: u.property_id,
+        unitNumber: u.unit_number,
+        bedrooms: u.bedrooms,
+        bathrooms: u.bathrooms,
+        squareFeet: u.square_feet,
+        monthlyRent: u.monthly_rent,
+        status: u.status,
+    }]));
+
+    // Build response with units and their applications
+    const groupedResults = Array.from(unitGroups.entries()).map(([unitId, applications]) => ({
+        unit: unitMap.get(unitId) || null,
+        applications,
+        count: applications.length,
+    }));
+
+    // Sort groups by unit number or by first application's sort field
+    groupedResults.sort((a, b) => {
+        if (a.unit?.unitNumber && b.unit?.unitNumber) {
+            return a.unit.unitNumber.localeCompare(b.unit.unitNumber);
+        }
+        return 0;
+    });
+
+    // Add no-unit group if exists
+    if (noUnitLeads.length > 0) {
+        groupedResults.push({
+            unit: null,
+            applications: noUnitLeads,
+            count: noUnitLeads.length,
+        });
+    }
+
+    return groupedResults;
+}
+
 export async function getLeadById(dbInput: DatabaseInput, siteId: string, id: string): Promise<Lead | null> {
     const db = normalizeDb(dbInput);
     const query = `
@@ -148,6 +239,9 @@ export async function createLead(dbInput: DatabaseInput, siteId: string, data: O
     const id = generateId('lead');
     const now = new Date().toISOString();
 
+    // Check if this is a General Inquiry (employment_status and move_in_date are optional for general inquiries)
+    const isGeneralInquiry = data.propertyId === 'general';
+
     await db.execute(`
     INSERT INTO leads (id, site_id, property_id, first_name, last_name, email, phone, current_address, employment_status, move_in_date, message, status, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'new', ?, ?)
@@ -160,20 +254,26 @@ export async function createLead(dbInput: DatabaseInput, siteId: string, data: O
         data.email,
         data.phone,
         data.currentAddress || null,
-        data.employmentStatus,
-        data.moveInDate,
+        isGeneralInquiry ? null : data.employmentStatus,
+        isGeneralInquiry ? null : data.moveInDate,
         data.message || null,
         now,
         now
     ]);
 
     // Record history
-    await recordLeadHistory(db, siteId, id, 'lead_created', {
+    const historyData: Record<string, unknown> = {
         propertyId: data.propertyId,
-        employmentStatus: data.employmentStatus,
-        moveInDate: data.moveInDate,
         message: data.message || null
-    });
+    };
+
+    // Only include these fields in history for non-general inquiries
+    if (!isGeneralInquiry) {
+        historyData.employmentStatus = data.employmentStatus;
+        historyData.moveInDate = data.moveInDate;
+    }
+
+    await recordLeadHistory(db, siteId, id, 'lead_created', historyData);
 
     return (await getLeadById(db, siteId, id))!;
 }
@@ -381,4 +481,69 @@ export async function recordLeadHistory(dbInput: DatabaseInput, siteId: string, 
     INSERT INTO lead_history (id, lead_id, site_id, event_type, event_data)
     VALUES (?, ?, ?, ?, ?)
   `, [id, leadId, siteId, eventType, JSON.stringify(eventData)]);
+}
+
+/**
+ * Get General Inquiries count (leads with property_id = 'general')
+ */
+export async function getGeneralInquiriesCount(dbInput: DatabaseInput, siteId: string, options?: {
+    status?: string;
+    includeArchived?: boolean;
+}): Promise<{
+    totalCount: number;
+    pendingCount: number;
+    resolvedCount: number;
+}> {
+    const db = normalizeDb(dbInput);
+    const { status, includeArchived = false } = options || {};
+
+    const buildQuery = (capabilities: { hasLeadIsActive: boolean }) => {
+        let query = `
+            SELECT
+                COUNT(*) as total_count,
+                COUNT(CASE WHEN status IN ('new', 'documents_pending', 'documents_received', 'ai_evaluated', 'screening') THEN 1 END) as pending_count,
+                COUNT(CASE WHEN status IN ('approved', 'rejected') THEN 1 END) as resolved_count
+            FROM leads
+            WHERE site_id = ? AND property_id = 'general'
+        `;
+        const params: (string | number)[] = [siteId];
+
+        if (!includeArchived && capabilities.hasLeadIsActive) {
+            query += ' AND is_active = 1';
+        }
+
+        if (status) {
+            query += ' AND status = ?';
+            params.push(status);
+        }
+
+        return { query, params };
+    };
+
+    const capabilities = { hasLeadIsActive: true };
+
+    const tryQuery = async () => {
+        const { query, params } = buildQuery(capabilities);
+        return db.queryOne(query, params);
+    };
+
+    let result: any;
+    try {
+        result = await tryQuery();
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        if (message.includes('no such column: is_active')) {
+            capabilities.hasLeadIsActive = false;
+            result = await tryQuery();
+        } else {
+            throw error;
+        }
+    }
+    const row = result as any;
+
+    return {
+        totalCount: Number(row?.total_count) || 0,
+        pendingCount: Number(row?.pending_count) || 0,
+        resolvedCount: Number(row?.resolved_count) || 0,
+    };
 }

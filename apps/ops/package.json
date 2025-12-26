@@ -21,6 +21,7 @@
     "@leaselab/shared-utils": "*",
     "@leaselab/storage-cloudflare": "*",
     "@leaselab/storage-core": "*",
+    "@leaselab/ui-components": "*",
     "@remix-run/cloudflare": "^2.17.2",
     "@remix-run/cloudflare-pages": "^2.17.2",
     "@remix-run/react": "^2.17.2",
@@ -33,14 +34,16 @@
     "@cloudflare/workers-types": "^4.20251128.0",
     "@remix-run/dev": "^2.17.2",
     "@tailwindcss/postcss": "^4.1.17",
+    "@testing-library/react": "^16.3.1",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "autoprefixer": "^10.4.22",
+    "jsdom": "^27.3.0",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.17",
     "typescript": "^5.9.3",
     "vite": "^5.4.21",
     "vite-tsconfig-paths": "^5.1.4",
-    "wrangler": "^4.51.0"
+    "wrangler": "^4.56.0"
   }
 }

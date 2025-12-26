@@ -1,7 +1,7 @@
 import {
   vitePlugin as remix,
 } from "@remix-run/dev";
-import { defineConfig } from "vite";
+import { defineConfig, type PluginOption } from "vite";
 import tsconfigPaths from "vite-tsconfig-paths";
 import path from "path";
 
@@ -31,7 +31,6 @@ export default defineConfig({
         v3_lazyRouteDiscovery: true,
       },
     }),
-    // @ts-expect-error - vite-tsconfig-paths uses vite 7.x types but apps use vite 5.x
-    tsconfigPaths({ root: __dirname }),
+    tsconfigPaths({ root: __dirname }) as any,
   ],
 });

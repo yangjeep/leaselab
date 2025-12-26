@@ -16,28 +16,54 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
     WORKER_INTERNAL_KEY: context.cloudflare.env.WORKER_INTERNAL_KEY,
   };
   const url = new URL(request.url);
-  const status = url.searchParams.get('status') || undefined;
+
+  // Default to "open_in_progress" if no status filter specified
+  const statusFilter = url.searchParams.get('status') || 'open_in_progress';
   const sortBy = url.searchParams.get('sortBy') || 'created_at';
   const sortOrder = (url.searchParams.get('sortOrder') || 'desc') as 'asc' | 'desc';
 
+  // Map filter presets to actual status values
+  let statusParam: string | undefined;
+  if (statusFilter === 'open_in_progress') {
+    statusParam = 'open,in_progress';
+  } else if (statusFilter === 'all') {
+    statusParam = undefined; // No filter
+  } else {
+    statusParam = statusFilter; // Single status (completed, cancelled, etc.)
+  }
+
   const workOrders = await fetchWorkOrdersFromWorker(workerEnv, siteId, {
-    status: status && status !== 'all' ? status : undefined,
+    status: statusParam,
     sortBy,
     sortOrder,
   });
 
-  return json({ workOrders });
+  // Fetch counts for all statuses (for filter badges)
+  const allWorkOrders = await fetchWorkOrdersFromWorker(workerEnv, siteId, {});
+  const counts = {
+    open: allWorkOrders.filter((wo: any) => wo.status === 'open').length,
+    in_progress: allWorkOrders.filter((wo: any) => wo.status === 'in_progress').length,
+    completed: allWorkOrders.filter((wo: any) => wo.status === 'completed').length,
+    cancelled: allWorkOrders.filter((wo: any) => wo.status === 'cancelled').length,
+    all: allWorkOrders.length,
+  };
+
+  return json({ workOrders, counts, currentFilter: statusFilter });
 }
 
 export default function WorkOrdersIndex() {
-  const { workOrders } = useLoaderData<typeof loader>();
+  const { workOrders, counts, currentFilter } = useLoaderData<typeof loader>();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const statuses = [
-    { value: 'all', label: 'All' },
-    { value: 'open', label: 'Open' },
-    { value: 'in_progress', label: 'In Progress' },
-    { value: 'completed', label: 'Completed' },
+    {
+      value: 'open_in_progress',
+      label: 'Open & In-Progress',
+      count: counts.open + counts.in_progress,
+    },
+    { value: 'all', label: 'All', count: counts.all },
+    { value: 'completed', label: 'Completed', count: counts.completed },
+    { value: 'cancelled', label: 'Cancelled', count: counts.cancelled },
   ];
 
   return (
@@ -55,27 +81,45 @@ export default function WorkOrdersIndex() {
       {/* Filters */}
       <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
         <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-500">Status:</span>
-          {statuses.map(({ value, label }) => (
-            <button
-              key={value}
-              onClick={() => {
-                const params = new URLSearchParams(searchParams);
-                if (value === 'all') {
-                  params.delete('status');
-                } else {
-                  params.set('status', value);
-                }
-                setSearchParams(params);
-              }}
-              className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${(value === 'all' && !searchParams.get('status')) || searchParams.get('status') === value
-                  ? 'bg-indigo-100 text-indigo-700'
-                  : 'text-gray-600 hover:bg-gray-100'
-                }`}
-            >
-              {label}
-            </button>
-          ))}
+          <span className="text-sm text-gray-500 min-w-[60px]">Status:</span>
+          <div className="flex flex-wrap gap-2">
+            {statuses.map(({ value, label, count }) => {
+              const isActive = currentFilter === value;
+              return (
+                <button
+                  key={value}
+                  onClick={() => {
+                    const params = new URLSearchParams(searchParams);
+                    if (value === 'open_in_progress') {
+                      // Default filter, remove param
+                      params.delete('status');
+                    } else {
+                      params.set('status', value);
+                    }
+                    setSearchParams(params);
+                  }}
+                  className={`inline-flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg transition-colors font-medium ${
+                    isActive
+                      ? 'bg-indigo-600 text-white shadow-sm'
+                      : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  <span>{label}</span>
+                  {count !== undefined && (
+                    <span
+                      className={`inline-flex items-center justify-center px-2 py-0.5 text-xs font-semibold rounded-full ${
+                        isActive
+                          ? 'bg-indigo-500 text-white'
+                          : 'bg-gray-200 text-gray-700'
+                      }`}
+                    >
+                      {count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 
@@ -101,7 +145,7 @@ export default function WorkOrdersIndex() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {workOrders.map((wo: any) => (
-                <tr key={wo.id} className="hover:bg-gray-50">
+                <tr key={wo.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => window.location.href = `/admin/work-orders/${wo.id}`}>
                   <td className="px-6 py-4">
                     <p className="font-medium text-gray-900">{wo.title}</p>
                     <p className="text-sm text-gray-500 truncate max-w-xs">{wo.description}</p>
@@ -117,6 +161,7 @@ export default function WorkOrdersIndex() {
                       <Link
                         to={`/admin/tenants/${wo.tenantId}`}
                         className="text-sm text-indigo-600 hover:text-indigo-700"
+                        onClick={(e) => e.stopPropagation()}
                       >
                         {wo.tenantName}
                       </Link>
@@ -140,6 +185,7 @@ export default function WorkOrdersIndex() {
                     <Link
                       to={`/admin/work-orders/${wo.id}`}
                       className="text-indigo-600 hover:text-indigo-700 text-sm font-medium"
+                      onClick={(e) => e.stopPropagation()}
                     >
                       View
                     </Link>
@@ -155,29 +201,36 @@ export default function WorkOrdersIndex() {
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const config: Record<string, { bg: string; text: string; label: string }> = {
-    open: { bg: 'bg-blue-100', text: 'text-blue-700', label: 'Open' },
-    in_progress: { bg: 'bg-yellow-100', text: 'text-yellow-700', label: 'In Progress' },
-    pending_parts: { bg: 'bg-orange-100', text: 'text-orange-700', label: 'Pending Parts' },
-    scheduled: { bg: 'bg-purple-100', text: 'text-purple-700', label: 'Scheduled' },
-    completed: { bg: 'bg-green-100', text: 'text-green-700', label: 'Completed' },
-    cancelled: { bg: 'bg-gray-100', text: 'text-gray-700', label: 'Cancelled' },
+  const config: Record<string, { bg: string; text: string; label: string; icon: string }> = {
+    open: { bg: 'bg-yellow-100', text: 'text-yellow-700', label: 'Open', icon: '🟡' },
+    in_progress: { bg: 'bg-blue-100', text: 'text-blue-700', label: 'In Progress', icon: '🔵' },
+    pending_parts: { bg: 'bg-orange-100', text: 'text-orange-700', label: 'Pending Parts', icon: '🟠' },
+    scheduled: { bg: 'bg-purple-100', text: 'text-purple-700', label: 'Scheduled', icon: '🟣' },
+    completed: { bg: 'bg-green-100', text: 'text-green-700', label: 'Completed', icon: '🟢' },
+    cancelled: { bg: 'bg-gray-100', text: 'text-gray-700', label: 'Cancelled', icon: '⚫' },
   };
-  const c = config[status] || { bg: 'bg-gray-100', text: 'text-gray-700', label: status };
-  return <span className={`text-xs px-2 py-1 rounded-full ${c.bg} ${c.text}`}>{c.label}</span>;
+  const c = config[status] || { bg: 'bg-gray-100', text: 'text-gray-700', label: status, icon: '⚪' };
+  return (
+    <span className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full ${c.bg} ${c.text} font-medium`}>
+      <span className="text-base leading-none">{c.icon}</span>
+      <span>{c.label}</span>
+    </span>
+  );
 }
 
 function PriorityBadge({ priority }: { priority: string }) {
-  const config: Record<string, { bg: string; text: string }> = {
-    low: { bg: 'bg-gray-100', text: 'text-gray-700' },
-    medium: { bg: 'bg-blue-100', text: 'text-blue-700' },
-    high: { bg: 'bg-orange-100', text: 'text-orange-700' },
-    emergency: { bg: 'bg-red-100', text: 'text-red-700' },
+  const config: Record<string, { bg: string; text: string; icon: string }> = {
+    low: { bg: 'bg-gray-100', text: 'text-gray-700', icon: '▪' },
+    medium: { bg: 'bg-blue-100', text: 'text-blue-700', icon: '▪▪' },
+    high: { bg: 'bg-orange-100', text: 'text-orange-700', icon: '▪▪▪' },
+    emergency: { bg: 'bg-red-100', text: 'text-red-700', icon: '🔴' },
+    urgent: { bg: 'bg-red-100', text: 'text-red-700', icon: '🔴' },
   };
-  const c = config[priority] || { bg: 'bg-gray-100', text: 'text-gray-700' };
+  const c = config[priority] || { bg: 'bg-gray-100', text: 'text-gray-700', icon: '▪' };
   return (
-    <span className={`text-xs px-2 py-1 rounded-full ${c.bg} ${c.text} capitalize`}>
-      {priority}
+    <span className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full ${c.bg} ${c.text} font-medium capitalize`}>
+      <span className="text-base leading-none">{c.icon}</span>
+      <span>{priority}</span>
     </span>
   );
 }

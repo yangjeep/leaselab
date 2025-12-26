@@ -284,3 +284,105 @@ export async function getPublicListings(dbInput: DatabaseInput, siteId: string, 
 
     return listings;
 }
+
+/**
+ * Get properties with application counts for the application board
+ * Returns properties with counts of pending/active applications
+ */
+export async function getPropertiesWithApplicationCounts(
+    dbInput: DatabaseInput,
+    siteId: string,
+    options?: {
+        isActive?: boolean;
+        onlyAvailable?: boolean; // Only properties with available units
+    }
+): Promise<Array<Property & { applicationCount: number; pendingCount: number; shortlistedCount: number }>> {
+    const db = normalizeDb(dbInput);
+
+    const buildQuery = (capabilities: {
+        hasPropertyIsActive: boolean;
+        hasUnitsTable: boolean;
+        hasUnitIsActive: boolean;
+        hasLeadShortlistedAt: boolean;
+    }) => {
+        let query = `
+            SELECT
+                p.*,
+                COUNT(DISTINCT l.id) as application_count,
+                COUNT(DISTINCT CASE WHEN l.status IN ('new', 'documents_pending', 'documents_received', 'ai_evaluated', 'screening') THEN l.id END) as pending_count,
+                ${capabilities.hasLeadShortlistedAt
+                ? "COUNT(DISTINCT CASE WHEN l.shortlisted_at IS NOT NULL THEN l.id END) as shortlisted_count"
+                : "0 as shortlisted_count"
+            }
+            FROM properties p
+            LEFT JOIN leads l ON l.property_id = p.id AND l.site_id = p.site_id
+            WHERE p.site_id = ?
+        `;
+
+        const params: (string | number)[] = [siteId];
+
+        if (options?.isActive !== undefined && capabilities.hasPropertyIsActive) {
+            query += ' AND p.is_active = ?';
+            params.push(options.isActive ? 1 : 0);
+        }
+
+        if (options?.onlyAvailable && capabilities.hasUnitsTable) {
+            query += ` AND EXISTS (
+                SELECT 1 FROM units u
+                WHERE u.property_id = p.id
+                AND u.site_id = p.site_id
+                AND u.status = 'available'
+                ${capabilities.hasUnitIsActive ? 'AND u.is_active = 1' : ''}
+            )`;
+        }
+
+        query += ' GROUP BY p.id ORDER BY pending_count DESC, p.created_at DESC';
+        return { query, params };
+    };
+
+    const capabilities = {
+        hasPropertyIsActive: true,
+        hasUnitsTable: true,
+        hasUnitIsActive: true,
+        hasLeadShortlistedAt: true,
+    };
+
+    const tryQuery = async () => {
+        const { query, params } = buildQuery(capabilities);
+        return db.query(query, params);
+    };
+
+    let results: any[];
+    try {
+        results = await tryQuery();
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+
+        if (message.includes('no such column: l.shortlisted_at')) {
+            capabilities.hasLeadShortlistedAt = false;
+        }
+        if (message.includes('no such column: p.is_active')) {
+            capabilities.hasPropertyIsActive = false;
+        }
+        if (message.includes('no such table: units')) {
+            capabilities.hasUnitsTable = false;
+        }
+        if (message.includes('no such column: u.is_active')) {
+            capabilities.hasUnitIsActive = false;
+        }
+
+        // Retry once with reduced capabilities; otherwise rethrow.
+        try {
+            results = await tryQuery();
+        } catch {
+            throw error;
+        }
+    }
+
+    return results.map((row: any) => ({
+        ...mapPropertyFromDb(row),
+        applicationCount: Number(row.application_count) || 0,
+        pendingCount: Number(row.pending_count) || 0,
+        shortlistedCount: Number(row.shortlisted_count) || 0,
+    }));
+}

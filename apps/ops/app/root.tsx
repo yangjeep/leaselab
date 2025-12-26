@@ -13,7 +13,6 @@ import { getSiteId } from "~/lib/site.server";
 import { getSessionCookie, verifySessionCookie } from "~/lib/session-cookie.server";
 import { fetchUserAccessibleSitesFromWorker, fetchUserHasAccessToSiteFromWorker } from "~/lib/worker-client";
 import { setActiveSite } from "~/lib/auth.server";
-import { SiteSwitcher } from "~/components/SiteSwitcher";
 
 import "./tailwind.css";
 
@@ -89,15 +88,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
 export default function App() {
   const { siteId, accessibleSites } = useLoaderData<typeof loader>();
   return (
-    <>
-      <div className="border-b bg-white shadow-sm">
-        <div className="mx-auto max-w-7xl px-4 py-2 flex items-center justify-between">
-          <h1 className="text-lg font-semibold">LeaseLab Ops Dashboard</h1>
-          <SiteSwitcher currentSite={siteId || ''} availableSites={accessibleSites || []} />
-        </div>
-      </div>
-      <Outlet context={{ siteId, accessibleSites }} />
-    </>
+    <div className="flex min-h-screen flex-col">
+      <main className="flex flex-1 min-h-0 flex-col">
+        <Outlet context={{ siteId, accessibleSites }} />
+      </main>
+    </div>
   );
 }
 

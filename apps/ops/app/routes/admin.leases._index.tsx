@@ -1,6 +1,7 @@
 import type { LoaderFunctionArgs, MetaFunction } from '@remix-run/cloudflare';
 import { json } from '@remix-run/cloudflare';
-import { useLoaderData, Link, useSearchParams } from '@remix-run/react';
+import { useLoaderData, Link, useSearchParams, useRevalidator } from '@remix-run/react';
+import { useState } from 'react';
 import {
   fetchLeasesFromWorker,
   fetchPropertiesFromWorker,
@@ -10,6 +11,8 @@ import {
 import { formatCurrency } from '~/shared/utils';
 import { getSiteId } from '~/lib/site.server';
 import { SortableTableHeader, NonSortableTableHeader } from '~/components/SortableTableHeader';
+import { useMultiSelect } from '~/lib/useMultiSelect';
+import { LeaseBulkActionToolbar, LeaseBulkActionConfirmModal } from '~/components/lease';
 
 export const meta: MetaFunction = () => {
   return [{ title: 'Leases - LeaseLab.io' }];
@@ -40,10 +43,89 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
 export default function LeasesIndex() {
   const { leases, properties, units, tenants } = useLoaderData<typeof loader>();
   const [searchParams, setSearchParams] = useSearchParams();
+  const revalidator = useRevalidator();
+
+  // Multi-select state
+  const multiSelect = useMultiSelect();
+  const [modalAction, setModalAction] = useState<'update_status' | 'export' | 'send_email' | 'generate_documents' | null>(null);
 
   const currentPropertyId = searchParams.get('propertyId') || 'all';
   const currentUnitId = searchParams.get('unitId') || 'all';
   const currentTenantId = searchParams.get('tenantId') || 'all';
+
+  // Get selected leases for modal display
+  const selectedLeases = leases
+    .filter((lease: any) => multiSelect.isSelected(lease.id))
+    .map((lease: any) => ({
+      id: lease.id,
+      tenantName: lease.tenant ? `${lease.tenant.firstName} ${lease.tenant.lastName}` : 'N/A',
+      unitNumber: lease.unit?.unitNumber || 'Entire Property',
+    }));
+
+  // Handle bulk actions
+  const handleBulkAction = async (action: string, params?: Record<string, any>) => {
+    try {
+      const response = await fetch('/api/ops/leases/bulk', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          lease_ids: multiSelect.selectedIds,
+          action,
+          params,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = (await response.json()) as { error: string };
+        throw new Error(error.error || 'Bulk action failed');
+      }
+
+      // Handle export action (CSV download)
+      if (action === 'export') {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `leases-export-${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      } else {
+        const result = (await response.json()) as {
+          bulk_action_id: string;
+          success_count: number;
+          failure_count: number;
+          results: Array<{ lease_id: string; status: string; error?: string }>;
+        };
+
+        // Show results
+        if (result.failure_count > 0) {
+          alert(
+            `Bulk action completed with some failures:\n\n` +
+              `✓ Success: ${result.success_count}\n` +
+              `✗ Failed: ${result.failure_count}\n\n` +
+              `Check the console for details.`
+          );
+          console.log('Bulk action results:', result.results);
+        } else {
+          alert(`Bulk action completed successfully!\n\n✓ ${result.success_count} lease(s) updated.`);
+        }
+      }
+
+      // Clear selection and close modal
+      multiSelect.clearSelection();
+      setModalAction(null);
+
+      // Revalidate to refresh data
+      revalidator.revalidate();
+    } catch (error) {
+      console.error('Bulk action failed:', error);
+      alert(`Bulk action failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
 
   const statuses = [
     { value: 'all', label: 'All' },
@@ -180,11 +262,36 @@ export default function LeasesIndex() {
         )}
       </div>
 
+      {/* Bulk Action Toolbar */}
+      <LeaseBulkActionToolbar
+        selectedCount={multiSelect.count}
+        onClearSelection={multiSelect.clearSelection}
+        onUpdateStatus={() => setModalAction('update_status')}
+        onExport={() => setModalAction('export')}
+        onSendEmail={() => setModalAction('send_email')}
+        onGenerateDocuments={() => setModalAction('generate_documents')}
+      />
+
       {/* Leases Table */}
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
+              <th className="px-6 py-3 text-left">
+                <input
+                  type="checkbox"
+                  checked={multiSelect.count > 0 && multiSelect.count === leases.length}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      multiSelect.selectAll(leases.map((l: any) => l.id), undefined);
+                    } else {
+                      multiSelect.clearSelection();
+                    }
+                  }}
+                  className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                  aria-label="Select all leases"
+                />
+              </th>
               <SortableTableHeader column="tenant_name" label="Tenant" />
               <SortableTableHeader column="property_name" label="Property" />
               <NonSortableTableHeader label="Unit" />
@@ -198,13 +305,30 @@ export default function LeasesIndex() {
           <tbody className="bg-white divide-y divide-gray-200">
             {leases.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-6 py-12 text-center text-sm text-gray-500">
+                <td colSpan={9} className="px-6 py-12 text-center text-sm text-gray-500">
                   No leases found. <Link to="/admin/leases/new" className="text-indigo-600 hover:text-indigo-700">Create your first lease</Link>
                 </td>
               </tr>
             ) : (
               leases.map((lease: any) => (
-                <tr key={lease.id} className="hover:bg-gray-50">
+                <tr
+                  key={lease.id}
+                  className={`cursor-pointer transition-colors ${
+                    multiSelect.isSelected(lease.id)
+                      ? 'bg-blue-50 hover:bg-blue-100'
+                      : 'hover:bg-gray-50'
+                  }`}
+                  onClick={() => window.location.href = `/admin/leases/${lease.id}`}
+                >
+                  <td className="px-6 py-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      checked={multiSelect.isSelected(lease.id)}
+                      onChange={() => multiSelect.toggleSelection(lease.id, undefined)}
+                      className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                      aria-label={`Select lease for ${lease.tenant ? `${lease.tenant.firstName} ${lease.tenant.lastName}` : 'N/A'}`}
+                    />
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">
                       {lease.tenant ? `${lease.tenant.firstName} ${lease.tenant.lastName}` : 'N/A'}
@@ -234,6 +358,7 @@ export default function LeasesIndex() {
                     <Link
                       to={`/admin/leases/${lease.id}`}
                       className="text-indigo-600 hover:text-indigo-900"
+                      onClick={(e) => e.stopPropagation()}
                     >
                       View
                     </Link>
@@ -244,6 +369,16 @@ export default function LeasesIndex() {
           </tbody>
         </table>
       </div>
+
+      {/* Bulk Action Confirmation Modal */}
+      <LeaseBulkActionConfirmModal
+        isOpen={modalAction !== null}
+        onClose={() => setModalAction(null)}
+        onConfirm={handleBulkAction}
+        action={modalAction}
+        leaseCount={multiSelect.count}
+        leases={selectedLeases}
+      />
     </div>
   );
 }

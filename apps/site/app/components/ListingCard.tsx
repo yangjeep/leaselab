@@ -1,4 +1,5 @@
 import { Link } from "@remix-run/react";
+import { Badge, Card, CardContent } from "@leaselab/ui-components";
 import type { Listing } from "~/lib/types";
 
 type ListingCardProps = {
@@ -25,11 +26,9 @@ export default function ListingCard({ listing, queryString }: ListingCardProps) 
   const href = queryString ? `/units/${listing.id}?${queryString}` : `/units/${listing.id}`;
 
   return (
-    <Link
-      to={href}
-      className="card overflow-hidden hover:border-white/30 transition-all block"
-    >
-      <div className="relative">
+    <Link to={href} className="block">
+      <Card className="overflow-hidden transition-all hover:border-primary/40">
+        <div className="relative">
         <img
           src={imageSrc}
           alt={listing.title}
@@ -43,29 +42,33 @@ export default function ListingCard({ listing, queryString }: ListingCardProps) 
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent flex flex-col justify-between p-3">
           <div className="flex justify-end">
-            <span className={`text-xs rounded-full px-2 py-1 font-medium ${getStatusColor(listing.status)}`}>
+            <Badge variant="secondary" className={`text-xs ${getStatusColor(listing.status)}`}>
               {listing.status}
-            </span>
+            </Badge>
           </div>
           <h3 className="text-lg font-semibold text-white drop-shadow-lg">{listing.title}</h3>
         </div>
       </div>
-      <div className="p-4 space-y-2">
-        <div className="opacity-80">
+      <CardContent className="space-y-2">
+        <p className="opacity-80">
           ${listing.price} / mo · {listing.bedrooms}B{listing.bathrooms}B · {listing.city}
+        </p>
+        <div className="flex flex-wrap gap-2 text-xs opacity-80">
+          {listing.parking && (
+            <Badge variant="outline" className="border-white/20">
+              {listing.parking}
+            </Badge>
+          )}
+          {listing.pets && (
+            <Badge variant="outline" className="border-white/20">
+              {fmtPets(listing.pets)}
+            </Badge>
+          )}
         </div>
-        <div className="flex gap-2 text-xs opacity-80">
-          {listing.parking && <Badge label={listing.parking} />}
-          {listing.pets && <Badge label={fmtPets(listing.pets)} />}
-        </div>
-      </div>
+      </CardContent>
+      </Card>
     </Link>
   );
-}
-
-function Badge({ label }: { label?: string }) {
-  if (!label) return null;
-  return <span className="rounded-full border border-white/20 px-2 py-0.5">{label}</span>;
 }
 
 function fmtPets(v: string): string {
