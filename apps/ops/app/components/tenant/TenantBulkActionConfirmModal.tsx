@@ -8,7 +8,7 @@ import { useState } from 'react';
 export interface TenantBulkActionConfirmModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (params?: Record<string, any>) => Promise<void>;
+  onConfirm: (action: string, params?: Record<string, any>) => Promise<void>;
   action: 'send_email' | 'send_document' | 'add_tag' | 'export' | null;
   tenantCount: number;
   tenants?: Array<{ id: string; name: string; email: string }>;
@@ -79,7 +79,7 @@ export function TenantBulkActionConfirmModal({
         params.export_format = exportFormat;
       }
 
-      await onConfirm(params);
+      await onConfirm(action, params);
       onClose();
       setTags('');
       setExportFormat('csv');

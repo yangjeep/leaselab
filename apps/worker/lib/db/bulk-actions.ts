@@ -3,8 +3,8 @@
  * Supports multi-select operations on applications
  */
 
-import type { DatabaseInput } from '~/shared/storage-core';
-import { normalizeDb } from '~/shared/storage-core';
+import type { DatabaseInput } from './helpers';
+import { normalizeDb } from './helpers';
 import { nanoid } from 'nanoid';
 
 export interface BulkAction {

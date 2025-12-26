@@ -14,7 +14,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
   const siteId = getSiteId(request);
 
   // Fetch leases in progress from worker API
-  const workerUrl = env.WORKER_API_URL || 'http://localhost:8787';
+  const workerUrl = env.WORKER_URL || 'http://localhost:8787';
   const response = await fetch(`${workerUrl}/api/ops/leases/in-progress`, {
     headers: {
       'x-site-id': siteId,

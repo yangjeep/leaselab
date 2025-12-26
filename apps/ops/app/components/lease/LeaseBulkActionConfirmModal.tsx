@@ -8,7 +8,7 @@ import { useState } from 'react';
 export interface LeaseBulkActionConfirmModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (params?: Record<string, any>) => Promise<void>;
+  onConfirm: (action: string, params?: Record<string, any>) => Promise<void>;
   action: 'update_status' | 'export' | 'send_email' | 'generate_documents' | null;
   leaseCount: number;
   leases?: Array<{ id: string; tenantName: string; unitNumber: string }>;
@@ -74,7 +74,7 @@ export function LeaseBulkActionConfirmModal({
         params.export_format = exportFormat;
       }
 
-      await onConfirm(params);
+      await onConfirm(action, params);
       onClose();
       setNewStatus('');
       setReason('');

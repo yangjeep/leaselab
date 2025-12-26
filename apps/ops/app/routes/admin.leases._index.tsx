@@ -283,7 +283,7 @@ export default function LeasesIndex() {
                   checked={multiSelect.count > 0 && multiSelect.count === leases.length}
                   onChange={(e) => {
                     if (e.target.checked) {
-                      multiSelect.selectAll(leases.map((l: any) => l.id));
+                      multiSelect.selectAll(leases.map((l: any) => l.id), undefined);
                     } else {
                       multiSelect.clearSelection();
                     }

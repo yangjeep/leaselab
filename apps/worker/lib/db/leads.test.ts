@@ -44,6 +44,9 @@ describe('getLeadsGroupedByUnit', () => {
   let mockStatement: MockD1Statement;
 
   beforeEach(() => {
+    // Reset getLeads mock
+    vi.mocked(getLeads).mockReset();
+
     mockStatement = {
       bind: vi.fn().mockReturnThis(),
       all: vi.fn().mockResolvedValue({
@@ -72,12 +75,16 @@ describe('getLeadsGroupedByUnit', () => {
         firstName: 'Alice',
         lastName: 'Smith',
         email: 'alice@example.com',
+        phone: '555-0001',
         unitId: 'unit_101',
         propertyId: 'prop_1',
         siteId: 'site_1',
-        status: 'new',
+        status: 'new' as const,
+        employmentStatus: 'employed' as const,
+        moveInDate: '2025-02-01',
         aiScore: 85,
-        aiLabel: 'A',
+        aiLabel: 'A' as const,
+        isActive: true,
         createdAt: '2025-01-01T00:00:00Z',
         updatedAt: '2025-01-01T00:00:00Z',
       },
@@ -86,12 +93,16 @@ describe('getLeadsGroupedByUnit', () => {
         firstName: 'Bob',
         lastName: 'Johnson',
         email: 'bob@example.com',
+        phone: '555-0002',
         unitId: 'unit_101',
         propertyId: 'prop_1',
         siteId: 'site_1',
-        status: 'new',
+        status: 'new' as const,
+        employmentStatus: 'employed' as const,
+        moveInDate: '2025-02-01',
         aiScore: 75,
-        aiLabel: 'B',
+        aiLabel: 'B' as const,
+        isActive: true,
         createdAt: '2025-01-02T00:00:00Z',
         updatedAt: '2025-01-02T00:00:00Z',
       },
@@ -100,12 +111,16 @@ describe('getLeadsGroupedByUnit', () => {
         firstName: 'Charlie',
         lastName: 'Brown',
         email: 'charlie@example.com',
+        phone: '555-0003',
         unitId: 'unit_102',
         propertyId: 'prop_1',
         siteId: 'site_1',
-        status: 'new',
+        status: 'new' as const,
+        employmentStatus: 'employed' as const,
+        moveInDate: '2025-02-01',
         aiScore: 90,
-        aiLabel: 'A',
+        aiLabel: 'A' as const,
+        isActive: true,
         createdAt: '2025-01-03T00:00:00Z',
         updatedAt: '2025-01-03T00:00:00Z',
       },
@@ -134,19 +149,56 @@ describe('getLeadsGroupedByUnit', () => {
       },
     ];
 
-    // Mock getLeads to return mapped leads
-    vi.mocked(getLeads).mockResolvedValue(mockMappedLeads as any);
+    // Mock database leads in raw format (what getLeads would query from DB)
+    const mockDbLeads = mockMappedLeads.map(lead => ({
+      ...lead,
+      first_name: lead.firstName,
+      last_name: lead.lastName,
+      unit_id: lead.unitId,
+      property_id: lead.propertyId,
+      site_id: lead.siteId,
+      ai_score: lead.aiScore,
+      ai_label: lead.aiLabel,
+      employment_status: lead.employmentStatus,
+      move_in_date: lead.moveInDate,
+      is_active: lead.isActive ? 1 : 0,
+      created_at: lead.createdAt,
+      updated_at: lead.updatedAt,
+    }));
 
-    // Mock units query
+    // Use callCount pattern to differentiate queries
+    let callCount = 0;
     mockD1.prepare = vi.fn((sql: string) => {
-      return {
-        ...mockStatement,
-        all: vi.fn().mockResolvedValue({
-          results: mockUnits,
-          success: true,
-          meta: { changes: 0, last_row_id: 0, duration: 1 },
-        }),
-      };
+      callCount++;
+      if (callCount === 1) {
+        // First call - getLeads query
+        const leadsStatement = {
+          bind: vi.fn().mockReturnThis(),
+          all: vi.fn().mockResolvedValue({
+            results: mockDbLeads,
+            success: true,
+            meta: { changes: 0, last_row_id: 0, duration: 1 },
+          }),
+          first: vi.fn(),
+          run: vi.fn(),
+        };
+        leadsStatement.bind = vi.fn().mockReturnValue(leadsStatement);
+        return leadsStatement;
+      } else {
+        // Second call - units query
+        const unitsStatement = {
+          bind: vi.fn().mockReturnThis(),
+          all: vi.fn().mockResolvedValue({
+            results: mockUnits,
+            success: true,
+            meta: { changes: 0, last_row_id: 0, duration: 1 },
+          }),
+          first: vi.fn(),
+          run: vi.fn(),
+        };
+        unitsStatement.bind = vi.fn().mockReturnValue(unitsStatement);
+        return unitsStatement;
+      }
     });
 
     const result = await getLeadsGroupedByUnit(mockD1 as any, 'site_1', {
@@ -531,34 +583,43 @@ describe('getLeadsGroupedByUnit', () => {
   });
 
   it('should respect sortBy and sortOrder options', async () => {
+    // Mock data should be returned in sorted order (desc by ai_score)
     const mockLeads = [
-      {
-        id: 'lead_1',
-        first_name: 'Alice',
-        last_name: 'Smith',
-        email: 'alice@example.com',
-        unit_id: 'unit_101',
-        property_id: 'prop_1',
-        site_id: 'site_1',
-        status: 'new',
-        ai_score: 70,
-        ai_label: 'B',
-        created_at: '2025-01-03T00:00:00Z',
-        updated_at: '2025-01-03T00:00:00Z',
-      },
       {
         id: 'lead_2',
         first_name: 'Bob',
         last_name: 'Johnson',
         email: 'bob@example.com',
+        phone: '555-0002',
         unit_id: 'unit_101',
         property_id: 'prop_1',
         site_id: 'site_1',
         status: 'new',
+        employment_status: 'employed',
+        move_in_date: '2025-02-01',
         ai_score: 90,
         ai_label: 'A',
+        is_active: 1,
         created_at: '2025-01-01T00:00:00Z',
         updated_at: '2025-01-01T00:00:00Z',
+      },
+      {
+        id: 'lead_1',
+        first_name: 'Alice',
+        last_name: 'Smith',
+        email: 'alice@example.com',
+        phone: '555-0001',
+        unit_id: 'unit_101',
+        property_id: 'prop_1',
+        site_id: 'site_1',
+        status: 'new',
+        employment_status: 'employed',
+        move_in_date: '2025-02-01',
+        ai_score: 70,
+        ai_label: 'B',
+        is_active: 1,
+        created_at: '2025-01-03T00:00:00Z',
+        updated_at: '2025-01-03T00:00:00Z',
       },
     ];
 
@@ -579,23 +640,33 @@ describe('getLeadsGroupedByUnit', () => {
     mockD1.prepare = vi.fn((sql: string) => {
       callCount++;
       if (callCount === 1) {
-        return {
-          ...mockStatement,
+        // First call - getLeads query
+        const leadsStatement = {
+          bind: vi.fn().mockReturnThis(),
           all: vi.fn().mockResolvedValue({
             results: mockLeads,
             success: true,
             meta: { changes: 0, last_row_id: 0, duration: 1 },
           }),
+          first: vi.fn(),
+          run: vi.fn(),
         };
+        leadsStatement.bind = vi.fn().mockReturnValue(leadsStatement);
+        return leadsStatement;
       } else {
-        return {
-          ...mockStatement,
+        // Second call - units query
+        const unitsStatement = {
+          bind: vi.fn().mockReturnThis(),
           all: vi.fn().mockResolvedValue({
             results: mockUnits,
             success: true,
             meta: { changes: 0, last_row_id: 0, duration: 1 },
           }),
+          first: vi.fn(),
+          run: vi.fn(),
         };
+        unitsStatement.bind = vi.fn().mockReturnValue(unitsStatement);
+        return unitsStatement;
       }
     });
 

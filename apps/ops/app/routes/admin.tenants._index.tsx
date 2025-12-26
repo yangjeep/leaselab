@@ -273,7 +273,7 @@ export default function TenantsIndex() {
                     checked={multiSelect.count > 0 && multiSelect.count === tenants.length}
                     onChange={(e) => {
                       if (e.target.checked) {
-                        multiSelect.selectAll(tenants.map((t: any) => t.id));
+                        multiSelect.selectAll(tenants.map((t: any) => t.id), undefined);
                       } else {
                         multiSelect.clearSelection();
                       }

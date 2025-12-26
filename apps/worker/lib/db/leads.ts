@@ -9,6 +9,7 @@ function mapLeadFromDb(row: unknown): Lead {
     return {
         id: r.id as string,
         propertyId: r.property_id as string,
+        unitId: r.unit_id as string | undefined,
         firstName: r.first_name as string,
         lastName: r.last_name as string,
         email: r.email as string,
