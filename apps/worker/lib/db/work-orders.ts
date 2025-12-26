@@ -72,8 +72,16 @@ export async function getWorkOrders(
     const params: string[] = [siteId];
 
     if (options?.status) {
-        query += ' AND wo.status = ?';
-        params.push(options.status);
+        // Support comma-separated status values (e.g., 'open,in_progress')
+        const statuses = options.status.split(',').map(s => s.trim());
+        if (statuses.length === 1) {
+            query += ' AND wo.status = ?';
+            params.push(statuses[0]);
+        } else {
+            const placeholders = statuses.map(() => '?').join(', ');
+            query += ` AND wo.status IN (${placeholders})`;
+            params.push(...statuses);
+        }
     }
     if (options?.propertyId) {
         query += ' AND wo.property_id = ?';

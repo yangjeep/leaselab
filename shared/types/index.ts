@@ -152,6 +152,22 @@ export type EmploymentStatus = 'employed' | 'self_employed' | 'unemployed' | 're
 
 export type AILabel = 'A' | 'B' | 'C' | 'D';
 
+// Grouped applications by unit (for unit-level view)
+export interface UnitApplicationGroup {
+  unit: {
+    id: string;
+    propertyId: string;
+    unitNumber: string;
+    bedrooms?: number;
+    bathrooms?: number;
+    squareFeet?: number;
+    monthlyRent?: number;
+    status?: string;
+  } | null; // null for applications without assigned unit
+  applications: Lead[];
+  count: number;
+}
+
 // Lead File Types
 export interface LeadFile {
   id: string;

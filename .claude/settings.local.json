@@ -17,7 +17,12 @@
       "Bash(git -C /Users/yangjeep/ws/yangjeep/leaselab2 log --oneline -10)",
       "Bash(cat:*)",
       "Bash(wc:*)",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(npm test:*)",
+      "Bash(npx vitest:*)",
+      "Bash(npx:*)"
     ],
     "deny": [],
     "ask": []

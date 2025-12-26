@@ -12,6 +12,33 @@ export declare function getLeads(dbInput: DatabaseInput, siteId: string, options
     isUnitOccupied?: boolean;
     propertyName?: string;
 })[]>;
+/**
+ * Get leads grouped by unit
+ * Returns applications organized by unit for better UX in property management
+ */
+export declare function getLeadsGroupedByUnit(dbInput: DatabaseInput, siteId: string, options?: {
+    status?: string;
+    propertyId?: string;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+    includeArchived?: boolean;
+}): Promise<{
+    unit: {
+        id: any;
+        propertyId: any;
+        unitNumber: any;
+        bedrooms: any;
+        bathrooms: any;
+        squareFeet: any;
+        monthlyRent: any;
+        status: any;
+    } | null;
+    applications: (Lead & {
+        isUnitOccupied?: boolean;
+        propertyName?: string;
+    })[];
+    count: number;
+}[]>;
 export declare function getLeadById(dbInput: DatabaseInput, siteId: string, id: string): Promise<Lead | null>;
 export declare function createLead(dbInput: DatabaseInput, siteId: string, data: Omit<Lead, 'id' | 'createdAt' | 'updatedAt' | 'aiScore' | 'aiLabel' | 'status'>): Promise<Lead>;
 export declare function updateLead(dbInput: DatabaseInput, siteId: string, id: string, data: Partial<Lead>): Promise<void>;

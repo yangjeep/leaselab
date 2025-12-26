@@ -24,7 +24,46 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
     availableSites = [];
   }
 
-  return json({ user, currentSite: siteId, availableSites });
+  // Get count of leases in progress for badge
+  let leasesInProgressCount = 0;
+  try {
+    const workerUrl = context.cloudflare.env.WORKER_URL || 'http://localhost:8787';
+    const response = await fetch(`${workerUrl}/api/ops/leases/in-progress`, {
+      headers: {
+        'x-site-id': siteId,
+        'x-user-id': user.id,
+      },
+    });
+    if (response.ok) {
+      const data = await response.json() as { leases: any[] };
+      leasesInProgressCount = data.leases.length;
+    }
+  } catch (error) {
+    console.error('Failed to fetch leases in progress count:', error);
+  }
+
+  // Get count of actionable work orders for badge
+  let workOrderCounts = { total_actionable: 0, urgent: 0 };
+  try {
+    const workerUrl = context.cloudflare.env.WORKER_URL || 'http://localhost:8787';
+    const response = await fetch(`${workerUrl}/api/ops/work-orders/counts`, {
+      headers: {
+        'x-site-id': siteId,
+        'x-user-id': user.id,
+      },
+    });
+    if (response.ok) {
+      const data = await response.json() as { total_actionable: number; urgent: number };
+      workOrderCounts = {
+        total_actionable: data.total_actionable || 0,
+        urgent: data.urgent || 0,
+      };
+    }
+  } catch (error) {
+    console.error('Failed to fetch work order counts:', error);
+  }
+
+  return json({ user, currentSite: siteId, availableSites, leasesInProgressCount, workOrderCounts });
 }
 
 const navItems = [
@@ -34,13 +73,14 @@ const navItems = [
   { path: '/admin/properties', label: 'Properties', icon: '🏠' },
   { path: '/admin/tenants', label: 'Tenants', icon: '🔑' },
   { path: '/admin/leases', label: 'Leases', icon: '📋' },
+  { path: '/admin/leases/in-progress', label: 'Leases in Progress', icon: '📝', badge: 'leases' },
   { path: '/admin/financial', label: 'Financial', icon: '💰' },
-  { path: '/admin/work-orders', label: 'Work Orders', icon: '🔧' },
+  { path: '/admin/work-orders', label: 'Work Orders', icon: '🔧', badge: 'workOrders' },
   { path: '/admin/settings', label: 'Settings', icon: '⚙️' },
 ];
 
 export default function AdminLayout() {
-  const { user, currentSite, availableSites } = useLoaderData<typeof loader>();
+  const { user, currentSite, availableSites, leasesInProgressCount, workOrderCounts } = useLoaderData<typeof loader>();
   const location = useLocation();
 
   return (
@@ -77,7 +117,19 @@ export default function AdminLayout() {
                       }`}
                   >
                     <span>{item.icon}</span>
-                    {item.label}
+                    <span className="flex-1">{item.label}</span>
+                    {item.badge === 'leases' && leasesInProgressCount > 0 && (
+                      <span className="inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-indigo-600 rounded-full">
+                        {leasesInProgressCount}
+                      </span>
+                    )}
+                    {item.badge === 'workOrders' && workOrderCounts.total_actionable > 0 && (
+                      <span className={`inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white rounded-full ${
+                        workOrderCounts.urgent > 0 ? 'bg-red-600' : 'bg-blue-600'
+                      }`}>
+                        {workOrderCounts.total_actionable}
+                      </span>
+                    )}
                   </Link>
                 </li>
               );
